@@ -5,7 +5,7 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  font-family: 'Segoe UI', sans-serif;
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
 }
 #game-container {
   display: flex;
@@ -47,4 +47,5 @@ body {
   transition: transform 0.1s;
 }
 .plant-card:hover { transform: scale(1.05); }
+.plant-card.selected { border-color: #fbbf24; }
 .plant-card span:last-child { font-size: 14px; color: #fbbf24; }
