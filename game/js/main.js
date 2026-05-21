@@ -35,10 +35,36 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
       }
+
+      for (const plant of window.game.plants) {
+        if (plant.constructor.name === 'PeaShooter') {
+          const px = plant.x;
+          const py = plant.y;
+          const dx = x - px;
+          const dy = y - py;
+          if (dx > -10 && dx < 90 && dy > -10 && dy < 100) {
+            plant.useSkill(window.game);
+            return;
+          }
+        }
+      }
     }
 
     if (selectedPlant && window.game) {
       window.game.handlePlantClick(x, y, selectedPlant);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && window.game) {
+      e.preventDefault();
+      for (const plant of window.game.plants) {
+        if (plant.constructor.name === 'PeaShooter') {
+          if (plant.useSkill(window.game)) {
+            break;
+          }
+        }
+      }
     }
   });
 
