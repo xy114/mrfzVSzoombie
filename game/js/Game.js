@@ -4,6 +4,8 @@ import { Sunflower } from './Sunflower.js';
 import { PeaShooter } from './PeaShooter.js';
 import { NormalZombie } from './NormalZombie.js';
 import { ConeZombie } from './ConeZombie.js';
+import { FireBullet } from './Bullet.js';
+import { WaveManager } from './WaveManager.js';
 
 export class Game {
   constructor(canvas) {
@@ -20,6 +22,7 @@ export class Game {
     this.wave = 1;
     this.isRunning = false;
     this.lastTime = 0;
+    this.waveManager = new WaveManager(this);
   }
 
   start() {
@@ -39,17 +42,30 @@ export class Game {
   }
 
   update(deltaTime) {
+    const currentTime = performance.now();
+
+    this.waveManager.update(deltaTime, currentTime);
+
     this.plants.forEach(plant => plant.update(deltaTime, this));
+
     this.bullets = this.bullets.filter(bullet => {
-      bullet.update(deltaTime);
-      return bullet.x < GAME_CONFIG.CANVAS_WIDTH && bullet.active;
+      if (bullet instanceof FireBullet) {
+        bullet.update(deltaTime, this);
+      } else {
+        bullet.update(deltaTime);
+      }
+      return bullet.active;
     });
+
     this.zombies.forEach(zombie => zombie.update(deltaTime, this));
+
     this.suns = this.suns.filter(sun => {
       sun.update(deltaTime);
       return sun.active;
     });
+
     this.checkCollisions();
+    this.checkGameOver();
   }
 
   render() {
@@ -62,9 +78,34 @@ export class Game {
   }
 
   checkCollisions() {
+    this.bullets.forEach(bullet => {
+      if (!bullet.active) return;
+      if (bullet instanceof FireBullet) return;
+
+      this.zombies.forEach(zombie => {
+        if (zombie.row === bullet.row) {
+          const dx = bullet.x - zombie.x;
+          if (dx > -20 && dx < 50) {
+            bullet.active = false;
+            zombie.takeDamage(bullet.damage);
+          }
+        }
+      });
+    });
+
     this.bullets = this.bullets.filter(b => b.active);
     this.zombies = this.zombies.filter(z => z.alive);
     this.plants = this.plants.filter(p => p.alive);
+  }
+
+  checkGameOver() {
+    const reachedLeft = this.zombies.some(z => z.x < 10);
+    if (reachedLeft) {
+      this.isRunning = false;
+      setTimeout(() => {
+        alert('游戏结束！僵尸入侵了你的院子！');
+      }, 100);
+    }
   }
 
   addPlant(plant) {
@@ -103,6 +144,7 @@ export class Game {
   }
 
   updateWaveDisplay() {
+    this.wave = this.waveManager.wave;
     const waveElement = document.getElementById('wave-info');
     if (waveElement) waveElement.textContent = `波次 ${this.wave}`;
   }
