@@ -3,76 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>植物大战僵尸风格游戏 - 设计</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      min-height: 100vh;
-      color: #fff;
-      padding: 40px 20px;
-    }
-    .container { max-width: 900px; margin: 0 auto; }
-    h1 {
-      font-size: 2.5em;
-      text-align: center;
-      margin-bottom: 10px;
-      background: linear-gradient(90deg, #4ade80, #22d3ee);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .subtitle {
-      text-align: center;
-      color: #94a3b8;
-      margin-bottom: 40px;
-      font-size: 1.1em;
-    }
-    .section {
-      background: rgba(255,255,255,0.05);
-      border-radius: 16px;
-      padding: 30px;
-      margin-bottom: 20px;
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-    .section h2 {
-      font-size: 1.4em;
-      margin-bottom: 15px;
-      color: #4ade80;
-    }
-    .section p, .section li {
-      color: #cbd5e1;
-      line-height: 1.8;
-    }
-    ul { padding-left: 20px; }
-    li { margin-bottom: 8px; }
-    .loading {
-      text-align: center;
-      padding: 60px;
-      color: #64748b;
-    }
-    .loading::after {
-      content: '...';
-      animation: dots 1.5s infinite;
-    }
-    @keyframes dots {
-      0%, 20% { content: '.'; }
-      40% { content: '..'; }
-      60%, 100% { content: '...'; }
-    }
-  </style>
+  <title>植物大战僵尸</title>
+  <link rel="stylesheet" href="game/css/game.css">
 </head>
 <body>
-  <div class="container">
-    <h1>🌱 植物 vs 僵尸</h1>
-    <p class="subtitle">植物大战僵尸风格塔防游戏 - 设计方案</p>
-
-    <div class="section">
-      <h2>欢迎来到设计工作室</h2>
-      <p>我们将通过一系列问题来了解您对游戏的想法。首先让我问您第一个问题...</p>
+  <div id="game-container">
+    <div id="game-header">
+      <span id="sun-count">☀️ 150</span>
+      <span id="wave-info">波次 1</span>
     </div>
-
-    <div class="loading">即将开始</div>
+    <canvas id="game-canvas"></canvas>
+    <div id="game-footer">
+      <div class="plant-card" data-plant="sunflower">
+        <span>🌻</span>
+        <span>50</span>
+      </div>
+      <div class="plant-card" data-plant="peashooter">
+        <span>🫛</span>
+        <span>100</span>
+      </div>
+    </div>
   </div>
+  <script src="game/js/main.js" type="module"></script>
 </body>
 </html>

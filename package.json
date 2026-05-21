@@ -1,0 +1,13 @@
+{
+  "name": "mrfz-vs-zombie",
+  "version": "1.0.0",
+  "description": "Plant vs Zombie style tower defense game",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^28.0.0"
+  }
+}
