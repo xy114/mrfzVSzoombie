@@ -6,6 +6,7 @@ import { NormalZombie } from './NormalZombie.js';
 import { ConeZombie } from './ConeZombie.js';
 import { FireBullet } from './Bullet.js';
 import { WaveManager } from './WaveManager.js';
+import { Sun } from './Sun.js';
 
 export class Game {
   constructor(canvas) {
@@ -23,6 +24,7 @@ export class Game {
     this.isRunning = false;
     this.lastTime = 0;
     this.waveManager = new WaveManager(this);
+    this.sunSpawnTimer = 0;
   }
 
   start() {
@@ -46,6 +48,12 @@ export class Game {
 
     this.waveManager.update(deltaTime, currentTime);
 
+    this.sunSpawnTimer += deltaTime;
+    if (this.sunSpawnTimer >= SUN_CONFIG.SPAWN_INTERVAL) {
+      this.sunSpawnTimer = 0;
+      this.spawnRandomSun();
+    }
+
     this.plants.forEach(plant => plant.update(deltaTime, this));
 
     this.bullets = this.bullets.filter(bullet => {
@@ -68,6 +76,16 @@ export class Game {
     this.checkGameOver();
   }
 
+  spawnRandomSun() {
+    const row = Math.floor(Math.random() * GAME_CONFIG.LAWN_ROWS);
+    const col = Math.floor(Math.random() * GAME_CONFIG.LAWN_COLS);
+    const x = col * GAME_CONFIG.CELL_WIDTH + Math.random() * 30;
+    const y = 0;
+    const targetY = row * GAME_CONFIG.CELL_HEIGHT + Math.random() * 50;
+    const sun = new Sun(x, y, targetY);
+    this.addSun(sun);
+  }
+
   render() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.lawn.render(this.ctx);
@@ -83,9 +101,18 @@ export class Game {
       if (bullet instanceof FireBullet) return;
 
       this.zombies.forEach(zombie => {
-        if (zombie.row === bullet.row) {
-          const dx = bullet.x - zombie.x;
-          if (dx > -20 && dx < 50) {
+        if (zombie.row === bullet.row && zombie.alive) {
+          const bulletCenterX = bullet.x + bullet.width / 2;
+          const bulletCenterY = bullet.y + bullet.height / 2;
+          const zombieCenterX = zombie.x + zombie.width / 2;
+          const zombieCenterY = zombie.y + zombie.height / 2;
+          
+          const dx = Math.abs(bulletCenterX - zombieCenterX);
+          const dy = Math.abs(bulletCenterY - zombieCenterY);
+          
+          const collisionDistance = (bullet.width + zombie.width) / 2;
+          
+          if (dx < collisionDistance && dy < 50) {
             bullet.active = false;
             zombie.takeDamage(bullet.damage);
           }

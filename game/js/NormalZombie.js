@@ -7,6 +7,6 @@ export class NormalZombie extends Zombie {
     this.health = ZOMBIE_TYPES.NORMAL.health;
     this.maxHealth = ZOMBIE_TYPES.NORMAL.health;
     this.speed = ZOMBIE_TYPES.NORMAL.speed;
-    this.type = 'normal';
+    this.type = 'normal_zombie';
   }
 }

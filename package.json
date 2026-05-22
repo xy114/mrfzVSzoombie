@@ -4,10 +4,11 @@
   "description": "Plant vs Zombie style tower defense game",
   "main": "electron/main.js",
   "scripts": {
-    "start": "set ELECTRON_CACHE=E:\\clone\\mrfzVSzoombie\\.electron-cache&& electron .",
-    "dev": "set ELECTRON_CACHE=E:\\clone\\mrfzVSzoombie\\.electron-cache&& electron .",
+    "start": "electron .",
+    "dev": "electron .",
     "build": "electron-builder --win portable",
-    "build:installer": "electron-builder --win nsis"
+    "build:installer": "electron-builder --win nsis",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
     "electron": "^42.2.0",

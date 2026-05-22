@@ -1,6 +1,9 @@
 import { Game } from './Game.js';
+import { assetManager } from './AssetManager.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await assetManager.loadImages();
+  
   const canvas = document.getElementById('game-canvas');
   const game = new Game(canvas);
   let selectedPlant = null;
