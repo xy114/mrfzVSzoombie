@@ -1,4 +1,5 @@
 import { GAME_CONFIG, ZOMBIE_TYPES } from './constants.js';
+import { assetManager } from './AssetManager.js';
 
 export class Zombie {
   constructor(x, y, row) {
@@ -10,23 +11,30 @@ export class Zombie {
     this.health = 100;
     this.maxHealth = 100;
     this.speed = 0.3;
-    this.damage = 10;
+    this.damage = 20;
     this.alive = true;
     this.attacking = false;
     this.targetPlant = null;
+    this.attackTimer = 0;
+    this.attackInterval = 1000;
+    this.type = 'normal';
   }
 
   update(deltaTime, game) {
     const plantInFront = game.plants.find(p =>
       p.row === this.row &&
-      p.x < this.x + 100 &&
-      p.x > this.x - 20
+      p.x < this.x + 80 &&
+      p.x > this.x - 30
     );
 
     if (plantInFront) {
       this.attacking = true;
       this.targetPlant = plantInFront;
-      this.attack(deltaTime);
+      this.attackTimer += deltaTime;
+      if (this.attackTimer >= this.attackInterval) {
+        this.attackTimer = 0;
+        this.attack();
+      }
     } else {
       this.attacking = false;
       this.targetPlant = null;
@@ -38,9 +46,9 @@ export class Zombie {
     }
   }
 
-  attack(deltaTime) {
+  attack() {
     if (this.targetPlant) {
-      this.targetPlant.takeDamage(this.damage * (deltaTime / 1000));
+      this.targetPlant.takeDamage(this.damage);
     }
   }
 
@@ -52,9 +60,19 @@ export class Zombie {
   }
 
   render(ctx) {
-    const emoji = this.health > 100 ? '🚧' : '🧟';
-    ctx.font = '50px Arial';
-    ctx.fillText(emoji, this.x, this.y + 50);
+    let imageKey = this.type;
+    if (this.attacking) {
+      imageKey += '_attack';
+    }
+    const img = assetManager.getImage(imageKey);
+    
+    if (img) {
+      ctx.drawImage(img, this.x, this.y, 60, 80);
+    } else {
+      const emoji = this.type === 'cone' ? '🚧' : '🧟';
+      ctx.font = '50px Arial';
+      ctx.fillText(emoji, this.x, this.y + 50);
+    }
 
     const healthPercent = this.health / this.maxHealth;
     ctx.fillStyle = '#ef4444';

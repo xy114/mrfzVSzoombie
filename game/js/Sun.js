@@ -1,24 +1,32 @@
 export class Sun {
-  constructor(x, y) {
+  constructor(x, y, targetY) {
     this.x = x;
     this.y = y;
-    this.targetY = y + 50;
+    this.targetY = targetY;
     this.width = 40;
     this.height = 40;
     this.active = true;
     this.lifetime = 10000;
     this.timer = 0;
     this.falling = true;
+    this.speed = 1.5;
+    this.dimStart = 2000;
+    this.alpha = 1;
   }
 
   update(deltaTime) {
     this.timer += deltaTime;
 
     if (this.falling) {
-      this.y += 1;
+      this.y += this.speed;
       if (this.y >= this.targetY) {
         this.falling = false;
       }
+    }
+
+    if (this.timer >= this.dimStart && this.timer < this.lifetime) {
+      const dimProgress = (this.timer - this.dimStart) / 3000;
+      this.alpha = Math.max(0.3, 1 - dimProgress);
     }
 
     if (this.timer >= this.lifetime) {
@@ -32,7 +40,10 @@ export class Sun {
   }
 
   render(ctx) {
+    ctx.save();
+    ctx.globalAlpha = this.alpha;
     ctx.font = '35px Arial';
     ctx.fillText('☀️', this.x, this.y + 25);
+    ctx.restore();
   }
 }

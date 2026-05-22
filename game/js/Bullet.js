@@ -1,3 +1,5 @@
+import { assetManager } from './AssetManager.js';
+
 export class Bullet {
   constructor(x, y, row) {
     this.x = x;
@@ -15,8 +17,13 @@ export class Bullet {
   }
 
   render(ctx) {
-    ctx.font = '20px Arial';
-    ctx.fillText('🟢', this.x, this.y + 15);
+    const img = assetManager.getImage('pea');
+    if (img) {
+      ctx.drawImage(img, this.x, this.y, 20, 20);
+    } else {
+      ctx.font = '20px Arial';
+      ctx.fillText('🟢', this.x, this.y + 15);
+    }
   }
 }
 
@@ -79,22 +86,18 @@ export class FireBullet {
             }
           }
         });
-
-        game.plants.forEach(plant => {
-          if (plant.row === targetRow) {
-            const plantCol = Math.floor(plant.x / cellWidth);
-            if (Math.abs(plantCol - targetCol) <= 1) {
-              plant.takeDamage(this.damage * 0.5);
-            }
-          }
-        });
       }
     }
   }
 
   render(ctx) {
-    ctx.font = '25px Arial';
-    ctx.fillText('🔥', this.x - 5, this.y + 15);
+    const img = assetManager.getImage('fire_pea');
+    if (img) {
+      ctx.drawImage(img, this.x - 5, this.y, 30, 25);
+    } else {
+      ctx.font = '25px Arial';
+      ctx.fillText('🔥', this.x - 5, this.y + 15);
+    }
     if (this.exploded) {
       ctx.font = '40px Arial';
       ctx.fillText('💥', this.x - 20, this.y + 25);

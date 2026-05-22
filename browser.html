@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>植物大战僵尸 - Plant vs Zombie</title>
+    <link rel="stylesheet" href="game/css/game.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="game-header">
+            <div class="sun-count">☀️ <span id="sun-value">150</span></div>
+            <div class="wave-info">🌊 波次: <span id="wave-value">1</span></div>
+            <div class="score-info">🏆 得分: <span id="score-value">0</span></div>
+        </div>
+        
+        <canvas id="gameCanvas" width="900" height="600"></canvas>
+        
+        <div id="plant-bar">
+            <div class="plant-card" data-plant="sunflower">
+                <div class="plant-icon">🌻</div>
+                <div class="plant-cost">50</div>
+            </div>
+            <div class="plant-card" data-plant="peashooter">
+                <div class="plant-icon">🫛</div>
+                <div class="plant-cost">100</div>
+            </div>
+        </div>
+        
+        <div id="skill-indicator">
+            <span id="skill-status">技能就绪 [空格]</span>
+        </div>
+    </div>
+
+    <script type="module" src="game/js/main.js"></script>
+</body>
+</html>

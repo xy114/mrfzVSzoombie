@@ -1,6 +1,7 @@
 import { Plant } from './Plant.js';
 import { Sun } from './Sun.js';
 import { SUN_CONFIG } from './constants.js';
+import { assetManager } from './AssetManager.js';
 
 export class Sunflower extends Plant {
   constructor(x, y) {
@@ -15,13 +16,18 @@ export class Sunflower extends Plant {
       this.sunTimer = 0;
       const sunX = this.x + Math.random() * 50;
       const sunY = this.y + Math.random() * 30;
-      game.addSun(new Sun(sunX, sunY));
+      game.addSun(new Sun(sunX, sunY, sunY));
     }
   }
 
   render(ctx) {
-    ctx.font = '50px Arial';
-    ctx.fillText('🌻', this.x + 20, this.y + 70);
+    const img = assetManager.getImage('sunflower');
+    if (img) {
+      ctx.drawImage(img, this.x, this.y, 80, 80);
+    } else {
+      ctx.font = '50px Arial';
+      ctx.fillText('🌻', this.x + 20, this.y + 70);
+    }
     const healthPercent = this.health / this.maxHealth;
     ctx.fillStyle = '#22c55e';
     ctx.fillRect(this.x + 10, this.y + 5, 80 * healthPercent, 5);
