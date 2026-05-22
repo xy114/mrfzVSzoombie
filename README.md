@@ -162,8 +162,8 @@ mrfzVSzoombie/
 ```
 
 ### 开发团队
-- **项目负责人**: [Your Name]
-- **开发者**: [Your Name]
+- **项目负责人**: [xy]
+- **开发者**: [xy]
 - **版本**: 1.0.0
 
 ---
@@ -205,7 +205,7 @@ mrfzVSzoombie/
 ### 问题反馈
 如果遇到问题或有建议，请通过以下方式联系：
 
-- 📧 **邮箱**: [your-email@example.com]
+- 📧 **邮箱**: [3411135364@qq.com]
 - 🐛 **Issue**: 在 GitHub Issues 中提交问题
 - 💬 **Discord**: [Discord Server Link]
 
