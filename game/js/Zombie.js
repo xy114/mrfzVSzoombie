@@ -18,6 +18,8 @@ export class Zombie {
     this.attackTimer = 0;
     this.attackInterval = 1000;
     this.type = 'normal';
+    this.rewardType = 'normal';
+    this.rewardValue = 1;
   }
 
   update(deltaTime, game) {
@@ -65,7 +67,7 @@ export class Zombie {
       imageKey += '_attack';
     }
     const img = assetManager.getImage(imageKey);
-    
+
     if (img) {
       ctx.drawImage(img, this.x, this.y, 60, 80);
     } else {
@@ -79,25 +81,5 @@ export class Zombie {
     ctx.fillRect(this.x + 5, this.y - 5, 50 * healthPercent, 5);
     ctx.strokeStyle = '#fff';
     ctx.strokeRect(this.x + 5, this.y - 5, 50, 5);
-  }
-}
-
-export class NormalZombie extends Zombie {
-  constructor(x, y, row) {
-    super(x, y, row);
-    this.health = ZOMBIE_TYPES.NORMAL.health;
-    this.maxHealth = ZOMBIE_TYPES.NORMAL.health;
-    this.speed = ZOMBIE_TYPES.NORMAL.speed;
-    this.type = 'normal';
-  }
-}
-
-export class ConeZombie extends Zombie {
-  constructor(x, y, row) {
-    super(x, y, row);
-    this.health = ZOMBIE_TYPES.CONE.health;
-    this.maxHealth = ZOMBIE_TYPES.CONE.health;
-    this.speed = ZOMBIE_TYPES.CONE.speed;
-    this.type = 'cone';
   }
 }

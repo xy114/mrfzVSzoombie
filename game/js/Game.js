@@ -8,8 +8,8 @@ import { FireBullet } from './Bullet.js';
 import { WaveManager } from './WaveManager.js';
 import { Sun } from './Sun.js';
 
-export class Game {
-  constructor(canvas) {
+export class BattleManager {
+  constructor(canvas, levelConfig, playerData) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.canvas.width = GAME_CONFIG.CANVAS_WIDTH;
@@ -19,18 +19,33 @@ export class Game {
     this.zombies = [];
     this.bullets = [];
     this.suns = [];
-    this.sun = SUN_CONFIG.INITIAL;
+    this.sun = levelConfig.startSun || 150;
     this.wave = 1;
     this.isRunning = false;
     this.lastTime = 0;
-    this.waveManager = new WaveManager(this);
+    this.maxWaves = levelConfig.waves || 3;
+    this.waveManager = new WaveManager(this, this.maxWaves, levelConfig.zombieTypes || ['normal']);
     this.sunSpawnTimer = 0;
+    this.levelConfig = levelConfig;
+    this.playerData = playerData;
+
+    this.enemiesKilled = { normal: 0, cone: 0 };
+    this.battleEnded = false;
+
+    this.onVictory = null;
+    this.onDefeat = null;
+    this.onSunChange = null;
+    this.onWaveChange = null;
   }
 
   start() {
     this.isRunning = true;
     this.lastTime = performance.now();
     this.gameLoop();
+  }
+
+  stop() {
+    this.isRunning = false;
   }
 
   gameLoop() {
@@ -44,6 +59,7 @@ export class Game {
   }
 
   update(deltaTime) {
+    if (this.battleEnded) return;
     const currentTime = performance.now();
 
     this.waveManager.update(deltaTime, currentTime);
@@ -73,6 +89,8 @@ export class Game {
     });
 
     this.checkCollisions();
+    this.trackDeadZombies();
+    this.checkVictory();
     this.checkGameOver();
   }
 
@@ -80,9 +98,8 @@ export class Game {
     const row = Math.floor(Math.random() * GAME_CONFIG.LAWN_ROWS);
     const col = Math.floor(Math.random() * GAME_CONFIG.LAWN_COLS);
     const x = col * GAME_CONFIG.CELL_WIDTH + Math.random() * 30;
-    const y = 0;
     const targetY = row * GAME_CONFIG.CELL_HEIGHT + Math.random() * 50;
-    const sun = new Sun(x, y, targetY);
+    const sun = new Sun(x, 0, targetY);
     this.addSun(sun);
   }
 
@@ -93,6 +110,21 @@ export class Game {
     this.bullets.forEach(bullet => bullet.render(this.ctx));
     this.zombies.forEach(zombie => zombie.render(this.ctx));
     this.suns.forEach(sun => sun.render(this.ctx));
+  }
+
+  _deadZombiesThisFrame = [];
+
+  trackDeadZombies() {
+    const newDead = this.zombies.filter(z => !z.alive && !z._killTracked);
+    for (const zombie of newDead) {
+      zombie._killTracked = true;
+      this.enemiesKilled[zombie.rewardType] = (this.enemiesKilled[zombie.rewardType] || 0) + 1;
+    }
+  }
+
+  collectZombieKillsInRadius(centerRow, centerCol) {
+    // Called by FireBullet for explosion kills — already handled by takeDamage
+    // We track deaths via trackDeadZombies in the update loop
   }
 
   checkCollisions() {
@@ -106,12 +138,12 @@ export class Game {
           const bulletCenterY = bullet.y + bullet.height / 2;
           const zombieCenterX = zombie.x + zombie.width / 2;
           const zombieCenterY = zombie.y + zombie.height / 2;
-          
+
           const dx = Math.abs(bulletCenterX - zombieCenterX);
           const dy = Math.abs(bulletCenterY - zombieCenterY);
-          
+
           const collisionDistance = (bullet.width + zombie.width) / 2;
-          
+
           if (dx < collisionDistance && dy < 50) {
             bullet.active = false;
             zombie.takeDamage(bullet.damage);
@@ -125,55 +157,66 @@ export class Game {
     this.plants = this.plants.filter(p => p.alive);
   }
 
-  checkGameOver() {
-    const reachedLeft = this.zombies.some(z => z.x < 10);
-    if (reachedLeft) {
+  checkVictory() {
+    if (this.battleEnded) return;
+    if (this.waveManager.allWavesComplete()) {
+      this.battleEnded = true;
       this.isRunning = false;
-      setTimeout(() => {
-        alert('游戏结束！僵尸入侵了你的院子！');
-      }, 100);
+      const crystalsEarned = this.calculateCrystals();
+      if (this.onVictory) {
+        this.onVictory({
+          levelId: this.levelConfig.id,
+          enemiesKilled: { ...this.enemiesKilled },
+          crystalsEarned
+        });
+      }
     }
   }
 
-  addPlant(plant) {
-    this.plants.push(plant);
+  checkGameOver() {
+    if (this.battleEnded) return;
+    const reachedLeft = this.zombies.some(z => z.x < 10);
+    if (reachedLeft) {
+      this.battleEnded = true;
+      this.isRunning = false;
+      if (this.onDefeat) {
+        this.onDefeat({
+          levelId: this.levelConfig.id,
+          enemiesKilled: { ...this.enemiesKilled }
+        });
+      }
+    }
   }
 
-  addZombie(zombie) {
-    this.zombies.push(zombie);
+  calculateCrystals() {
+    let total = this.levelConfig.baseCrystalReward || 0;
+    total += (this.enemiesKilled.normal || 0) * 1;
+    total += (this.enemiesKilled.cone || 0) * 2;
+    return total;
   }
 
-  addBullet(bullet) {
-    this.bullets.push(bullet);
-  }
-
-  addSun(sun) {
-    this.suns.push(sun);
-  }
+  addPlant(plant) { this.plants.push(plant); }
+  addZombie(zombie) { this.zombies.push(zombie); }
+  addBullet(bullet) { this.bullets.push(bullet); }
+  addSun(sun) { this.suns.push(sun); }
 
   collectSun(value) {
     this.sun += value;
-    this.updateSunDisplay();
+    if (this.onSunChange) this.onSunChange(this.sun);
   }
 
   spendSun(value) {
     if (this.sun >= value) {
       this.sun -= value;
-      this.updateSunDisplay();
+      if (this.onSunChange) this.onSunChange(this.sun);
       return true;
     }
     return false;
   }
 
-  updateSunDisplay() {
-    const sunElement = document.getElementById('sun-count');
-    if (sunElement) sunElement.textContent = `☀️ ${this.sun}`;
-  }
-
   updateWaveDisplay() {
     this.wave = this.waveManager.wave;
-    const waveElement = document.getElementById('wave-info');
-    if (waveElement) waveElement.textContent = `波次 ${this.wave}`;
+    if (this.onWaveChange) this.onWaveChange(this.wave);
   }
 
   handlePlantClick(x, y, plantType) {
@@ -182,17 +225,19 @@ export class Game {
 
     const plantX = col * GAME_CONFIG.CELL_WIDTH;
     const plantY = row * GAME_CONFIG.CELL_HEIGHT;
+    const star = (this.playerData.plantStars || {})[plantType] || 1;
+    const skin = (this.playerData.plantSkins || {})[plantType] || null;
 
     if (plantType === 'sunflower') {
       if (this.spendSun(PLANT_TYPES.SUNFLOWER.cost)) {
-        const sunflower = new Sunflower(plantX, plantY);
+        const sunflower = new Sunflower(plantX, plantY, star);
         this.lawn.plant(row, col, sunflower);
         this.addPlant(sunflower);
         return true;
       }
     } else if (plantType === 'peashooter') {
       if (this.spendSun(PLANT_TYPES.PEASHOOTER.cost)) {
-        const peashooter = new PeaShooter(plantX, plantY);
+        const peashooter = new PeaShooter(plantX, plantY, star, skin);
         this.lawn.plant(row, col, peashooter);
         this.addPlant(peashooter);
         return true;

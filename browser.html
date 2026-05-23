@@ -1,37 +1,112 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>植物大战僵尸 - Plant vs Zombie</title>
-    <link rel="stylesheet" href="game/css/game.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>植物大战僵尸 - Arknights</title>
+  <link rel="stylesheet" href="game/css/game.css">
+  <link rel="stylesheet" href="game/css/ui.css">
 </head>
 <body>
-    <div id="game-container">
-        <div id="game-header">
-            <div class="sun-count">☀️ <span id="sun-value">150</span></div>
-            <div class="wave-info">🌊 波次: <span id="wave-value">1</span></div>
-            <div class="score-info">🏆 得分: <span id="score-value">0</span></div>
-        </div>
-        
-        <canvas id="gameCanvas" width="900" height="600"></canvas>
-        
-        <div id="plant-bar">
-            <div class="plant-card" data-plant="sunflower">
-                <div class="plant-icon">🌻</div>
-                <div class="plant-cost">50</div>
-            </div>
-            <div class="plant-card" data-plant="peashooter">
-                <div class="plant-icon">🫛</div>
-                <div class="plant-cost">100</div>
-            </div>
-        </div>
-        
-        <div id="skill-indicator">
-            <span id="skill-status">技能就绪 [空格]</span>
-        </div>
-    </div>
 
-    <script type="module" src="game/js/main.js"></script>
+  <div id="top-bar">
+    <button id="dev-btn">开发</button>
+    <div id="crystal-display">
+      <div id="crystal-icon"></div>
+      <span id="crystal-value">0</span>
+    </div>
+  </div>
+
+  <div id="page-main" class="page active">
+    <div id="main-left">
+      <div id="standee-frame">
+        <span id="standee-emoji">🌻</span>
+      </div>
+      <div id="standee-name">向日葵</div>
+      <button id="edit-standee-btn">编辑展示</button>
+    </div>
+    <div id="main-right">
+      <button class="btn-ark" id="btn-combat">作 战</button>
+      <button class="btn-ark" id="btn-handbook">植物图鉴</button>
+      <button class="btn-ark disabled" id="btn-garden">花 园</button>
+    </div>
+  </div>
+
+  <div id="page-level-select" class="page">
+    <button id="ls-back">← 返回</button>
+    <div id="ls-title">作 战</div>
+    <div id="ls-content"></div>
+  </div>
+
+  <div id="page-combat" class="page">
+    <div id="combat-header">
+      <span class="sun-display">☀️ <span id="combat-sun">150</span></span>
+      <span class="wave-display">波次 <span id="combat-wave">1</span></span>
+      <span class="crystal-display">💎 <span id="combat-crystal">0</span></span>
+    </div>
+    <canvas id="game-canvas"></canvas>
+    <div id="combat-footer"></div>
+    <div id="battle-result">
+      <div class="result-title" id="result-title"></div>
+      <div class="result-detail" id="result-detail-1"></div>
+      <div class="result-detail" id="result-detail-2"></div>
+      <div class="result-detail" id="result-detail-3"></div>
+      <button class="result-btn" id="result-btn">返回关卡列表</button>
+    </div>
+  </div>
+
+  <div id="page-handbook" class="page">
+    <button id="hb-back">← 返回</button>
+    <div id="hb-title">植物图鉴</div>
+    <div id="hb-grid"></div>
+  </div>
+
+  <div class="modal-overlay" id="modal-garden">
+    <div class="modal-box">
+      <button class="modal-close">&times;</button>
+      <div class="modal-title">花 园</div>
+      <p style="color:var(--text-dim);text-align:center;padding:30px 0;">花园系统正在开发中，敬请期待...</p>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-plant-select">
+    <div class="modal-box">
+      <button class="modal-close">&times;</button>
+      <div class="modal-title">选择展示植物</div>
+      <div class="plant-select-grid" id="ps-grid"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-star-up">
+    <div class="modal-box">
+      <button class="modal-close">&times;</button>
+      <div class="modal-title">植物升星</div>
+      <div class="star-up-info" id="star-up-info"></div>
+      <div class="btn-row">
+        <button id="star-up-cancel">取消</button>
+        <button class="primary" id="star-up-confirm">确认升星</button>
+      </div>
+      <div style="margin-top:20px;border-top:1px solid rgba(77,201,246,0.15);padding-top:16px;">
+        <div style="color:var(--cyan);font-size:16px;letter-spacing:2px;margin-bottom:12px;">植 物 皮 肤</div>
+        <div class="skin-list" id="skin-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-dev">
+    <div class="modal-box">
+      <button class="modal-close">&times;</button>
+      <div class="modal-title">开发者验证</div>
+      <p style="color:var(--text-dim);margin-bottom:14px;">请输入暗号</p>
+      <input type="password" id="dev-input" maxlength="20">
+      <div class="btn-row" style="justify-content:center;">
+        <button id="dev-confirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module" src="game/js/main.js"></script>
 </body>
 </html>

@@ -1,13 +1,15 @@
 import { Plant } from './Plant.js';
 import { Sun } from './Sun.js';
-import { SUN_CONFIG } from './constants.js';
+import { SUN_CONFIG, STAR_CONFIG } from './constants.js';
 import { assetManager } from './AssetManager.js';
 
 export class Sunflower extends Plant {
-  constructor(x, y) {
-    super(x, y);
+  constructor(x, y, starLevel = 1) {
+    super(x, y, starLevel);
     this.sunTimer = 0;
-    this.sunInterval = SUN_CONFIG.SUNFLOWER_INTERVAL;
+    this.baseSunInterval = SUN_CONFIG.SUNFLOWER_INTERVAL;
+    const m = STAR_CONFIG[this.starLevel] || STAR_CONFIG[1];
+    this.sunInterval = Math.floor(this.baseSunInterval * m.cooldownMult);
   }
 
   update(deltaTime, game) {

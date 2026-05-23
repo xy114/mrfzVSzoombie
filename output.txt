@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "name": "mrfz-vs-zombie",
+  "dependencies": {
+    "electron-builder": {
+      "version": "26.8.1",
+      "resolved": "https://registry.npmmirror.com/electron-builder/-/electron-builder-26.8.1.tgz",
+      "overridden": false
+    },
+    "electron": {
+      "version": "42.2.0",
+      "resolved": "https://registry.npmmirror.com/electron/-/electron-42.2.0.tgz",
+      "overridden": false
+    }
+  }
+}
