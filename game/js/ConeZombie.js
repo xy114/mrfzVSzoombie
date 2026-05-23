@@ -7,6 +7,8 @@ export class ConeZombie extends Zombie {
     this.health = ZOMBIE_TYPES.CONE.health;
     this.maxHealth = ZOMBIE_TYPES.CONE.health;
     this.speed = ZOMBIE_TYPES.CONE.speed;
-    this.type = 'cone_zombie';
+    this.type = 'cone';
+    this.rewardType = 'cone';
+    this.rewardValue = 2;
   }
 }

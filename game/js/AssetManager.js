@@ -6,10 +6,10 @@ export class AssetManager {
       sunflower: 'assets/plants/sunflower.png',
       peashooter: 'assets/plants/peashooter.png',
       peashooter_shoot: 'assets/plants/peashooter_shoot.png',
-      normal_zombie: 'assets/zombies/normal_zombie.png',
-      normal_zombie_attack: 'assets/zombies/normal_zombie_attack.png',
-      cone_zombie: 'assets/zombies/cone_zombie.png',
-      cone_zombie_attack: 'assets/zombies/cone_zombie_attack.png',
+      normal: 'assets/zombies/normal_zombie.png',
+      normal_attack: 'assets/zombies/normal_zombie_attack.png',
+      cone: 'assets/zombies/cone_zombie.png',
+      cone_attack: 'assets/zombies/cone_zombie_attack.png',
       pea: 'assets/projectiles/pea.png',
       fire_pea: 'assets/projectiles/fire_pea.png'
     };

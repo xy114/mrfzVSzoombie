@@ -1,12 +1,12 @@
 import { assetManager } from './AssetManager.js';
 
 export class Bullet {
-  constructor(x, y, row) {
+  constructor(x, y, row, damage = 20) {
     this.x = x;
     this.y = y;
     this.row = row;
     this.speed = 5;
-    this.damage = 20;
+    this.damage = damage;
     this.width = 20;
     this.height = 20;
     this.active = true;
@@ -28,12 +28,12 @@ export class Bullet {
 }
 
 export class FireBullet {
-  constructor(x, y, row) {
+  constructor(x, y, row, damage = 50) {
     this.x = x;
     this.y = y;
     this.row = row;
     this.speed = 7;
-    this.damage = 50;
+    this.damage = damage;
     this.explosionRadius = 1.5;
     this.width = 25;
     this.height = 25;
@@ -88,6 +88,8 @@ export class FireBullet {
         });
       }
     }
+
+    game.collectZombieKillsInRadius(centerRow, centerCol);
   }
 
   render(ctx) {

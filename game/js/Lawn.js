@@ -43,13 +43,13 @@ export class Lawn {
 
   render(ctx) {
     const gradient = ctx.createLinearGradient(0, 0, 0, this.rows * this.cellHeight);
-    gradient.addColorStop(0, '#4ade80');
-    gradient.addColorStop(1, '#22c55e');
-    
+    gradient.addColorStop(0, '#1a2a3a');
+    gradient.addColorStop(1, '#0f1a25');
+
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, this.cols * this.cellWidth, this.rows * this.cellHeight);
-    
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+
+    ctx.strokeStyle = 'rgba(77, 201, 246, 0.10)';
     ctx.lineWidth = 1;
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {

@@ -29,3 +29,18 @@ export const SUN_CONFIG = {
   SUN_VALUE: 25,
   SPAWN_INTERVAL: 10000
 };
+
+export const STAR_CONFIG = {
+  1: { healthMult: 1.0, damageMult: 1.0, cooldownMult: 1.0 },
+  2: { healthMult: 1.25, damageMult: 1.2, cooldownMult: 0.9 },
+  3: { healthMult: 1.6, damageMult: 1.5, cooldownMult: 0.75 }
+};
+
+export const SKIN_CONFIG = {
+  peashooter: {
+    flame_emperor: {
+      firePeaDamage: 80,
+      skillCooldown: 8000
+    }
+  }
+};
