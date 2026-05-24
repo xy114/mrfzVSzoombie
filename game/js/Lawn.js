@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from './constants.js';
+import { assetManager } from './AssetManager.js';
 
 export class Lawn {
   constructor() {
@@ -42,18 +43,22 @@ export class Lawn {
   }
 
   render(ctx) {
-    const gradient = ctx.createLinearGradient(0, 0, 0, this.rows * this.cellHeight);
-    gradient.addColorStop(0, '#4a7a3a');
-    gradient.addColorStop(0.5, '#3a6a2a');
-    gradient.addColorStop(1, '#2a4a1a');
+    const bgImg = assetManager.getImage('lawn_bg');
+    if (bgImg) {
+      ctx.drawImage(bgImg, 0, 0, this.cols * this.cellWidth, this.rows * this.cellHeight);
+    } else {
+      const gradient = ctx.createLinearGradient(0, 0, 0, this.rows * this.cellHeight);
+      gradient.addColorStop(0, '#4a7a3a');
+      gradient.addColorStop(0.5, '#3a6a2a');
+      gradient.addColorStop(1, '#2a4a1a');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, this.cols * this.cellWidth, this.rows * this.cellHeight);
 
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, this.cols * this.cellWidth, this.rows * this.cellHeight);
-
-    // Row stripes (alternating lighter/darker)
-    for (let row = 0; row < this.rows; row++) {
-      ctx.fillStyle = row % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.05)';
-      ctx.fillRect(0, row * this.cellHeight, this.cols * this.cellWidth, this.cellHeight);
+      // Row stripes
+      for (let row = 0; row < this.rows; row++) {
+        ctx.fillStyle = row % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.05)';
+        ctx.fillRect(0, row * this.cellHeight, this.cols * this.cellWidth, this.cellHeight);
+      }
     }
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';

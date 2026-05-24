@@ -27,7 +27,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   await assetManager.loadImages();
 
   StorageManager.load();
-  const ui = new UIManager();
+  let ui;
+  try {
+    ui = new UIManager();
+  } catch (e) {
+    console.error('UIManager initialization failed:', e);
+    const errEl = document.createElement('div');
+    errEl.style.cssText = 'position:fixed;top:10px;left:10px;color:#ff4444;z-index:9999;background:#0a0a0f;padding:12px 16px;border:1px solid #ff4444;font-family:monospace;font-size:13px;max-width:400px;';
+    errEl.textContent = '初始化失败: ' + (e && e.message ? e.message : String(e));
+    document.body.appendChild(errEl);
+    throw e;
+  }
 
   // Handle startCombat event from UIManager
   window.addEventListener('startCombat', (e) => {

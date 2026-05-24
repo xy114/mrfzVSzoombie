@@ -4,29 +4,38 @@ export class AssetManager {
     this.loaded = false;
     this.imagePaths = {
       // Plants — combat sprites
-      sunflower: 'resources/plants/sunflower.png',
-      peashooter: 'resources/plants/peashooter.png',
-      nut: 'resources/plants/nut.png',
-      cherrybomb: 'resources/plants/cherrybomb.png',
-      // Plants — portraits
-      sunflower_portrait: 'resources/plants/sunflower_portrait.png',
-      peashooter_portrait: 'resources/plants/peashooter_portrait.png',
-      nut_portrait: 'resources/plants/nut_portrait.png',
-      cherrybomb_portrait: 'resources/plants/cherrybomb_portrait.png',
+      sunflower: 'resources/plants/向日葵.gif',
+      peashooter: 'resources/plants/豌豆射手.gif',
+      nut: 'resources/plants/坚果.gif',
+      cherrybomb: 'resources/plants/火爆辣椒·.gif',
+      // Plants — portraits (reuse combat sprites, drawn at portrait size)
+      sunflower_portrait: 'resources/plants/向日葵.gif',
+      peashooter_portrait: 'resources/plants/豌豆射手.gif',
+      nut_portrait: 'resources/plants/坚果.gif',
+      cherrybomb_portrait: 'resources/plants/火爆辣椒·.gif',
       // Zombies — combat sprites
-      normal: 'resources/zombies/normal.png',
-      cone: 'resources/zombies/cone.png',
-      shield: 'resources/zombies/shield.png',
-      imp: 'resources/zombies/imp.png',
-      // Zombies — portraits
-      normal_portrait: 'resources/zombies/normal_portrait.png',
-      cone_portrait: 'resources/zombies/cone_portrait.png',
-      shield_portrait: 'resources/zombies/shield_portrait.png',
-      imp_portrait: 'resources/zombies/imp_portrait.png',
+      normal: 'resources/zombies/普通僵尸走路.gif',
+      normal_attack: 'resources/zombies/普通僵尸啃食.gif',
+      cone: 'resources/zombies/路障僵尸.gif',
+      cone_attack: 'resources/zombies/路障僵尸啃食.gif',
+      shield: 'resources/zombies/铁门僵尸.gif',
+      shield_attack: 'resources/zombies/铁门僵尸啃食.gif',
+      imp: 'resources/zombies/小鬼僵尸.gif',
+      imp_attack: 'resources/zombies/小鬼啃食.gif',
+      // Zombies — portraits (reuse combat sprites)
+      normal_portrait: 'resources/zombies/普通僵尸走路.gif',
+      cone_portrait: 'resources/zombies/路障僵尸.gif',
+      shield_portrait: 'resources/zombies/铁门僵尸.gif',
+      imp_portrait: 'resources/zombies/小鬼僵尸.gif',
       // Projectiles
-      pea: 'resources/projectiles/pea.png',
-      fire_pea: 'resources/projectiles/fire_pea.png',
-      sun: 'resources/projectiles/sun.png'
+      pea: 'resources/plants/豆.gif',
+      fire_pea: 'resources/plants/火豆.gif',
+      sun: 'resources/tools/太阳.gif',
+      // Lawn background
+      lawn_bg: 'resources/tools/白天.jpg',
+      // Almanac card backgrounds
+      plant_card_bg: 'resources/others/Almanac_PlantCard.png',
+      zombie_card_bg: 'resources/others/Almanac_ZombieCard.png'
     };
   }
 

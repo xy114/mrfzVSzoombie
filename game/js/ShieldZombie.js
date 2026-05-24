@@ -18,7 +18,8 @@ export class ShieldZombie extends Zombie {
   }
 
   render(ctx) {
-    const img = assetManager.getImage(this.attacking ? 'shield_attack' : 'shield');
+    const attackKey = 'shield_attack';
+    const img = assetManager.getImage(attackKey) || assetManager.getImage('shield');
     if (img) {
       ctx.drawImage(img, this.x, this.y, 60, 80);
     } else {

@@ -4,6 +4,7 @@ import { getPlantDef, getAllPlantDefs, getStarMultiplier, getStarCost, getSkins,
 import { getZombieDef, getAllZombieDefs, getThreatLabel } from './ZombieConfig.js';
 import { drawNormalZombiePortrait, drawConeZombiePortrait, drawShieldZombiePortrait, drawImpZombiePortrait } from './ZombieRenderer.js';
 import { drawSunflowerPortrait, drawPeashooterPortrait, drawNutPortrait, drawCherryBombPortrait, drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
+import { assetManager } from './AssetManager.js';
 
 export class UIManager {
   constructor() {
@@ -131,6 +132,7 @@ export class UIManager {
       // combat is started externally via startCombat()
     }
     this.dragState = null;
+  }
 
   showModal(modalId) {
     const el = document.getElementById('modal-' + modalId);
@@ -167,20 +169,35 @@ export class UIManager {
     if (this.$standeeName) this.$standeeName.textContent = def.name;
     const frame = document.getElementById('standee-frame');
     if (!frame) return;
+
+    const img = assetManager.getImage(plantId) || assetManager.getImage(plantId + '_portrait');
+
     let canvas = frame.querySelector('canvas');
     if (!canvas) {
       canvas = document.createElement('canvas');
-      canvas.width = 200;
-      canvas.height = 260;
       canvas.id = 'standee-canvas';
-      if (this.$standeeEmoji) this.$standeeEmoji.style.display = 'none';
       frame.appendChild(canvas);
     }
-    const pctx = canvas.getContext('2d');
-    pctx.clearRect(0, 0, 200, 260);
-    this._drawPortrait(pctx, 'plant', plantId, 200, 260);
-    canvas.style.display = 'block';
+
+    // Clear old content
     if (this.$standeeEmoji) this.$standeeEmoji.style.display = 'none';
+
+    const pctx = canvas.getContext('2d');
+    if (img) {
+      // Proportional scaling: use natural dimensions, max width 200px
+      const maxW = 200;
+      const scale = Math.min(1, maxW / img.naturalWidth);
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      pctx.clearRect(0, 0, canvas.width, canvas.height);
+      pctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    } else {
+      canvas.width = 200;
+      canvas.height = 260;
+      pctx.clearRect(0, 0, 200, 260);
+      this._drawPortrait(pctx, 'plant', plantId, 200, 260);
+    }
+    canvas.style.display = 'block';
   }
 
   // === Level Select ===
@@ -221,66 +238,110 @@ export class UIManager {
 
   // === Handbook ===
   renderHandbook() {
-    // Plant cards
     this.$hbPlantGrid.innerHTML = '';
     const allPlants = getAllPlantDefs();
     const unlockedPlants = allPlants.filter(p => StorageManager.isPlantUnlocked(p.id));
     const lockedPlants = allPlants.filter(p => !StorageManager.isPlantUnlocked(p.id));
     const sortedPlants = [...unlockedPlants, ...lockedPlants];
 
+    // Card base: Almanac_PlantCard.png is 316×473, scale to width 168
+    const cardW = 168;
+    const srcW = 316, srcH = 473;
+    const cardH = Math.round(cardW * srcH / srcW); // ~252
+    const scale = cardW / srcW;
+    // Transparent window (plant portrait slot)
+    const winX = 63 * scale, winY = 22 * scale;
+    const winW = 189 * scale, winH = 143 * scale;
+    const margin = 10;
+    // Text box (lower light-yellow area)
+    const tbX = 22 * scale, tbY = 221 * scale, tbW = 268 * scale, tbH = 237 * scale;
+    const textColor = 'rgb(89,32,8)';
+
     for (const plant of sortedPlants) {
-      const card = document.createElement('div');
+      const card = document.createElement('canvas');
       card.className = 'hb-card';
+      card.width = cardW;
+      card.height = cardH;
       const isUnlocked = StorageManager.isPlantUnlocked(plant.id);
-      if (!isUnlocked) card.classList.add('locked');
       const star = StorageManager.getPlantStar(plant.id);
       const skinId = StorageManager.getEquippedSkin(plant.id);
       const skin = skinId ? getSkin(plant.id, skinId) : null;
+      const ctx = card.getContext('2d');
 
-      // Portrait canvas
-      const portraitCanvas = document.createElement('canvas');
-      portraitCanvas.className = 'hb-portrait';
-      portraitCanvas.width = 120;
-      portraitCanvas.height = 156;
-      const pctx = portraitCanvas.getContext('2d');
       if (isUnlocked) {
-        this._drawPortrait(pctx, 'plant', plant.id, 120, 156);
+        // 1. Plant GIF — fit inside transparent window with margin
+        const spriteImg = assetManager.getImage(plant.id) || assetManager.getImage(plant.id + '_portrait');
+        if (spriteImg) {
+          const availW = winW - 2 * margin, availH = winH - 2 * margin;
+          const gifScale = Math.min(availW / spriteImg.naturalWidth, availH / spriteImg.naturalHeight);
+          const gifW = spriteImg.naturalWidth * gifScale;
+          const gifH = spriteImg.naturalHeight * gifScale;
+          const gifX = winX + (winW - gifW) / 2;
+          const gifY = winY + (winH - gifH) / 2;
+          ctx.drawImage(spriteImg, gifX, gifY, gifW, gifH);
+        } else {
+          const pCanvas = document.createElement('canvas');
+          pCanvas.width = winW - 2 * margin; pCanvas.height = winH - 2 * margin;
+          const pctx = pCanvas.getContext('2d');
+          this._drawPortrait(pctx, 'plant', plant.id, pCanvas.width, pCanvas.height);
+          ctx.drawImage(pCanvas, winX + margin, winY + margin);
+        }
+      }
+
+      // 2. Card background overlay (transparent window shows GIF through)
+      const cardBg = assetManager.getImage('plant_card_bg');
+      if (cardBg) {
+        ctx.drawImage(cardBg, 0, 0, cardW, cardH);
       } else {
-        // Dark silhouette
-        pctx.fillStyle = '#1a1a2a';
-        pctx.fillRect(0, 0, 120, 156);
+        ctx.fillStyle = '#1a1a3a';
+        ctx.fillRect(0, 0, cardW, cardH);
       }
-      card.appendChild(portraitCanvas);
 
-      const nameEl = document.createElement('div');
-      nameEl.className = 'hb-name';
-      nameEl.textContent = isUnlocked ? plant.name : '???';
-      card.appendChild(nameEl);
+      if (!isUnlocked) {
+        // Locked: dark overlay
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0, 0, cardW, cardH);
+      }
 
-      const starsEl = document.createElement('div');
-      starsEl.className = 'hb-stars';
-      starsEl.textContent = isUnlocked ? '★'.repeat(star) + '☆'.repeat(3 - star) : '☆☆☆';
-      card.appendChild(starsEl);
+      // 3. Text in light-yellow text box
+      ctx.textAlign = 'center';
+      const nameY = tbY + 26 * scale; // ~138
+      const starY = nameY + 24 * scale; // ~151
+      const descY = starY + 22 * scale; // ~163
+      const skinY = descY + 22 * scale; // ~175
 
-      const descEl = document.createElement('div');
-      descEl.className = 'hb-desc';
-      descEl.textContent = isUnlocked ? plant.description : '未解锁';
-      card.appendChild(descEl);
+      // Name
+      ctx.fillStyle = isUnlocked ? textColor : '#4e5870';
+      ctx.font = `bold ${Math.round(14 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      ctx.fillText(isUnlocked ? plant.name : '???', cardW / 2, nameY);
 
+      // Stars
+      ctx.fillStyle = isUnlocked ? '#ffd700' : '#4e5870';
+      ctx.font = `${Math.round(12 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      ctx.fillText(isUnlocked ? '★'.repeat(star) + '☆'.repeat(3 - star) : '☆☆☆', cardW / 2, starY);
+
+      // Description
+      ctx.fillStyle = isUnlocked ? textColor : '#4e5870';
+      ctx.font = `${Math.round(11 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      const desc = isUnlocked ? plant.description : '未解锁';
+      ctx.fillText(desc.length > 16 ? desc.slice(0, 15) + '...' : desc, cardW / 2, descY);
+
+      // Skin info
       if (isUnlocked && skin) {
-        const skinEl = document.createElement('div');
-        skinEl.style.cssText = 'color:var(--cyan);font-size:11px;margin-top:2px;';
-        skinEl.textContent = '皮肤: ' + skin.name;
-        card.appendChild(skinEl);
+        ctx.fillStyle = '#4dc9f6';
+        ctx.font = `${Math.round(10 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+        ctx.fillText('皮肤: ' + skin.name, cardW / 2, skinY);
       }
 
       if (isUnlocked) {
+        card.style.cursor = 'pointer';
         card.addEventListener('click', () => this.showPlantDetail(plant.id));
+      } else {
+        card.classList.add('locked');
       }
       this.$hbPlantGrid.appendChild(card);
     }
 
-    // Drag scrolling
     this._setupDragScroll(this.$hbPlantScroll);
   }
 
@@ -292,44 +353,92 @@ export class UIManager {
     const unencountered = allEnemies.filter(e => !encounteredIds.includes(e.id));
     const sorted = [...encountered, ...unencountered];
 
+    // Card base: Almanac_ZombieCard.png is 319×490, scale to width 168
+    const cardW = 168;
+    const srcW = 319, srcH = 490;
+    const cardH = Math.round(cardW * srcH / srcW); // ~258
+    const scale = cardW / srcW;
+    // Transparent window (zombie portrait slot)
+    const winX = 65 * scale, winY = 50 * scale;
+    const winW = 192 * scale, winH = 180 * scale;
+    const margin = 10;
+    // Text box (lower light-purple area)
+    const tbX = 25 * scale, tbY = 295 * scale, tbW = 269 * scale, tbH = 167 * scale;
+    const textColor = 'rgb(16,20,28)';
+
     for (const enemy of sorted) {
-      const card = document.createElement('div');
+      const card = document.createElement('canvas');
       card.className = 'hb-card';
+      card.width = cardW;
+      card.height = cardH;
       const isEncountered = StorageManager.isEnemyEncountered(enemy.id);
-      if (!isEncountered) card.classList.add('locked');
       const threat = getThreatLabel(enemy);
+      const ctx = card.getContext('2d');
 
-      // Portrait canvas
-      const portraitCanvas = document.createElement('canvas');
-      portraitCanvas.className = 'hb-portrait';
-      portraitCanvas.width = 120;
-      portraitCanvas.height = 156;
-      const pctx = portraitCanvas.getContext('2d');
       if (isEncountered) {
-        this._drawPortrait(pctx, 'enemy', enemy.id, 120, 156);
-      } else {
-        pctx.fillStyle = '#1a1a2a';
-        pctx.fillRect(0, 0, 120, 156);
+        // 1. Enemy GIF — fit inside transparent window with margin
+        const spriteImg = assetManager.getImage(enemy.id) || assetManager.getImage(enemy.id + '_portrait');
+        if (spriteImg) {
+          const availW = winW - 2 * margin, availH = winH - 2 * margin;
+          const gifScale = Math.min(availW / spriteImg.naturalWidth, availH / spriteImg.naturalHeight);
+          const gifW = spriteImg.naturalWidth * gifScale;
+          const gifH = spriteImg.naturalHeight * gifScale;
+          const gifX = winX + (winW - gifW) / 2;
+          const gifY = winY + (winH - gifH) / 2;
+          ctx.drawImage(spriteImg, gifX, gifY, gifW, gifH);
+        } else {
+          const pCanvas = document.createElement('canvas');
+          pCanvas.width = winW - 2 * margin; pCanvas.height = winH - 2 * margin;
+          const pctx = pCanvas.getContext('2d');
+          this._drawPortrait(pctx, 'enemy', enemy.id, pCanvas.width, pCanvas.height);
+          ctx.drawImage(pCanvas, winX + margin, winY + margin);
+        }
       }
-      card.appendChild(portraitCanvas);
 
-      const nameEl = document.createElement('div');
-      nameEl.className = 'hb-name';
-      nameEl.textContent = isEncountered ? enemy.name : '???';
-      card.appendChild(nameEl);
+      // 2. Card background overlay (transparent window shows GIF through)
+      const cardBg = assetManager.getImage('zombie_card_bg');
+      if (cardBg) {
+        ctx.drawImage(cardBg, 0, 0, cardW, cardH);
+      } else {
+        ctx.fillStyle = '#1a1a3a';
+        ctx.fillRect(0, 0, cardW, cardH);
+      }
 
-      const threatEl = document.createElement('div');
-      threatEl.className = 'hb-threat ' + threat.class;
-      threatEl.textContent = isEncountered ? threat.text : '???';
-      card.appendChild(threatEl);
+      if (!isEncountered) {
+        // Locked: dark overlay
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0, 0, cardW, cardH);
+      }
 
-      const descEl = document.createElement('div');
-      descEl.className = 'hb-desc';
-      descEl.textContent = isEncountered ? enemy.description : '尚未遭遇';
-      card.appendChild(descEl);
+      // 3. Text in light-purple text box
+      ctx.textAlign = 'center';
+      const nameY = tbY + 26 * scale; // ~170
+      const threatY = nameY + 24 * scale; // ~183
+      const descY = threatY + 22 * scale; // ~195
+
+      // Name
+      ctx.fillStyle = isEncountered ? textColor : '#4e5870';
+      ctx.font = `bold ${Math.round(14 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      ctx.fillText(isEncountered ? enemy.name : '???', cardW / 2, nameY);
+
+      // Threat badge
+      ctx.fillStyle = isEncountered ?
+        (threat.class === 'threat-extreme' ? '#e84040' : threat.class === 'threat-elite' ? '#f0a030' : '#3ecf6b') :
+        '#4e5870';
+      ctx.font = `${Math.round(12 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      ctx.fillText(isEncountered ? threat.text : '???', cardW / 2, threatY);
+
+      // Description
+      ctx.fillStyle = isEncountered ? textColor : '#4e5870';
+      ctx.font = `${Math.round(11 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      const desc = isEncountered ? enemy.description : '尚未遭遇';
+      ctx.fillText(desc.length > 16 ? desc.slice(0, 15) + '...' : desc, cardW / 2, descY);
 
       if (isEncountered) {
+        card.style.cursor = 'pointer';
         card.addEventListener('click', () => this.showEnemyDetail(enemy.id));
+      } else {
+        card.classList.add('locked');
       }
       this.$ehbEnemyGrid.appendChild(card);
     }
@@ -353,12 +462,24 @@ export class UIManager {
 
     this.$hbDetailName.textContent = def.name;
     this.$hbDetailThreat.style.display = 'none';
-    // Draw portrait on canvas
+    // Draw portrait on canvas — proportional scaling
     const canvas = this.$hbDetailCanvas;
     if (canvas) {
+      const portraitKey = plantId + '_portrait';
+      const img = assetManager.getImage(portraitKey);
+      const maxW = 200, maxH = 260;
+      if (img) {
+        const margin = 0.9;
+        const gifScale = Math.min((maxW * margin) / img.naturalWidth, (maxH * margin) / img.naturalHeight);
+        canvas.width = Math.round(img.naturalWidth * gifScale);
+        canvas.height = Math.round(img.naturalHeight * gifScale);
+      } else {
+        canvas.width = maxW;
+        canvas.height = maxH;
+      }
       const pctx = canvas.getContext('2d');
-      pctx.clearRect(0, 0, 200, 260);
-      this._drawPortrait(pctx, 'plant', plantId, 200, 260);
+      pctx.clearRect(0, 0, canvas.width, canvas.height);
+      this._drawPortrait(pctx, 'plant', plantId, canvas.width, canvas.height);
     }
 
     let statsHTML = '';
@@ -520,13 +641,30 @@ export class UIManager {
     this.$hbDetailThreat.style.display = '';
     this.$hbDetailThreat.textContent = threat.text;
     this.$hbDetailThreat.className = 'hb-detail-threat ' + threat.class;
-    // Draw portrait on canvas
+    // Draw portrait on canvas — proportional scaling
     const canvas = this.$hbDetailCanvas;
     if (canvas) {
-      const pctx = canvas.getContext('2d');
-      pctx.clearRect(0, 0, 200, 260);
+      const maxW = 200, maxH = 260;
       if (isEncountered) {
-        this._drawPortrait(pctx, 'enemy', enemyId, 200, 260);
+        const portraitKey = enemyId + '_portrait';
+        const img = assetManager.getImage(portraitKey);
+        if (img) {
+          const margin = 0.9;
+          const gifScale = Math.min((maxW * margin) / img.naturalWidth, (maxH * margin) / img.naturalHeight);
+          canvas.width = Math.round(img.naturalWidth * gifScale);
+          canvas.height = Math.round(img.naturalHeight * gifScale);
+        } else {
+          canvas.width = maxW;
+          canvas.height = maxH;
+        }
+      } else {
+        canvas.width = maxW;
+        canvas.height = maxH;
+      }
+      const pctx = canvas.getContext('2d');
+      pctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (isEncountered) {
+        this._drawPortrait(pctx, 'enemy', enemyId, canvas.width, canvas.height);
       }
     }
 
@@ -611,9 +749,23 @@ export class UIManager {
     this._detailId = null;
   }
 
-  _drawPortrait(ctx, category, id, w, h) {
+  _drawPortrait(ctx, category, id, maxW, maxH) {
+    const portraitKey = id + '_portrait';
+    const img = assetManager.getImage(portraitKey);
+    if (img) {
+      // Proportional fit with margin (leave 10% padding each side)
+      const margin = 0.9;
+      const availW = maxW * margin, availH = maxH * margin;
+      const gifScale = Math.min(availW / img.naturalWidth, availH / img.naturalHeight);
+      const gifW = img.naturalWidth * gifScale;
+      const gifH = img.naturalHeight * gifScale;
+      const gifX = (maxW - gifW) / 2;
+      const gifY = (maxH - gifH) / 2;
+      ctx.drawImage(img, gifX, gifY, gifW, gifH);
+      return;
+    }
     ctx.save();
-    ctx.scale(w / 200, h / 260);
+    ctx.scale(maxW / 200, maxH / 260);
     if (category === 'plant') {
       if (id === 'sunflower') drawSunflowerPortrait(ctx, 0, 0, 200, 260);
       else if (id === 'peashooter') drawPeashooterPortrait(ctx, 0, 0, 200, 260);
@@ -979,14 +1131,12 @@ export class UIManager {
     const canvas = this.$gearCanvas;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const cx = 14, cy = 14, r = 9;
+    const cx = 14, cy = 14;
     ctx.clearRect(0, 0, 28, 28);
 
-    // Gear body
     ctx.save();
     ctx.translate(cx, cy);
 
-    // Draw the toothed gear shape
     const teeth = 8;
     const outerR = 10;
     const innerR = 6.5;
@@ -1003,17 +1153,16 @@ export class UIManager {
     }
     ctx.closePath();
 
-    // Gradient fill
+    // Bright cyan gradient — visible against dark top bar
     const grad = ctx.createLinearGradient(-outerR, -outerR, outerR, outerR);
-    grad.addColorStop(0, '#6d7a90');
-    grad.addColorStop(0.4, '#a0aec0');
-    grad.addColorStop(0.6, '#718096');
-    grad.addColorStop(1, '#4a5568');
+    grad.addColorStop(0, '#b3e8ff');
+    grad.addColorStop(0.3, '#7dddfb');
+    grad.addColorStop(0.6, '#4dc9f6');
+    grad.addColorStop(1, '#2a8ec8');
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Border
-    ctx.strokeStyle = 'rgba(160, 174, 192, 0.5)';
+    ctx.strokeStyle = 'rgba(180, 230, 255, 0.6)';
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
@@ -1022,13 +1171,13 @@ export class UIManager {
     ctx.arc(0, 0, holeR, 0, Math.PI * 2);
     ctx.fillStyle = '#0a0a0f';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(160, 174, 192, 0.4)';
+    ctx.strokeStyle = 'rgba(180, 230, 255, 0.5)';
     ctx.stroke();
 
-    // Inner ring highlight
+    // Inner ring
     ctx.beginPath();
     ctx.arc(0, 0, innerR - 1, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.lineWidth = 0.5;
     ctx.stroke();
 
