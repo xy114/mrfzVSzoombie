@@ -11,6 +11,7 @@ export class Plant {
     this.maxHealth = 100;
     this.health = 100;
     this.alive = true;
+    this.scale = 1;
     this._doHealthScaling();
   }
 

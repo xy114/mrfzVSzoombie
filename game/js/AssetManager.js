@@ -31,8 +31,17 @@ export class AssetManager {
       pea: 'resources/plants/豆.gif',
       fire_pea: 'resources/plants/火豆.gif',
       sun: 'resources/tools/太阳.gif',
-      // Lawn background
-      lawn_bg: 'resources/tools/白天.jpg',
+      // Lawn backgrounds — scenes
+      lawn_bg: 'resources/scene/白天.jpg',
+      lawn_bg_day: 'resources/scene/白天.jpg',
+      lawn_bg_night: 'resources/scene/晚上.jpg',
+      lawn_bg_pool: 'resources/scene/泳池.jpg',
+      lawn_bg_fog: 'resources/scene/迷雾.jpg',
+      lawn_bg_one: 'resources/scene/一条.jpg',
+      lawn_bg_three: 'resources/scene/三条.jpg',
+      lawn_bg_ground: 'resources/scene/土地.jpg',
+      lawn_bg_dayRoof: 'resources/scene/白天屋顶.jpg',
+      lawn_bg_nightRoof: 'resources/scene/晚上屋顶.jpg',
       // Almanac card backgrounds
       plant_card_bg: 'resources/others/Almanac_PlantCard.png',
       zombie_card_bg: 'resources/others/Almanac_ZombieCard.png'

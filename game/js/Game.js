@@ -13,6 +13,7 @@ import { WaveManager } from './WaveManager.js';
 import { Sun } from './Sun.js';
 import { StorageManager } from './StorageManager.js';
 import { drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
+import { assetManager } from './AssetManager.js';
 
 export class BattleManager {
   constructor(canvas, levelConfig, playerData) {
@@ -135,35 +136,77 @@ export class BattleManager {
       const { hoverRow, hoverCol, plantType, mouseX, mouseY } = this.dragState;
       if (hoverRow >= 0 && hoverRow < GAME_CONFIG.LAWN_ROWS &&
           hoverCol >= 0 && hoverCol < GAME_CONFIG.LAWN_COLS) {
-        const cellX = hoverCol * GAME_CONFIG.CELL_WIDTH;
-        const cellY = hoverRow * GAME_CONFIG.CELL_HEIGHT;
         const cost = this._getPlantCost(plantType);
         const canPlace = this.lawn.canPlant(hoverRow, hoverCol) && this.sun >= cost && !this.isPlantOnCooldown(plantType);
         this.ctx.fillStyle = canPlace ? 'rgba(100, 255, 100, 0.25)' : 'rgba(255, 80, 80, 0.3)';
-        this.ctx.fillRect(cellX + 1, cellY + 1, GAME_CONFIG.CELL_WIDTH - 2, GAME_CONFIG.CELL_HEIGHT - 2);
         this.ctx.strokeStyle = canPlace ? 'rgba(100, 255, 100, 0.7)' : 'rgba(255, 80, 80, 0.7)';
         this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(cellX + 1, cellY + 1, GAME_CONFIG.CELL_WIDTH - 2, GAME_CONFIG.CELL_HEIGHT - 2);
+
+        if (this.lawn.usePolyGrid) {
+          const tile = this.lawn.sceneGrid.tiles[`${hoverRow},${hoverCol}`];
+          if (tile) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(tile.poly[0][0], tile.poly[0][1]);
+            for (let i = 1; i < tile.poly.length; i++) {
+              this.ctx.lineTo(tile.poly[i][0], tile.poly[i][1]);
+            }
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+          }
+        } else {
+          const cellX = hoverCol * GAME_CONFIG.CELL_WIDTH;
+          const cellY = hoverRow * GAME_CONFIG.CELL_HEIGHT;
+          this.ctx.fillRect(cellX + 1, cellY + 1, GAME_CONFIG.CELL_WIDTH - 2, GAME_CONFIG.CELL_HEIGHT - 2);
+          this.ctx.strokeRect(cellX + 1, cellY + 1, GAME_CONFIG.CELL_WIDTH - 2, GAME_CONFIG.CELL_HEIGHT - 2);
+        }
       }
     }
 
-    this.plants.forEach(plant => plant.render(this.ctx));
+    this.plants.forEach(plant => {
+      const s = plant.scale || 1;
+      if (s !== 1) {
+        this.ctx.save();
+        this.ctx.translate(plant.x, plant.y);
+        this.ctx.scale(s, s);
+        const ox = plant.x, oy = plant.y;
+        plant.x = -40;
+        plant.y = -40;
+        plant.render(this.ctx);
+        plant.x = ox;
+        plant.y = oy;
+        this.ctx.restore();
+      } else {
+        plant.render(this.ctx);
+      }
+    });
     this.bullets.forEach(bullet => bullet.render(this.ctx));
     this.zombies.forEach(zombie => zombie.render(this.ctx));
     this.suns.forEach(sun => sun.render(this.ctx));
 
-    // Draw drag ghost on top
+    // Draw drag ghost on top (GIF优先，程序化fallback)
     if (this.dragState && this.dragState.mouseX !== undefined) {
       const { plantType, mouseX, mouseY } = this.dragState;
       const cost = this._getPlantCost(plantType);
       this.ctx.save();
       this.ctx.globalAlpha = this.sun >= cost ? 0.65 : 0.35;
-      const gx = mouseX - 40;
-      const gy = mouseY - 50;
-      if (plantType === 'sunflower') drawSunflower(this.ctx, gx, gy, 80, 80);
-      else if (plantType === 'peashooter') drawPeashooter(this.ctx, gx, gy, 80, 80, false);
-      else if (plantType === 'nut') drawNut(this.ctx, gx, gy, 80, 80, false);
-      else if (plantType === 'cherrybomb') drawCherryBomb(this.ctx, gx, gy, 80, 80, false);
+
+      const img = assetManager.getImage(plantType);
+      if (img) {
+        const tileSize = this.lawn.getAvgTileSize();
+        const sz = Math.min(tileSize.w, tileSize.h) * 0.85;
+        const imgScale = Math.min(sz / img.naturalWidth, sz / img.naturalHeight);
+        const dw = img.naturalWidth * imgScale;
+        const dh = img.naturalHeight * imgScale;
+        this.ctx.drawImage(img, mouseX - dw / 2, mouseY - dh / 2, dw, dh);
+      } else {
+        const gx = mouseX - 40;
+        const gy = mouseY - 50;
+        if (plantType === 'sunflower') drawSunflower(this.ctx, gx, gy, 80, 80);
+        else if (plantType === 'peashooter') drawPeashooter(this.ctx, gx, gy, 80, 80, false);
+        else if (plantType === 'nut') drawNut(this.ctx, gx, gy, 80, 80, false);
+        else if (plantType === 'cherrybomb') drawCherryBomb(this.ctx, gx, gy, 80, 80, false);
+      }
       this.ctx.restore();
     }
   }
