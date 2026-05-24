@@ -1,5 +1,6 @@
 import { GAME_CONFIG, ZOMBIE_TYPES } from './constants.js';
 import { assetManager } from './AssetManager.js';
+import { drawNormalZombie, drawConeZombie } from './ZombieRenderer.js';
 
 export class Zombie {
   constructor(x, y, row) {
@@ -12,6 +13,8 @@ export class Zombie {
     this.maxHealth = 100;
     this.speed = 0.3;
     this.damage = 20;
+    this.defense = 0;
+    this.magicResist = 0;
     this.alive = true;
     this.attacking = false;
     this.targetPlant = null;
@@ -26,7 +29,7 @@ export class Zombie {
     const plantInFront = game.plants.find(p =>
       p.row === this.row &&
       p.x < this.x + 80 &&
-      p.x > this.x - 30
+      p.x > this.x - 110
     );
 
     if (plantInFront) {
@@ -54,8 +57,14 @@ export class Zombie {
     }
   }
 
-  takeDamage(damage) {
-    this.health -= damage;
+  takeDamage(damage, damageType = 'physical') {
+    let actualDamage = damage;
+    if (damageType === 'physical') {
+      actualDamage = Math.max(1, damage - this.defense);
+    } else if (damageType === 'magic') {
+      actualDamage = damage * (1 - this.magicResist * 0.001);
+    }
+    this.health -= actualDamage;
     if (this.health <= 0) {
       this.alive = false;
     }
@@ -70,10 +79,10 @@ export class Zombie {
 
     if (img) {
       ctx.drawImage(img, this.x, this.y, 60, 80);
+    } else if (this.type === 'cone') {
+      drawConeZombie(ctx, this.x, this.y, 60, 80, this.attacking);
     } else {
-      const emoji = this.type === 'cone' ? '🚧' : '🧟';
-      ctx.font = '50px Arial';
-      ctx.fillText(emoji, this.x, this.y + 50);
+      drawNormalZombie(ctx, this.x, this.y, 60, 80, this.attacking);
     }
 
     const healthPercent = this.health / this.maxHealth;

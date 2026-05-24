@@ -1,4 +1,4 @@
-import { GAME_CONFIG } from './constants.js';
+import { GAME_CONFIG, STAR_CONFIG } from './constants.js';
 
 export class Plant {
   constructor(x, y, starLevel = 1) {
@@ -15,8 +15,7 @@ export class Plant {
   }
 
   _doHealthScaling() {
-    const mults = { 1: 1.0, 2: 1.25, 3: 1.6 };
-    const m = mults[this.starLevel] || 1.0;
+    const m = (STAR_CONFIG[this.starLevel] || STAR_CONFIG[1]).healthMult;
     this.maxHealth = Math.floor(this.baseMaxHealth * m);
     this.health = this.maxHealth;
   }

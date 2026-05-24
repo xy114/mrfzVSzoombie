@@ -43,13 +43,20 @@ export class Lawn {
 
   render(ctx) {
     const gradient = ctx.createLinearGradient(0, 0, 0, this.rows * this.cellHeight);
-    gradient.addColorStop(0, '#1a2a3a');
-    gradient.addColorStop(1, '#0f1a25');
+    gradient.addColorStop(0, '#4a7a3a');
+    gradient.addColorStop(0.5, '#3a6a2a');
+    gradient.addColorStop(1, '#2a4a1a');
 
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, this.cols * this.cellWidth, this.rows * this.cellHeight);
 
-    ctx.strokeStyle = 'rgba(77, 201, 246, 0.10)';
+    // Row stripes (alternating lighter/darker)
+    for (let row = 0; row < this.rows; row++) {
+      ctx.fillStyle = row % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.05)';
+      ctx.fillRect(0, row * this.cellHeight, this.cols * this.cellWidth, this.cellHeight);
+    }
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 1;
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {

@@ -13,7 +13,13 @@ export class WaveManager {
 
   _pickZombieType() {
     if (this.zombieTypes.length === 1) return this.zombieTypes[0];
-    return Math.random() < 0.3 ? 'cone' : 'normal';
+    // Weighted random based on available types
+    const types = this.zombieTypes;
+    const roll = Math.random();
+    if (types.includes('imp') && roll < 0.2) return 'imp';
+    if (types.includes('shield') && roll < 0.4) return 'shield';
+    if (types.includes('cone') && roll < 0.55) return 'cone';
+    return types.includes('normal') ? 'normal' : types[0];
   }
 
   update(deltaTime, currentTime) {

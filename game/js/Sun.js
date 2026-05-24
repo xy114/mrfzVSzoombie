@@ -1,3 +1,6 @@
+import { SUN_CONFIG } from './constants.js';
+import { drawSun } from './ProjectileRenderer.js';
+
 export class Sun {
   constructor(x, y, targetY) {
     this.x = x;
@@ -36,14 +39,13 @@ export class Sun {
 
   collect() {
     this.active = false;
-    return 25;
+    return SUN_CONFIG.SUN_VALUE;
   }
 
   render(ctx) {
     ctx.save();
     ctx.globalAlpha = this.alpha;
-    ctx.font = '35px Arial';
-    ctx.fillText('☀️', this.x, this.y + 25);
+    drawSun(ctx, this.x + 20, this.y + 20, 18);
     ctx.restore();
   }
 }
