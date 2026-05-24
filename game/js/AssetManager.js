@@ -7,12 +7,12 @@ export class AssetManager {
       sunflower: 'resources/plants/向日葵.gif',
       peashooter: 'resources/plants/豌豆射手.gif',
       nut: 'resources/plants/坚果.gif',
-      cherrybomb: 'resources/plants/火爆辣椒·.gif',
+      cherrybomb: 'resources/plants/樱桃炸弹.gif',
       // Plants — portraits (reuse combat sprites, drawn at portrait size)
       sunflower_portrait: 'resources/plants/向日葵.gif',
       peashooter_portrait: 'resources/plants/豌豆射手.gif',
       nut_portrait: 'resources/plants/坚果.gif',
-      cherrybomb_portrait: 'resources/plants/火爆辣椒·.gif',
+      cherrybomb_portrait: 'resources/plants/樱桃炸弹.gif',
       // Zombies — combat sprites
       normal: 'resources/zombies/普通僵尸走路.gif',
       normal_attack: 'resources/zombies/普通僵尸啃食.gif',

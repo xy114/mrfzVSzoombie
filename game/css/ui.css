@@ -366,7 +366,7 @@ body {
 
 /* === Handbook (Plant) Page === */
 #page-handbook {
-  flex-direction: column; background: var(--bg-deep); padding: 72px 40px 40px;
+  flex-direction: column; background: var(--bg-deep); padding: 90px 40px 40px;
 }
 #hb-back {
   position: fixed; top: 60px; left: 20px; z-index: 10;
@@ -378,7 +378,7 @@ body {
 
 /* === Enemy Handbook Page === */
 #page-enemy-handbook {
-  flex-direction: column; background: var(--bg-deep); padding: 72px 40px 40px;
+  flex-direction: column; background: var(--bg-deep); padding: 90px 40px 40px;
 }
 #ehb-back {
   position: fixed; top: 60px; left: 20px; z-index: 10;
@@ -388,7 +388,7 @@ body {
 }
 #ehb-back:hover { color: var(--cyan); border-color: var(--cyan); }
 
-#hb-scroll-area {
+#hb-scroll-area, #ehb-scroll-area {
   flex: 1; overflow-y: auto; padding-right: 8px;
 }
 
@@ -451,8 +451,8 @@ body {
 
 /* Detail overlay */
 .hb-detail-overlay {
-  display: none; position: absolute; inset: 0;
-  background: var(--bg-overlay); z-index: 20;
+  display: none; position: fixed; inset: 0;
+  background: var(--bg-overlay); z-index: 80;
   justify-content: center; align-items: center;
 }
 .hb-detail-overlay.active { display: flex; animation: page-in 0.2s ease-out; }

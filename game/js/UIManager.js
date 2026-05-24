@@ -1075,7 +1075,25 @@ export class UIManager {
         if (this.pages.enemyHandbook.classList.contains('active')) this.renderEnemyHandbook();
         if (this.pages.levelSelect.classList.contains('active')) this.renderLevelSelect();
       } else {
-        this.showToast('恢复失败：无快照数据');
+        // 无快照，延迟弹出二次确认（避免被 _executeConfirm 清除回调）
+        setTimeout(() => {
+          this._confirmCallback = () => {
+            StorageManager.resetSave();
+            this.refreshCrystalDisplay();
+            this.drawCrystalIcon();
+            this._updateDevButton();
+            this.refreshDisplayPlant();
+            this.showToast('存档已清零');
+            this.hideModal();
+            if (this.pages.handbook.classList.contains('active')) this.renderHandbook();
+            if (this.pages.enemyHandbook.classList.contains('active')) this.renderEnemyHandbook();
+            if (this.pages.levelSelect.classList.contains('active')) this.renderLevelSelect();
+          };
+          document.getElementById('confirm-title').textContent = '全部清零';
+          document.getElementById('confirm-msg').textContent = '未找到进入开发者模式前的快照数据，无法恢复。是否改为将所有存档清零？';
+          document.getElementById('confirm-ok').className = 'danger';
+          this.showModal('confirm');
+        }, 0);
       }
     };
     document.getElementById('confirm-title').textContent = '纯净模式';
@@ -1280,10 +1298,21 @@ export class UIManager {
       canvas.width = 48;
       canvas.height = 48;
       const cctx = canvas.getContext('2d');
-      if (plantId === 'sunflower') drawSunflower(cctx, 0, 0, 48, 48);
-      else if (plantId === 'peashooter') drawPeashooter(cctx, 0, 0, 48, 48, false);
-      else if (plantId === 'nut') drawNut(cctx, 0, 0, 48, 48, false);
-      else if (plantId === 'cherrybomb') drawCherryBomb(cctx, 0, 0, 48, 48, false);
+
+      // Use GIF sprite if available, fallback to programmatic drawing
+      const plantImg = assetManager.getImage(plantId);
+      if (plantImg) {
+        const margin = 4, availW = 40, availH = 40;
+        const scale = Math.min(availW / plantImg.naturalWidth, availH / plantImg.naturalHeight);
+        const dw = plantImg.naturalWidth * scale, dh = plantImg.naturalHeight * scale;
+        const dx = (48 - dw) / 2, dy = (48 - dh) / 2;
+        cctx.drawImage(plantImg, dx, dy, dw, dh);
+      } else {
+        if (plantId === 'sunflower') drawSunflower(cctx, 0, 0, 48, 48);
+        else if (plantId === 'peashooter') drawPeashooter(cctx, 0, 0, 48, 48, false);
+        else if (plantId === 'nut') drawNut(cctx, 0, 0, 48, 48, false);
+        else if (plantId === 'cherrybomb') drawCherryBomb(cctx, 0, 0, 48, 48, false);
+      }
       card.appendChild(canvas);
 
       // Cooldown overlay
