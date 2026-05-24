@@ -71,11 +71,8 @@ export class Zombie {
   }
 
   render(ctx) {
-    let imageKey = this.type;
-    if (this.attacking) {
-      imageKey += '_attack';
-    }
-    const img = assetManager.getImage(imageKey);
+    const attackKey = this.type + '_attack';
+    let img = assetManager.getImage(attackKey) || assetManager.getImage(this.type);
 
     if (img) {
       ctx.drawImage(img, this.x, this.y, 60, 80);

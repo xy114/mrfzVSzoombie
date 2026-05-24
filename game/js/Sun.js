@@ -1,4 +1,5 @@
 import { SUN_CONFIG } from './constants.js';
+import { assetManager } from './AssetManager.js';
 import { drawSun } from './ProjectileRenderer.js';
 
 export class Sun {
@@ -45,7 +46,12 @@ export class Sun {
   render(ctx) {
     ctx.save();
     ctx.globalAlpha = this.alpha;
-    drawSun(ctx, this.x + 20, this.y + 20, 18);
+    const img = assetManager.getImage('sun');
+    if (img) {
+      ctx.drawImage(img, this.x, this.y, 40, 40);
+    } else {
+      drawSun(ctx, this.x + 20, this.y + 20, 18);
+    }
     ctx.restore();
   }
 }

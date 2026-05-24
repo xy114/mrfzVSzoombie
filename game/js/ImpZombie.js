@@ -22,7 +22,8 @@ export class ImpZombie extends Zombie {
   }
 
   render(ctx) {
-    const img = assetManager.getImage(this.attacking ? 'imp_attack' : 'imp');
+    const attackKey = 'imp_attack';
+    const img = assetManager.getImage(attackKey) || assetManager.getImage('imp');
     if (img) {
       ctx.drawImage(img, this.x, this.y, 45, 60);
     } else {

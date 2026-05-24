@@ -79,8 +79,8 @@ export class PeaShooter extends Plant {
   }
 
   render(ctx) {
-    const imageKey = this.shooting ? 'peashooter_shoot' : 'peashooter';
-    const img = assetManager.getImage(imageKey);
+    const shootKey = 'peashooter_shoot';
+    const img = assetManager.getImage(shootKey) || assetManager.getImage('peashooter');
 
     if (img) {
       ctx.drawImage(img, this.x, this.y, 80, 80);
