@@ -10,12 +10,16 @@ export const GAME_CONFIG = {
 
 export const PLANT_TYPES = {
   SUNFLOWER: { name: 'sunflower', cost: 50, cooldown: 5000 },
-  PEASHOOTER: { name: 'peashooter', cost: 100, cooldown: 5000 }
+  PEASHOOTER: { name: 'peashooter', cost: 100, cooldown: 5000 },
+  NUT: { name: 'nut', cost: 50, cooldown: 15000 },
+  CHERRY_BOMB: { name: 'cherrybomb', cost: 150, cooldown: 30000 }
 };
 
 export const ZOMBIE_TYPES = {
-  NORMAL: { name: 'normal', health: 100, speed: 0.3 },
-  CONE: { name: 'cone', health: 200, speed: 0.3 }
+  NORMAL: { name: 'normal', health: 100, speed: 0.3, defense: 0, magicResist: 0 },
+  CONE: { name: 'cone', health: 200, speed: 0.3, defense: 0, magicResist: 0 },
+  SHIELD: { name: 'shield', health: 180, speed: 0.25, defense: 15, magicResist: 0 },
+  IMP: { name: 'imp', health: 60, speed: 0.6, defense: 0, magicResist: 0 }
 };
 
 export const BULLET_CONFIG = {

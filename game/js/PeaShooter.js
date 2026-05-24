@@ -2,6 +2,7 @@ import { Plant } from './Plant.js';
 import { Bullet, FireBullet } from './Bullet.js';
 import { BULLET_CONFIG, SKIN_CONFIG, STAR_CONFIG } from './constants.js';
 import { assetManager } from './AssetManager.js';
+import { drawPeashooter } from './PlantRenderer.js';
 
 export class PeaShooter extends Plant {
   constructor(x, y, starLevel = 1, skinId = null) {
@@ -84,9 +85,7 @@ export class PeaShooter extends Plant {
     if (img) {
       ctx.drawImage(img, this.x, this.y, 80, 80);
     } else {
-      const emoji = this.isSkillActive ? '🔥' : '🫛';
-      ctx.font = '50px Arial';
-      ctx.fillText(emoji, this.x + 20, this.y + 70);
+      drawPeashooter(ctx, this.x, this.y, 80, 80, this.shooting);
     }
 
     const healthPercent = this.health / this.maxHealth;

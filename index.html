@@ -61,8 +61,38 @@
   <!-- ===== HANDBOOK PAGE ===== -->
   <div id="page-handbook" class="page">
     <button id="hb-back">← 返回</button>
-    <div id="hb-title">植物图鉴</div>
-    <div id="hb-grid"></div>
+    <div id="hb-scroll-area">
+      <!-- Plant Section -->
+      <div id="hb-plant-section" class="hb-section">
+        <div class="hb-section-title">植 物 图 鉴</div>
+        <div id="hb-plant-scroll" class="hb-scroll-container">
+          <div id="hb-plant-grid" class="hb-card-grid"></div>
+        </div>
+      </div>
+      <!-- Enemy Section -->
+      <div id="hb-enemy-section" class="hb-section">
+        <div class="hb-section-title">敌 人 图 鉴</div>
+        <div id="hb-enemy-scroll" class="hb-scroll-container">
+          <div id="hb-enemy-grid" class="hb-card-grid"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Detail Overlay -->
+    <div id="hb-detail-overlay" class="hb-detail-overlay">
+      <div class="hb-detail-box">
+        <button class="hb-detail-close">&times;</button>
+        <div class="hb-detail-title-section">
+          <div class="hb-detail-threat" id="hb-detail-threat"></div>
+          <div class="hb-detail-name" id="hb-detail-name"></div>
+        </div>
+        <div class="hb-detail-body">
+          <div class="hb-detail-left">
+            <canvas id="hb-detail-canvas" width="200" height="260"></canvas>
+          </div>
+          <div class="hb-detail-right" id="hb-detail-stats"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ===== MODALS ===== -->
@@ -79,22 +109,6 @@
       <button class="modal-close">&times;</button>
       <div class="modal-title">选择展示植物</div>
       <div class="plant-select-grid" id="ps-grid"></div>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="modal-star-up">
-    <div class="modal-box">
-      <button class="modal-close">&times;</button>
-      <div class="modal-title">植物升星</div>
-      <div class="star-up-info" id="star-up-info"></div>
-      <div class="btn-row">
-        <button id="star-up-cancel">取消</button>
-        <button class="primary" id="star-up-confirm">确认升星</button>
-      </div>
-      <div style="margin-top:20px;border-top:1px solid rgba(77,201,246,0.15);padding-top:16px;">
-        <div style="color:var(--cyan);font-size:16px;letter-spacing:2px;margin-bottom:12px;">植 物 皮 肤</div>
-        <div class="skin-list" id="skin-list"></div>
-      </div>
     </div>
   </div>
 

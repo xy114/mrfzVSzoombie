@@ -1,4 +1,5 @@
 import { assetManager } from './AssetManager.js';
+import { drawPea, drawFirePea } from './ProjectileRenderer.js';
 
 export class Bullet {
   constructor(x, y, row, damage = 20) {
@@ -7,6 +8,7 @@ export class Bullet {
     this.row = row;
     this.speed = 5;
     this.damage = damage;
+    this.damageType = 'physical';
     this.width = 20;
     this.height = 20;
     this.active = true;
@@ -21,8 +23,7 @@ export class Bullet {
     if (img) {
       ctx.drawImage(img, this.x, this.y, 20, 20);
     } else {
-      ctx.font = '20px Arial';
-      ctx.fillText('🟢', this.x, this.y + 15);
+      drawPea(ctx, this.x + 10, this.y + 10, 10);
     }
   }
 }
@@ -34,6 +35,7 @@ export class FireBullet {
     this.row = row;
     this.speed = 7;
     this.damage = damage;
+    this.damageType = 'magic';
     this.explosionRadius = 1.5;
     this.width = 25;
     this.height = 25;
@@ -69,9 +71,9 @@ export class FireBullet {
     this.active = false;
 
     const cellWidth = 100;
-    const cellHeight = 108;
     const centerCol = Math.floor(this.x / cellWidth);
     const centerRow = this.row;
+    const hit = new Set();
 
     for (let dr = -1; dr <= 1; dr++) {
       for (let dc = -1; dc <= 1; dc++) {
@@ -79,10 +81,12 @@ export class FireBullet {
         const targetCol = centerCol + dc;
 
         game.zombies.forEach(zombie => {
+          if (hit.has(zombie)) return;
           if (zombie.row === targetRow) {
             const zombieCol = Math.floor(zombie.x / cellWidth);
             if (Math.abs(zombieCol - targetCol) <= 1) {
-              zombie.takeDamage(this.damage);
+              hit.add(zombie);
+              zombie.takeDamage(this.damage, this.damageType);
             }
           }
         });
@@ -97,12 +101,23 @@ export class FireBullet {
     if (img) {
       ctx.drawImage(img, this.x - 5, this.y, 30, 25);
     } else {
-      ctx.font = '25px Arial';
-      ctx.fillText('🔥', this.x - 5, this.y + 15);
+      drawFirePea(ctx, this.x + 10, this.y + 12, 12);
     }
     if (this.exploded) {
-      ctx.font = '40px Arial';
-      ctx.fillText('💥', this.x - 20, this.y + 25);
+      // Draw explosion
+      ctx.save();
+      const ex = this.x + 10;
+      const ey = this.y + 12;
+      const expGrad = ctx.createRadialGradient(ex, ey, 2, ex, ey, 30);
+      expGrad.addColorStop(0, 'rgba(255,255,100,0.8)');
+      expGrad.addColorStop(0.4, 'rgba(255,150,20,0.5)');
+      expGrad.addColorStop(0.7, 'rgba(255,50,0,0.2)');
+      expGrad.addColorStop(1, 'rgba(255,0,0,0)');
+      ctx.fillStyle = expGrad;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 30, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
   }
 }

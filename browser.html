@@ -10,9 +10,14 @@
 <body>
 
   <div id="top-bar">
+    <div id="top-bar-left">
+      <button id="settings-gear-btn" title="设置">
+        <canvas id="gear-canvas" width="28" height="28"></canvas>
+      </button>
+    </div>
     <button id="dev-btn">开发</button>
     <div id="crystal-display">
-      <div id="crystal-icon"></div>
+      <canvas id="crystal-icon-canvas" width="28" height="28"></canvas>
       <span id="crystal-value">0</span>
     </div>
   </div>
@@ -28,6 +33,7 @@
     <div id="main-right">
       <button class="btn-ark" id="btn-combat">作 战</button>
       <button class="btn-ark" id="btn-handbook">植物图鉴</button>
+      <button class="btn-ark" id="btn-enemy-handbook">敌人图鉴</button>
       <button class="btn-ark disabled" id="btn-garden">花 园</button>
     </div>
   </div>
@@ -39,6 +45,7 @@
   </div>
 
   <div id="page-combat" class="page">
+    <button id="combat-exit-btn" title="退出作战">&lt;</button>
     <div id="combat-header">
       <span class="sun-display">☀️ <span id="combat-sun">150</span></span>
       <span class="wave-display">波次 <span id="combat-wave">1</span></span>
@@ -57,8 +64,41 @@
 
   <div id="page-handbook" class="page">
     <button id="hb-back">← 返回</button>
-    <div id="hb-title">植物图鉴</div>
-    <div id="hb-grid"></div>
+    <div id="hb-scroll-area">
+      <div id="hb-plant-section" class="hb-section">
+        <div class="hb-section-title">植 物 图 鉴</div>
+        <div id="hb-plant-scroll" class="hb-scroll-container">
+          <div id="hb-plant-grid" class="hb-card-grid"></div>
+        </div>
+      </div>
+    </div>
+    <div id="hb-detail-overlay" class="hb-detail-overlay">
+      <div class="hb-detail-box">
+        <button class="hb-detail-close">&times;</button>
+        <div class="hb-detail-title-section">
+          <div class="hb-detail-threat" id="hb-detail-threat"></div>
+          <div class="hb-detail-name" id="hb-detail-name"></div>
+        </div>
+        <div class="hb-detail-body">
+          <div class="hb-detail-left">
+            <canvas id="hb-detail-canvas" width="200" height="260"></canvas>
+          </div>
+          <div class="hb-detail-right" id="hb-detail-stats"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="page-enemy-handbook" class="page">
+    <button id="ehb-back">← 返回</button>
+    <div id="ehb-scroll-area">
+      <div id="ehb-enemy-section" class="hb-section">
+        <div class="hb-section-title">敌 人 图 鉴</div>
+        <div id="ehb-enemy-scroll" class="hb-scroll-container">
+          <div id="ehb-enemy-grid" class="hb-card-grid"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="modal-overlay" id="modal-garden">
@@ -77,18 +117,39 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="modal-star-up">
-    <div class="modal-box">
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal-box settings-box">
       <button class="modal-close">&times;</button>
-      <div class="modal-title">植物升星</div>
-      <div class="star-up-info" id="star-up-info"></div>
-      <div class="btn-row">
-        <button id="star-up-cancel">取消</button>
-        <button class="primary" id="star-up-confirm">确认升星</button>
+      <div class="modal-title">设 置</div>
+      <div class="settings-section">
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">纯净模式</div>
+            <div class="settings-item-desc">退出开发者模式，恢复进入前的晶核数量与图鉴解锁状态</div>
+          </div>
+          <button id="pure-mode-btn" class="settings-btn">恢 复</button>
+        </div>
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <div class="settings-item-title">重置存档</div>
+            <div class="settings-item-desc">清除所有游戏进度，包括晶核、图鉴、关卡记录</div>
+          </div>
+          <button id="reset-save-btn" class="settings-btn danger">重 置</button>
+        </div>
       </div>
-      <div style="margin-top:20px;border-top:1px solid rgba(77,201,246,0.15);padding-top:16px;">
-        <div style="color:var(--cyan);font-size:16px;letter-spacing:2px;margin-bottom:12px;">植 物 皮 肤</div>
-        <div class="skin-list" id="skin-list"></div>
+      <div class="settings-footer">
+        <span style="color:var(--text-dim);font-size:11px;">版本 0.2.0 — Arknights PvZ</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-confirm">
+    <div class="modal-box" style="text-align:center;">
+      <div class="modal-title" id="confirm-title">确 认</div>
+      <p id="confirm-msg" style="color:var(--text-secondary);margin:16px 0;line-height:1.6;"></p>
+      <div class="btn-row">
+        <button id="confirm-cancel">取消</button>
+        <button id="confirm-ok" class="primary">确认</button>
       </div>
     </div>
   </div>

@@ -12,9 +12,26 @@ export const PLANT_DEFS = [
     name: '豌豆射手',
     emoji: '🫛',
     description: '发射豌豆攻击前方僵尸，技能：火焰豌豆',
-    unlockLevel: '1-2',
+    unlockLevel: null,
     combat: { cost: 100, health: 100, shootInterval: 1500, damage: 20, bulletSpeed: 5,
       skillMaxCooldown: 10000, skillDamage: 50, explosionRadius: 1.5 }
+  },
+  {
+    id: 'nut',
+    name: '坚果',
+    emoji: '🥜',
+    description: '坚固的防御植物，技能：短时间内防御力大幅提升',
+    unlockLevel: '1-2',
+    combat: { cost: 50, health: 400,
+      skillMaxCooldown: 15000, skillDefenseBonus: 30, skillDuration: 5000 }
+  },
+  {
+    id: 'cherrybomb',
+    name: '樱桃炸弹',
+    emoji: '🍒',
+    description: '一次性爆炸植物，对3x3范围造成巨额伤害',
+    unlockLevel: '1-3',
+    combat: { cost: 150, health: 100, explosionDamage: 200, explosionRadius: 3, armingTime: 1500 }
   }
 ];
 

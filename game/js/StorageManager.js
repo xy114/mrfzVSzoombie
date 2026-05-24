@@ -1,3 +1,5 @@
+import { getPlantDef } from './PlantConfig.js';
+
 const SAVE_KEY = 'mrfzvs_save';
 
 const DEFAULT_SAVE = {
@@ -6,6 +8,7 @@ const DEFAULT_SAVE = {
   plantSkins: { peashooter: null },
   ownedSkins: { peashooter: [] },
   completedLevels: {},
+  encounteredEnemies: [],
   devMode: false,
   displayPlant: 'sunflower'
 };
@@ -23,10 +26,10 @@ export const StorageManager = {
           if (!(key in saveData)) saveData[key] = DEFAULT_SAVE[key];
         }
       } else {
-        saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {} };
+        saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {}, encounteredEnemies: [] };
       }
     } catch (e) {
-      saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {} };
+      saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {}, encounteredEnemies: [] };
     }
     return saveData;
   },
@@ -53,6 +56,14 @@ export const StorageManager = {
     saveData.plantStars[plantId] = current + 1;
     this.save();
     return current + 1;
+  },
+
+  isPlantUnlocked(plantId) {
+    if (saveData.devMode) return true;
+    const def = getPlantDef(plantId);
+    if (!def) return false;
+    if (def.unlockLevel === null) return true;
+    return this.isLevelCompleted(def.unlockLevel);
   },
 
   getEquippedSkin(plantId) { return saveData.plantSkins[plantId] || null; },
@@ -82,11 +93,62 @@ export const StorageManager = {
   getDisplayPlant() { return saveData.displayPlant; },
   setDisplayPlant(plantId) { saveData.displayPlant = plantId; this.save(); },
 
+  encounterEnemy(enemyId) {
+    if (!saveData.encounteredEnemies.includes(enemyId)) {
+      saveData.encounteredEnemies.push(enemyId);
+      this.save();
+    }
+  },
+  isEnemyEncountered(enemyId) {
+    if (saveData.devMode) return true;
+    return saveData.encounteredEnemies.includes(enemyId);
+  },
+  getEncounteredEnemies() {
+    return saveData.encounteredEnemies;
+  },
+
   isDevMode() { return saveData.devMode; },
-  enableDevMode() { saveData.devMode = true; saveData.crystals = 9999999; this.save(); },
+
+  enableDevMode() {
+    // Save pre-dev snapshot for pure mode restoration
+    if (!saveData.devMode) {
+      saveData._preDevSnapshot = {
+        crystals: saveData.crystals,
+        completedLevels: { ...saveData.completedLevels },
+        encounteredEnemies: [...saveData.encounteredEnemies],
+        plantStars: { ...saveData.plantStars },
+        plantSkins: { ...saveData.plantSkins },
+        ownedSkins: JSON.parse(JSON.stringify(saveData.ownedSkins)),
+        displayPlant: saveData.displayPlant
+      };
+    }
+    saveData.devMode = true;
+    saveData.crystals = 9999999;
+    this.save();
+  },
+
+  hasPreDevSnapshot() {
+    return !!saveData._preDevSnapshot;
+  },
+
+  restorePreDevSnapshot() {
+    if (!saveData._preDevSnapshot) return false;
+    const snap = saveData._preDevSnapshot;
+    saveData.crystals = snap.crystals;
+    saveData.completedLevels = snap.completedLevels;
+    saveData.encounteredEnemies = snap.encounteredEnemies;
+    saveData.plantStars = snap.plantStars;
+    saveData.plantSkins = snap.plantSkins;
+    saveData.ownedSkins = snap.ownedSkins;
+    saveData.displayPlant = snap.displayPlant;
+    saveData.devMode = false;
+    delete saveData._preDevSnapshot;
+    this.save();
+    return true;
+  },
 
   resetSave() {
-    saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {} };
+    saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {}, encounteredEnemies: [] };
     this.save();
   }
 };
