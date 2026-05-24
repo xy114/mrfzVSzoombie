@@ -44,7 +44,9 @@ export class AssetManager {
       lawn_bg_nightRoof: 'resources/scene/晚上屋顶.jpg',
       // Almanac card backgrounds
       plant_card_bg: 'resources/others/Almanac_PlantCard.png',
-      zombie_card_bg: 'resources/others/Almanac_ZombieCard.png'
+      zombie_card_bg: 'resources/others/Almanac_ZombieCard.png',
+      // Crystal icon
+      crystal_icon: 'resources/others/浅蓝正八面体.png'
     };
   }
 

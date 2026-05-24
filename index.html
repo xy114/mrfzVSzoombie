@@ -27,7 +27,6 @@
       <div id="standee-frame">
         <span id="standee-emoji">🌻</span>
       </div>
-      <div id="standee-name">向日葵</div>
       <button id="edit-standee-btn">编辑展示</button>
     </div>
     <div id="main-right">
@@ -163,6 +162,66 @@
       <input type="password" id="dev-input" maxlength="20">
       <div class="btn-row" style="justify-content:center;">
         <button id="dev-confirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Level Detail Overlay -->
+  <div class="modal-overlay" id="modal-level-detail">
+    <div class="level-detail-box">
+      <button class="modal-close" id="ld-close-btn">&times;</button>
+      <div class="ld-content">
+        <div class="ld-left">
+          <div class="ld-title" id="ld-title"></div>
+          <div class="ld-scene-wrap">
+            <canvas id="ld-scene-canvas" width="360" height="216"></canvas>
+          </div>
+          <div class="ld-meta" id="ld-meta"></div>
+        </div>
+        <div class="ld-right">
+          <div class="ld-section">
+            <div class="ld-section-title">敌 情 侦 查</div>
+            <div class="ld-enemy-list" id="ld-enemy-list"></div>
+          </div>
+          <div class="ld-section">
+            <div class="ld-section-title">掉 落 信 息</div>
+            <div class="ld-drop-info" id="ld-drop-info"></div>
+          </div>
+          <button class="btn-ark ld-start-btn" id="ld-start-btn">作 战</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Squad Select Overlay -->
+  <div class="modal-overlay" id="modal-squad">
+    <div class="squad-box">
+      <div class="squad-header">
+        <button class="squad-back-btn" id="squad-back-btn">&larr; 返回</button>
+        <div class="squad-title">编 队 选 择</div>
+        <div class="squad-slot-info" id="squad-slot-info">0/6</div>
+      </div>
+      <div class="squad-grid" id="squad-grid"></div>
+      <div class="squad-footer">
+        <button class="btn-ark squad-start-btn" id="squad-start-btn" disabled>开 始 作 战</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Squad Plant Picker Overlay -->
+  <div class="modal-overlay" id="modal-squad-picker">
+    <div class="squad-picker-box">
+      <div class="squad-picker-header">
+        <button class="squad-picker-back" id="squad-picker-back">&larr; 返回编队</button>
+        <div class="squad-picker-title">选 择 植 物</div>
+      </div>
+      <div class="squad-picker-grid" id="squad-picker-grid"></div>
+      <div class="squad-picker-detail" id="squad-picker-detail" style="display:none;">
+        <div class="spd-top">
+          <div class="spd-info" id="spd-info"></div>
+          <button class="spd-confirm-btn" id="spd-confirm-btn">确 认</button>
+        </div>
+        <div class="spd-skins" id="spd-skins"></div>
       </div>
     </div>
   </div>

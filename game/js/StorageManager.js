@@ -10,7 +10,9 @@ const DEFAULT_SAVE = {
   completedLevels: {},
   encounteredEnemies: [],
   devMode: false,
-  displayPlant: 'sunflower'
+  displayPlant: 'sunflower',
+  unlockedSquadSlots: 6,
+  savedSquads: {}
 };
 
 let saveData = null;
@@ -148,7 +150,38 @@ export const StorageManager = {
   },
 
   resetSave() {
-    saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {}, encounteredEnemies: [] };
+    saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {}, encounteredEnemies: [], unlockedSquadSlots: 6, savedSquads: {} };
     this.save();
+  },
+
+  // Squad system
+  getUnlockedSquadSlots() { return saveData.unlockedSquadSlots || 6; },
+
+  getSquadSlotUnlockCost() {
+    const unlocked = this.getUnlockedSquadSlots();
+    if (unlocked >= 12) return Infinity;
+    const costs = { 6: 100, 7: 200, 8: 400, 9: 800, 10: 1500, 11: 3000 };
+    return costs[unlocked] || 0;
+  },
+
+  unlockSquadSlot() {
+    const cost = this.getSquadSlotUnlockCost();
+    if (cost === Infinity) return false;
+    if (this.spendCrystals(cost)) {
+      saveData.unlockedSquadSlots = (saveData.unlockedSquadSlots || 6) + 1;
+      this.save();
+      return true;
+    }
+    return false;
+  },
+
+  saveSquad(plantIds) {
+    if (!saveData.savedSquads) saveData.savedSquads = {};
+    saveData.savedSquads._last = plantIds;
+    this.save();
+  },
+
+  getLastSquad() {
+    return (saveData.savedSquads && saveData.savedSquads._last) || [];
   }
 };

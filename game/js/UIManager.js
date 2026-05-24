@@ -1,5 +1,5 @@
 import { StorageManager } from './StorageManager.js';
-import { PRELUDES } from './LevelConfig.js';
+import { PRELUDES, getLevel, getPreludes } from './LevelConfig.js';
 import { getPlantDef, getAllPlantDefs, getStarMultiplier, getStarCost, getSkins, getSkin } from './PlantConfig.js';
 import { getZombieDef, getAllZombieDefs, getThreatLabel } from './ZombieConfig.js';
 import { drawNormalZombiePortrait, drawConeZombiePortrait, drawShieldZombiePortrait, drawImpZombiePortrait } from './ZombieRenderer.js';
@@ -48,7 +48,6 @@ export class UIManager {
     this.$resultBtn = document.getElementById('result-btn');
     this.$crystalVal = document.getElementById('crystal-value');
     this.$standeeEmoji = document.getElementById('standee-emoji');
-    this.$standeeName = document.getElementById('standee-name');
     this.$psGrid = document.getElementById('ps-grid');
     this.$devInput = document.getElementById('dev-input');
     this.$toast = document.getElementById('toast');
@@ -166,7 +165,6 @@ export class UIManager {
     const plantId = StorageManager.getDisplayPlant();
     const def = getPlantDef(plantId);
     if (!def) return;
-    if (this.$standeeName) this.$standeeName.textContent = def.name;
     const frame = document.getElementById('standee-frame');
     if (!frame) return;
 
@@ -182,22 +180,50 @@ export class UIManager {
     // Clear old content
     if (this.$standeeEmoji) this.$standeeEmoji.style.display = 'none';
 
-    const pctx = canvas.getContext('2d');
-    if (img) {
-      // Proportional scaling: use natural dimensions, max width 200px
-      const maxW = 200;
-      const scale = Math.min(1, maxW / img.naturalWidth);
-      canvas.width = Math.round(img.naturalWidth * scale);
-      canvas.height = Math.round(img.naturalHeight * scale);
-      pctx.clearRect(0, 0, canvas.width, canvas.height);
-      pctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    // Use requestAnimationFrame to ensure layout is complete before measuring
+    const doDraw = () => {
+      // Calculate available space from viewport — main-left is flex:13, main-right is flex:10
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const leftW = vw * 13 / 23;        // main-left width
+      const frameW = leftW - 80;          // 40px padding each side
+      const frameH = vh - 80 - 65;        // 80px padding-top, 65px for button+margin area
+
+      const availW = frameW * 0.9;        // 5% margin each side
+      const availH = frameH * 0.9;
+
+      const pctx = canvas.getContext('2d');
+      if (img) {
+        const scale = Math.min(availW / img.naturalWidth, availH / img.naturalHeight);
+        canvas.width = Math.round(img.naturalWidth * scale);
+        canvas.height = Math.round(img.naturalHeight * scale);
+        pctx.clearRect(0, 0, canvas.width, canvas.height);
+        pctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      } else {
+        canvas.width = Math.round(availW);
+        canvas.height = Math.round(availH);
+        pctx.clearRect(0, 0, canvas.width, canvas.height);
+        this._drawPortrait(pctx, 'plant', plantId, canvas.width, canvas.height);
+      }
+      canvas.style.display = 'block';
+    };
+
+    // Delay to ensure flex layout has settled
+    if (frame.clientHeight > 0 && frame.clientWidth > 0) {
+      doDraw();
     } else {
-      canvas.width = 200;
-      canvas.height = 260;
-      pctx.clearRect(0, 0, 200, 260);
-      this._drawPortrait(pctx, 'plant', plantId, 200, 260);
+      requestAnimationFrame(() => requestAnimationFrame(doDraw));
     }
-    canvas.style.display = 'block';
+
+    // Handle window resize
+    if (!this._standeeResizeBound) {
+      this._standeeResizeBound = true;
+      window.addEventListener('resize', () => {
+        if (document.getElementById('page-main').classList.contains('active')) {
+          this.refreshDisplayPlant();
+        }
+      });
+    }
   }
 
   // === Level Select ===
@@ -220,7 +246,7 @@ export class UIManager {
         if (completed) node.classList.add('completed');
         node.innerHTML = `<span class="lv-num">${lvl.name}</span><span class="lv-sub">${lvl.waves}波</span>`;
         if (unlocked) {
-          node.addEventListener('click', () => this.startCombat(lvl.id));
+          node.addEventListener('click', () => this.showLevelDetail(lvl.id));
         }
         nodes.appendChild(node);
         if (i < prelude.levels.length - 1) {
@@ -233,6 +259,514 @@ export class UIManager {
       }
       section.appendChild(nodes);
       container.appendChild(section);
+    }
+  }
+
+  // === Level Detail ===
+  showLevelDetail(levelId) {
+    const level = getLevel(levelId);
+    if (!level) return;
+    this._pendingLevelId = levelId;
+
+    document.getElementById('ld-title').textContent = level.name + ' · ' + (getPreludes().find(p => p.levels.some(l => l.id === levelId))?.name || '');
+    document.getElementById('ld-meta').innerHTML = `
+      波数: ${level.waves} &nbsp;|&nbsp; 初始阳光: ${level.startSun} &nbsp;|&nbsp; 晶核: 击败敌人获得
+    `;
+
+    // Scene preview
+    const sceneCanvas = document.getElementById('ld-scene-canvas');
+    if (sceneCanvas) {
+      const sctx = sceneCanvas.getContext('2d');
+      // Use a default scene background
+      const bgKey = 'lawn_bg_day';
+      const bgImg = assetManager.getImage(bgKey) || assetManager.getImage('lawn_bg');
+      if (bgImg) {
+        sctx.drawImage(bgImg, 0, 0, 360, 216);
+      } else {
+        sctx.fillStyle = '#1a2a10';
+        sctx.fillRect(0, 0, 360, 216);
+        sctx.fillStyle = '#2a4a1a';
+        sctx.fillRect(0, 80, 360, 60);
+        sctx.fillStyle = 'rgba(255,255,255,0.05)';
+        for (let r = 0; r < 5; r++) {
+          for (let c = 0; c < 9; c++) {
+            sctx.strokeRect(c * 40, r * 24, 40, 24);
+          }
+        }
+      }
+    }
+
+    // Enemy list
+    const enemyList = document.getElementById('ld-enemy-list');
+    if (enemyList) {
+      enemyList.innerHTML = '';
+      const seen = new Set();
+      for (const type of level.zombieTypes) {
+        if (seen.has(type)) continue;
+        seen.add(type);
+        const def = getZombieDef(type);
+        if (!def) continue;
+        const threat = getThreatLabel(def);
+        const item = document.createElement('div');
+        item.className = 'ld-enemy-item';
+        const cvs = document.createElement('canvas');
+        cvs.width = 48; cvs.height = 56;
+        const cctx = cvs.getContext('2d');
+        this._drawPortrait(cctx, 'enemy', type, 48, 56);
+        item.appendChild(cvs);
+        const nameEl = document.createElement('span');
+        nameEl.className = 'ld-enemy-name'; nameEl.textContent = def.name;
+        item.appendChild(nameEl);
+        const threatEl = document.createElement('span');
+        threatEl.className = 'ld-enemy-threat';
+        threatEl.textContent = threat.text;
+        threatEl.style.color = threat.class === 'threat-extreme' ? '#c04040' : threat.class === 'threat-elite' ? '#d09030' : '#3aaf5a';
+        item.appendChild(threatEl);
+        enemyList.appendChild(item);
+      }
+    }
+
+    // Estimated crystal reward
+    const totalZombies = level.waves * level.waves + 4 * level.waves;
+    let estimatedCrystals = 0;
+    if (level.zombieTypes.length === 1) {
+      const def = getZombieDef(level.zombieTypes[0]);
+      estimatedCrystals = totalZombies * (def ? def.threatLevel : 1);
+    } else {
+      const typeWeights = { imp: 0.20, shield: 0.20, cone: 0.15, normal: 0.45 };
+      let totalWeight = 0;
+      let weightedSum = 0;
+      for (const type of level.zombieTypes) {
+        const weight = typeWeights[type] || (1 / level.zombieTypes.length);
+        const def = getZombieDef(type);
+        weightedSum += weight * (def ? def.threatLevel : 1);
+        totalWeight += weight;
+      }
+      const avgThreat = totalWeight > 0 ? weightedSum / totalWeight : 1;
+      estimatedCrystals = Math.round(totalZombies * avgThreat);
+    }
+
+    const dropInfo = document.getElementById('ld-drop-info');
+    if (dropInfo) {
+      dropInfo.innerHTML = `预计获得晶核: ${estimatedCrystals} (约${totalZombies}名敌人)`;
+      if (level.unlockPlant) {
+        const def = getPlantDef(level.unlockPlant);
+        if (def) dropInfo.innerHTML += `<br>首次通关解锁: ${def.name}`;
+      }
+    }
+
+    // Wire start button
+    const startBtn = document.getElementById('ld-start-btn');
+    if (startBtn) {
+      const newBtn = startBtn.cloneNode(true);
+      startBtn.parentNode.replaceChild(newBtn, startBtn);
+      newBtn.addEventListener('click', () => {
+        this.hideModal();
+        this.showSquadSelect();
+      });
+    }
+
+    // Wire close button
+    const closeBtn = document.getElementById('ld-close-btn');
+    if (closeBtn) {
+      const newClose = closeBtn.cloneNode(true);
+      closeBtn.parentNode.replaceChild(newClose, closeBtn);
+      newClose.addEventListener('click', () => this.hideModal());
+    }
+
+    const overlay = document.getElementById('modal-level-detail');
+    if (overlay) {
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) this.hideModal(); });
+    }
+
+    this.showModal('level-detail');
+  }
+
+  // === Squad Select ===
+  showSquadSelect() {
+    this._squad = StorageManager.getLastSquad();
+    // Trim squad to unlocked slots
+    const maxSlots = StorageManager.getUnlockedSquadSlots();
+    if (this._squad.length > maxSlots) this._squad = this._squad.slice(0, maxSlots);
+    this._squadSlotIndex = -1;
+
+    this._wireSquadButtons();
+    this.renderSquadGrid();
+    this.showModal('squad');
+  }
+
+  renderSquadGrid() {
+    const grid = document.getElementById('squad-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const maxSlots = StorageManager.getUnlockedSquadSlots();
+    const totalSlots = 12;
+    const filled = this._squad.filter(Boolean).length;
+    document.getElementById('squad-slot-info').textContent = `${filled}/${maxSlots}`;
+
+    const startBtn = document.getElementById('squad-start-btn');
+    if (startBtn) startBtn.disabled = (filled === 0);
+
+    for (let i = 0; i < totalSlots; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'squad-slot';
+      slot.dataset.slotIndex = i;
+
+      if (i >= maxSlots) {
+        // Locked slot
+        slot.classList.add('locked');
+        const cost = StorageManager.getSquadSlotUnlockCost();
+        const lockIcon = document.createElement('span');
+        lockIcon.className = 'slot-lock-icon';
+        lockIcon.textContent = '\u{1F512}';
+        slot.appendChild(lockIcon);
+        if (cost !== Infinity) {
+          const costLabel = document.createElement('span');
+          costLabel.className = 'slot-cost-label';
+          costLabel.textContent = cost + ' \u{1F4CE}';
+          slot.appendChild(costLabel);
+        }
+        slot.addEventListener('click', () => this._unlockSlot());
+      } else if (i < this._squad.length && this._squad[i]) {
+        // Filled slot
+        const plantId = this._squad[i];
+        slot.classList.add('filled');
+        const def = getPlantDef(plantId);
+        const canvas = document.createElement('canvas');
+        canvas.width = 56; canvas.height = 70;
+        const cctx = canvas.getContext('2d');
+        this._drawPortrait(cctx, 'plant', plantId, 56, 70);
+        slot.appendChild(canvas);
+        if (def) {
+          const nameEl = document.createElement('span');
+          nameEl.className = 'slot-plant-name';
+          nameEl.textContent = def.name;
+          slot.appendChild(nameEl);
+        }
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'slot-remove-btn';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this._squad[i] = null;
+          this._compactSquad();
+          this._wireSquadButtons();
+          this.renderSquadGrid();
+        });
+        slot.appendChild(removeBtn);
+        slot.addEventListener('click', () => this._onFilledSlotClick(i));
+      } else {
+        // Empty slot
+        const emptyIcon = document.createElement('span');
+        emptyIcon.className = 'slot-empty-text';
+        emptyIcon.textContent = '+';
+        slot.appendChild(emptyIcon);
+        slot.addEventListener('click', () => this.showSquadPicker(i));
+      }
+
+      grid.appendChild(slot);
+    }
+  }
+
+  _compactSquad() {
+    this._squad = this._squad.filter(Boolean);
+    while (this._squad.length < StorageManager.getUnlockedSquadSlots()) {
+      this._squad.push(null);
+    }
+  }
+
+  _onFilledSlotClick(index) {
+    const plantId = this._squad[index];
+    if (!plantId) return;
+    // Click on filled slot: show plant detail with option to remove
+    // For now, remove the plant and allow re-selection
+    this._squad[index] = null;
+    this._compactSquad();
+    this._wireSquadButtons();
+    this.renderSquadGrid();
+  }
+
+  _unlockSlot() {
+    const cost = StorageManager.getSquadSlotUnlockCost();
+    if (cost === Infinity) return;
+    const crystals = StorageManager.getCrystals();
+    if (crystals < cost) {
+      this.showToast('晶核不足！');
+      return;
+    }
+    if (StorageManager.unlockSquadSlot()) {
+      this.showToast(`解锁新编队格子！消耗 ${cost} 晶核`);
+      this.refreshCrystalDisplay();
+      this._wireSquadButtons();
+      this.renderSquadGrid();
+    }
+  }
+
+  _wireSquadButtons() {
+    // Clone overlay first so event listeners aren't lost when cloning later
+    const overlay = document.getElementById('modal-squad');
+    if (overlay) {
+      const newOverlay = overlay.cloneNode(true);
+      overlay.parentNode.replaceChild(newOverlay, overlay);
+      newOverlay.addEventListener('click', (e) => {
+        if (e.target === newOverlay) {
+          this.hideModal();
+          this.showLevelDetail(this._pendingLevelId);
+        }
+      });
+    }
+
+    // Wire buttons in the new overlay
+    const backBtn = document.getElementById('squad-back-btn');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        this.hideModal();
+        this.showLevelDetail(this._pendingLevelId);
+      });
+    }
+
+    const startBtn = document.getElementById('squad-start-btn');
+    if (startBtn) {
+      const filled = this._squad.filter(Boolean).length;
+      startBtn.disabled = (filled === 0);
+      startBtn.addEventListener('click', () => {
+        if (filled === 0) return;
+        const squad = this._squad.filter(Boolean);
+        StorageManager.saveSquad(squad);
+        this.hideModal();
+        this.startCombat(this._pendingLevelId, squad);
+      });
+    }
+  }
+
+  // === Squad Plant Picker ===
+  showSquadPicker(slotIndex) {
+    this._squadSlotIndex = slotIndex;
+    this.hideModal(); // hide squad modal first
+    this._wireSquadPickerButtons();
+    this.renderSquadPicker();
+    this.showModal('squad-picker');
+  }
+
+  renderSquadPicker() {
+    const grid = document.getElementById('squad-picker-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    // Hide detail panel on re-render
+    this._selectedPickerPlant = null;
+    this._updatePickerDetail();
+
+    const allPlants = getAllPlantDefs();
+    const unlocked = allPlants.filter(p => StorageManager.isPlantUnlocked(p.id));
+    const inSquad = new Set(this._squad.filter(Boolean));
+
+    for (const plant of unlocked) {
+      const card = document.createElement('div');
+      card.className = 'squad-picker-card';
+      card.dataset.plantId = plant.id;
+
+      if (inSquad.has(plant.id)) {
+        card.classList.add('disabled');
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 64; canvas.height = 84;
+      const cctx = canvas.getContext('2d');
+      this._drawPortrait(cctx, 'plant', plant.id, 64, 84);
+      card.appendChild(canvas);
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'spc-name';
+      nameEl.textContent = plant.name;
+      card.appendChild(nameEl);
+
+      const descEl = document.createElement('div');
+      descEl.className = 'spc-desc';
+      descEl.textContent = '☀' + (plant.combat.cost || 0);
+      card.appendChild(descEl);
+
+      card.addEventListener('click', () => {
+        if (card.classList.contains('disabled')) return;
+
+        // If clicking the already-selected card, deselect
+        if (this._selectedPickerPlant === plant.id) {
+          this._selectedPickerPlant = null;
+          // Remove 'selected' from all cards
+          grid.querySelectorAll('.squad-picker-card').forEach(c => c.classList.remove('selected'));
+          this._updatePickerDetail();
+          return;
+        }
+
+        // Select this plant
+        this._selectedPickerPlant = plant.id;
+        grid.querySelectorAll('.squad-picker-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        this._updatePickerDetail();
+      });
+
+      grid.appendChild(card);
+    }
+  }
+
+  _updatePickerDetail() {
+    const detail = document.getElementById('squad-picker-detail');
+    const info = document.getElementById('spd-info');
+    const skinsRow = document.getElementById('spd-skins');
+    if (!detail || !info || !skinsRow) return;
+
+    if (!this._selectedPickerPlant) {
+      detail.style.display = 'none';
+      return;
+    }
+
+    const plantId = this._selectedPickerPlant;
+    const def = getPlantDef(plantId);
+    if (!def) { detail.style.display = 'none'; return; }
+
+    const starLevel = StorageManager.getPlantStar(plantId);
+    const nextCost = starLevel < 3 ? getStarCost(starLevel, starLevel + 1) : Infinity;
+    const stars = '★'.repeat(starLevel) + '☆'.repeat(3 - starLevel);
+    info.innerHTML = `
+      <span class="spd-name">${def.name}</span>
+      <span class="spd-stars">${stars}</span>
+      ${nextCost !== Infinity ? `<button class="spd-upgrade-btn" id="spd-upgrade-btn">升星 💎${nextCost}</button>` : '<span style="font-size:10px;color:var(--gold);">MAX</span>'}
+      <span class="spd-cost">☀${def.combat.cost || 0}</span>
+    `;
+
+    // Wire upgrade button
+    const upBtn = document.getElementById('spd-upgrade-btn');
+    if (upBtn) {
+      upBtn.addEventListener('click', () => {
+        if (!StorageManager.spendCrystals(nextCost)) {
+          this.showToast('晶核不足！');
+          return;
+        }
+        const newStar = StorageManager.upgradePlantStar(plantId);
+        if (newStar) {
+          this.showToast(`${def.name} 升至 ${newStar} 星！`);
+          this.refreshCrystalDisplay();
+          this._updatePickerDetail();
+        }
+      });
+    }
+
+    // Skin row
+    const equippedSkin = StorageManager.getEquippedSkin(plantId);
+    const skins = getSkins(plantId);
+    let skinHTML = '<span class="spd-skins-label">皮肤:</span>';
+
+    // Default artwork (always available, first, no name)
+    skinHTML += `
+      <div class="spd-skin-item${!equippedSkin ? ' equipped' : ''}" data-skin-id="">
+        <canvas width="40" height="48"></canvas>
+      </div>`;
+
+    // Owned skins
+    for (const skin of skins) {
+      if (!StorageManager.ownsSkin(plantId, skin.id)) continue;
+      skinHTML += `
+        <div class="spd-skin-item${equippedSkin === skin.id ? ' equipped' : ''}" data-skin-id="${skin.id}">
+          <canvas width="40" height="48"></canvas>
+          <span class="spd-skin-name">${skin.name}</span>
+        </div>`;
+    }
+
+    // Unowned skins (locked, show cost)
+    for (const skin of skins) {
+      if (StorageManager.ownsSkin(plantId, skin.id)) continue;
+      skinHTML += `
+        <div class="spd-skin-item locked" data-skin-id="${skin.id}" data-skin-cost="${skin.cost || 0}">
+          <canvas width="40" height="48"></canvas>
+          <span class="spd-skin-cost">💎${skin.cost || 0}</span>
+        </div>`;
+    }
+
+    skinsRow.innerHTML = skinHTML;
+
+    // Draw skin previews
+    const skinItems = skinsRow.querySelectorAll('.spd-skin-item');
+    skinItems.forEach(item => {
+      const skinId = item.dataset.skinId;
+      const cvs = item.querySelector('canvas');
+      if (cvs) {
+        const ctx = cvs.getContext('2d');
+        if (skinId) {
+          this._drawPortrait(ctx, 'plant', plantId, 40, 48, skinId);
+        } else {
+          this._drawPortrait(ctx, 'plant', plantId, 40, 48);
+        }
+      }
+    });
+
+    // Wire skin click handlers
+    skinsRow.querySelectorAll('.spd-skin-item:not(.locked)').forEach(item => {
+      item.addEventListener('click', () => {
+        const skinId = item.dataset.skinId || null;
+        StorageManager.equipSkin(plantId, skinId);
+        this._updatePickerDetail();
+      });
+    });
+
+    skinsRow.querySelectorAll('.spd-skin-item.locked').forEach(item => {
+      item.addEventListener('click', () => {
+        const cost = parseInt(item.dataset.skinCost) || 0;
+        const skinId = item.dataset.skinId;
+        if (!StorageManager.spendCrystals(cost)) {
+          this.showToast('晶核不足！');
+          return;
+        }
+        StorageManager.addSkin(plantId, skinId);
+        StorageManager.equipSkin(plantId, skinId);
+        this.showToast('皮肤已解锁并装备！');
+        this.refreshCrystalDisplay();
+        this._updatePickerDetail();
+      });
+    });
+
+    detail.style.display = 'flex';
+  }
+
+  _wireSquadPickerButtons() {
+    // Clone overlay first so card click handlers aren't lost
+    const overlay = document.getElementById('modal-squad-picker');
+    if (overlay) {
+      const newOverlay = overlay.cloneNode(true);
+      overlay.parentNode.replaceChild(newOverlay, overlay);
+      newOverlay.addEventListener('click', (e) => {
+        if (e.target === newOverlay) {
+          this.hideModal();
+          this.showSquadSelect();
+        }
+      });
+    }
+
+    const backBtn = document.getElementById('squad-picker-back');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        this.hideModal();
+        this.showSquadSelect();
+      });
+    }
+
+    const confirmBtn = document.getElementById('spd-confirm-btn');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        const plantId = this._selectedPickerPlant;
+        if (!plantId) return;
+        // Remove this plant from any other slot first
+        for (let i = 0; i < this._squad.length; i++) {
+          if (this._squad[i] === plantId) this._squad[i] = null;
+        }
+        while (this._squad.length <= this._squadSlotIndex) this._squad.push(null);
+        this._squad[this._squadSlotIndex] = plantId;
+        this._compactSquad();
+        this._selectedPickerPlant = null;
+        this.hideModal();
+        this._wireSquadButtons();
+        this.renderSquadGrid();
+        this.showModal('squad');
+      });
     }
   }
 
@@ -293,7 +827,7 @@ export class UIManager {
       if (cardBg) {
         ctx.drawImage(cardBg, 0, 0, cardW, cardH);
       } else {
-        ctx.fillStyle = '#1a1a3a';
+        ctx.fillStyle = '#1c1c28'; // bg-card
         ctx.fillRect(0, 0, cardW, cardH);
       }
 
@@ -311,24 +845,24 @@ export class UIManager {
       const skinY = descY + 22 * scale; // ~175
 
       // Name
-      ctx.fillStyle = isUnlocked ? textColor : '#4e5870';
+      ctx.fillStyle = isUnlocked ? textColor : '#484440'; // text-dim
       ctx.font = `bold ${Math.round(14 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       ctx.fillText(isUnlocked ? plant.name : '???', cardW / 2, nameY);
 
-      // Stars
-      ctx.fillStyle = isUnlocked ? '#ffd700' : '#4e5870';
+      // Stars — muted gold
+      ctx.fillStyle = isUnlocked ? '#a09868' : '#484440';
       ctx.font = `${Math.round(12 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       ctx.fillText(isUnlocked ? '★'.repeat(star) + '☆'.repeat(3 - star) : '☆☆☆', cardW / 2, starY);
 
       // Description
-      ctx.fillStyle = isUnlocked ? textColor : '#4e5870';
+      ctx.fillStyle = isUnlocked ? textColor : '#484440';
       ctx.font = `${Math.round(11 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       const desc = isUnlocked ? plant.description : '未解锁';
       ctx.fillText(desc.length > 16 ? desc.slice(0, 15) + '...' : desc, cardW / 2, descY);
 
-      // Skin info
+      // Skin info — muted cyan
       if (isUnlocked && skin) {
-        ctx.fillStyle = '#4dc9f6';
+        ctx.fillStyle = '#5a8a9a';
         ctx.font = `${Math.round(10 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
         ctx.fillText('皮肤: ' + skin.name, cardW / 2, skinY);
       }
@@ -400,7 +934,7 @@ export class UIManager {
       if (cardBg) {
         ctx.drawImage(cardBg, 0, 0, cardW, cardH);
       } else {
-        ctx.fillStyle = '#1a1a3a';
+        ctx.fillStyle = '#1c1c28'; // bg-card
         ctx.fillRect(0, 0, cardW, cardH);
       }
 
@@ -417,19 +951,19 @@ export class UIManager {
       const descY = threatY + 22 * scale; // ~195
 
       // Name
-      ctx.fillStyle = isEncountered ? textColor : '#4e5870';
+      ctx.fillStyle = isEncountered ? textColor : '#484440'; // text-dim
       ctx.font = `bold ${Math.round(14 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       ctx.fillText(isEncountered ? enemy.name : '???', cardW / 2, nameY);
 
       // Threat badge
       ctx.fillStyle = isEncountered ?
-        (threat.class === 'threat-extreme' ? '#e84040' : threat.class === 'threat-elite' ? '#f0a030' : '#3ecf6b') :
-        '#4e5870';
+        (threat.class === 'threat-extreme' ? '#c04040' : threat.class === 'threat-elite' ? '#d09030' : '#3aaf5a') :
+        '#484440';
       ctx.font = `${Math.round(12 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       ctx.fillText(isEncountered ? threat.text : '???', cardW / 2, threatY);
 
       // Description
-      ctx.fillStyle = isEncountered ? textColor : '#4e5870';
+      ctx.fillStyle = isEncountered ? textColor : '#484440';
       ctx.font = `${Math.round(11 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       const desc = isEncountered ? enemy.description : '尚未遭遇';
       ctx.fillText(desc.length > 16 ? desc.slice(0, 15) + '...' : desc, cardW / 2, descY);
@@ -724,8 +1258,24 @@ export class UIManager {
     this._detailId = null;
   }
 
-  _drawPortrait(ctx, category, id, maxW, maxH) {
-    const portraitKey = id + '_portrait';
+  _drawPortrait(ctx, category, id, maxW, maxH, skinId) {
+    // Try skin-specific portrait first
+    let portraitKey;
+    if (skinId) {
+      portraitKey = id + '_skin_' + skinId + '_portrait';
+      const skinImg = assetManager.getImage(portraitKey);
+      if (skinImg) {
+        const margin = 0.9;
+        const availW = maxW * margin, availH = maxH * margin;
+        const s = Math.min(availW / skinImg.naturalWidth, availH / skinImg.naturalHeight);
+        const gifW = skinImg.naturalWidth * s;
+        const gifH = skinImg.naturalHeight * s;
+        ctx.drawImage(skinImg, (maxW - gifW) / 2, (maxH - gifH) / 2, gifW, gifH);
+        return;
+      }
+    }
+
+    portraitKey = id + '_portrait';
     const img = assetManager.getImage(portraitKey);
     if (img) {
       // Proportional fit with margin (leave 10% padding each side)
@@ -884,11 +1434,12 @@ export class UIManager {
   }
 
   // === Combat ===
-  startCombat(levelId) {
+  startCombat(levelId, squad) {
     this.currentLevelId = levelId;
     this.showPage('combat');
     this._startCombatRequested = levelId;
-    window.dispatchEvent(new CustomEvent('startCombat', { detail: { levelId } }));
+    this._pendingSquad = squad || null;
+    window.dispatchEvent(new CustomEvent('startCombat', { detail: { levelId, squad: squad || null } }));
   }
 
   endCombat() {
@@ -1146,16 +1697,22 @@ export class UIManager {
     }
     ctx.closePath();
 
-    // Bright cyan gradient — visible against dark top bar
+    // Muted teal gradient — Arknights subdued palette
     const grad = ctx.createLinearGradient(-outerR, -outerR, outerR, outerR);
+    /* [ORIGINAL-v1] bright cyan gradient
     grad.addColorStop(0, '#b3e8ff');
     grad.addColorStop(0.3, '#7dddfb');
     grad.addColorStop(0.6, '#4dc9f6');
     grad.addColorStop(1, '#2a8ec8');
+    */
+    grad.addColorStop(0, '#8ab8c4');
+    grad.addColorStop(0.3, '#6a9aaa');
+    grad.addColorStop(0.6, '#5a8a9a');
+    grad.addColorStop(1, '#3a5a6a');
     ctx.fillStyle = grad;
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(180, 230, 255, 0.6)';
+    ctx.strokeStyle = 'rgba(140, 175, 190, 0.3)';
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
@@ -1164,13 +1721,13 @@ export class UIManager {
     ctx.arc(0, 0, holeR, 0, Math.PI * 2);
     ctx.fillStyle = '#0a0a0f';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(180, 230, 255, 0.5)';
+    ctx.strokeStyle = 'rgba(140, 175, 190, 0.25)';
     ctx.stroke();
 
     // Inner ring
     ctx.beginPath();
     ctx.arc(0, 0, innerR - 1, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
     ctx.lineWidth = 0.5;
     ctx.stroke();
 
@@ -1183,80 +1740,10 @@ export class UIManager {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, 28, 28);
 
-    // Prismatic crystal — hexagonal elongated shape
-    const cx = 14, cy = 14;
-    const topY = 4, botY = 24;
-    const midTopY = 9, midBotY = 19;
-    const leftX = 5, rightX = 23;
-    const midLeftX = 8, midRightX = 20;
-
-    ctx.save();
-
-    // Crystal body — hexagonal shape
-    ctx.beginPath();
-    ctx.moveTo(cx, topY);        // top point
-    ctx.lineTo(rightX, midTopY);  // upper right
-    ctx.lineTo(rightX, midBotY);  // lower right
-    ctx.lineTo(cx, botY);        // bottom point
-    ctx.lineTo(leftX, midBotY);  // lower left
-    ctx.lineTo(leftX, midTopY);  // upper left
-    ctx.closePath();
-
-    // Gradient fill with prismatic shine
-    const grad = ctx.createLinearGradient(leftX, topY, rightX, botY);
-    grad.addColorStop(0, '#b3e8ff');
-    grad.addColorStop(0.15, '#7dddfb');
-    grad.addColorStop(0.35, '#3aa8d8');
-    grad.addColorStop(0.55, '#1a6a9e');
-    grad.addColorStop(0.7, '#2a8cc0');
-    grad.addColorStop(0.85, '#5cc8f0');
-    grad.addColorStop(1, '#8dd8f8');
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    // Inner edge highlight
-    ctx.strokeStyle = 'rgba(180, 230, 255, 0.4)';
-    ctx.lineWidth = 0.6;
-    ctx.stroke();
-
-    // Left facet highlight (brighter)
-    ctx.beginPath();
-    ctx.moveTo(cx, topY);
-    ctx.lineTo(leftX, midTopY);
-    ctx.lineTo(leftX, midBotY);
-    ctx.lineTo(cx, botY);
-    ctx.closePath();
-    const leftGrad = ctx.createLinearGradient(leftX, topY, cx, botY);
-    leftGrad.addColorStop(0, 'rgba(200, 240, 255, 0.25)');
-    leftGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.08)');
-    leftGrad.addColorStop(1, 'rgba(120, 200, 240, 0.05)');
-    ctx.fillStyle = leftGrad;
-    ctx.fill();
-
-    // Top-right facet — bright specular
-    ctx.beginPath();
-    ctx.moveTo(cx, topY);
-    ctx.lineTo(rightX, midTopY);
-    ctx.lineTo(cx, midTopY + 2);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    ctx.fill();
-
-    // Central bright line (vertical prism edge)
-    ctx.beginPath();
-    ctx.moveTo(cx, topY + 2);
-    ctx.lineTo(cx, botY - 2);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
-
-    // Bottom glint point
-    ctx.beginPath();
-    ctx.arc(cx, botY - 2, 1.2, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.fill();
-
-    ctx.restore();
+    const img = assetManager.getImage('crystal_icon');
+    if (img) {
+      ctx.drawImage(img, 0, 0, 28, 28);
+    }
   }
 
   // === Combat footer setup ===

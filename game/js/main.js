@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Handle startCombat event from UIManager
   window.addEventListener('startCombat', (e) => {
-    const { levelId } = e.detail;
+    const { levelId, squad } = e.detail;
     const levelConfig = getLevel(levelId);
     if (!levelConfig) return;
 
@@ -54,11 +54,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bm = new BattleManager(ui.canvas, levelConfig, playerData);
     ui.battleManager = bm;
 
-    // Setup combat footer with available plant types
-    const availablePlants = [];
-    for (const plantDef of getAllPlantDefs()) {
-      if (plantDef && StorageManager.isPlantUnlocked(plantDef.id)) {
-        availablePlants.push(plantDef.id);
+    // Setup combat footer — use squad if provided, otherwise all unlocked plants
+    let availablePlants;
+    if (squad && squad.length > 0) {
+      availablePlants = squad;
+    } else {
+      availablePlants = [];
+      for (const plantDef of getAllPlantDefs()) {
+        if (plantDef && StorageManager.isPlantUnlocked(plantDef.id)) {
+          availablePlants.push(plantDef.id);
+        }
       }
     }
     ui.setupCombatFooter(availablePlants);

@@ -12,6 +12,7 @@ import { FireBullet } from './Bullet.js';
 import { WaveManager } from './WaveManager.js';
 import { Sun } from './Sun.js';
 import { StorageManager } from './StorageManager.js';
+import { getZombieDef } from './ZombieConfig.js';
 import { drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
 import { assetManager } from './AssetManager.js';
 
@@ -306,11 +307,12 @@ export class BattleManager {
   }
 
   calculateCrystals() {
-    let total = this.levelConfig.baseCrystalReward || 0;
-    total += (this.enemiesKilled.normal || 0) * 1;
-    total += (this.enemiesKilled.cone || 0) * 2;
-    total += (this.enemiesKilled.shield || 0) * 3;
-    total += (this.enemiesKilled.imp || 0) * 1;
+    let total = 0;
+    for (const [type, count] of Object.entries(this.enemiesKilled)) {
+      const def = getZombieDef(type);
+      const star = def ? def.threatLevel : 1;
+      total += count * star;
+    }
     return total;
   }
 
@@ -398,7 +400,7 @@ export class BattleManager {
   spawnZombie(type = 'normal') {
     const row = Math.floor(Math.random() * this.lawn.rows);
     const x = GAME_CONFIG.CANVAS_WIDTH;
-    const y = this.lawn.getRowY(row);
+    const y = this.lawn.getRowY(row) - 40;  // center zombie on row (render height 80 / 2)
     let zombie;
     switch (type) {
       case 'cone': zombie = new ConeZombie(x, y, row); break;
