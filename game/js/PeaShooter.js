@@ -48,7 +48,7 @@ export class PeaShooter extends Plant {
         this.shooting = true;
         const m = STAR_CONFIG[this.starLevel] || STAR_CONFIG[1];
         const dmg = Math.floor(this.baseDamage * m.damageMult);
-        const bullet = new Bullet(this.x + 80, this.y + 40, this.row, dmg);
+        const bullet = new Bullet(this.x + 50, this.y, this.row, dmg);
         game.addBullet(bullet);
         setTimeout(() => { this.shooting = false; }, 200);
       }
@@ -71,7 +71,7 @@ export class PeaShooter extends Plant {
       this.skillCooldown = this.skillMaxCooldown;
       this.isSkillActive = true;
       this.skillTimer = this.skillDuration;
-      const fireBullet = new FireBullet(this.x + 80, this.y + 40, this.row, this.skillDamage);
+      const fireBullet = new FireBullet(this.x + 50, this.y, this.row, this.skillDamage);
       game.addBullet(fireBullet);
       return true;
     }

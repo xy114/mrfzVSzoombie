@@ -462,21 +462,11 @@ export class UIManager {
 
     this.$hbDetailName.textContent = def.name;
     this.$hbDetailThreat.style.display = 'none';
-    // Draw portrait on canvas — proportional scaling
+    // Draw portrait on canvas — _drawPortrait handles GIF + proportional scaling
     const canvas = this.$hbDetailCanvas;
     if (canvas) {
-      const portraitKey = plantId + '_portrait';
-      const img = assetManager.getImage(portraitKey);
-      const maxW = 200, maxH = 260;
-      if (img) {
-        const margin = 0.9;
-        const gifScale = Math.min((maxW * margin) / img.naturalWidth, (maxH * margin) / img.naturalHeight);
-        canvas.width = Math.round(img.naturalWidth * gifScale);
-        canvas.height = Math.round(img.naturalHeight * gifScale);
-      } else {
-        canvas.width = maxW;
-        canvas.height = maxH;
-      }
+      canvas.width = 200;
+      canvas.height = 260;
       const pctx = canvas.getContext('2d');
       pctx.clearRect(0, 0, canvas.width, canvas.height);
       this._drawPortrait(pctx, 'plant', plantId, canvas.width, canvas.height);
@@ -641,26 +631,11 @@ export class UIManager {
     this.$hbDetailThreat.style.display = '';
     this.$hbDetailThreat.textContent = threat.text;
     this.$hbDetailThreat.className = 'hb-detail-threat ' + threat.class;
-    // Draw portrait on canvas — proportional scaling
+    // Draw portrait on canvas — _drawPortrait handles GIF + proportional scaling
     const canvas = this.$hbDetailCanvas;
     if (canvas) {
-      const maxW = 200, maxH = 260;
-      if (isEncountered) {
-        const portraitKey = enemyId + '_portrait';
-        const img = assetManager.getImage(portraitKey);
-        if (img) {
-          const margin = 0.9;
-          const gifScale = Math.min((maxW * margin) / img.naturalWidth, (maxH * margin) / img.naturalHeight);
-          canvas.width = Math.round(img.naturalWidth * gifScale);
-          canvas.height = Math.round(img.naturalHeight * gifScale);
-        } else {
-          canvas.width = maxW;
-          canvas.height = maxH;
-        }
-      } else {
-        canvas.width = maxW;
-        canvas.height = maxH;
-      }
+      canvas.width = 200;
+      canvas.height = 260;
       const pctx = canvas.getContext('2d');
       pctx.clearRect(0, 0, canvas.width, canvas.height);
       if (isEncountered) {

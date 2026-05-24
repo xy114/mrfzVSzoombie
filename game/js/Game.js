@@ -119,10 +119,10 @@ export class BattleManager {
   }
 
   spawnRandomSun() {
-    const row = Math.floor(Math.random() * GAME_CONFIG.LAWN_ROWS);
-    const col = Math.floor(Math.random() * GAME_CONFIG.LAWN_COLS);
+    const row = Math.floor(Math.random() * this.lawn.rows);
+    const col = Math.floor(Math.random() * this.lawn.cols);
     const x = col * GAME_CONFIG.CELL_WIDTH + Math.random() * 30;
-    const targetY = row * GAME_CONFIG.CELL_HEIGHT + Math.random() * 50;
+    const targetY = this.lawn.getRowY(row) + Math.random() * 50;
     const sun = new Sun(x, 0, targetY);
     this.addSun(sun);
   }
@@ -131,43 +131,56 @@ export class BattleManager {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.lawn.render(this.ctx);
 
-    // Draw cell highlight for drag placement
+    // Draw plant ghost on valid target cell during drag
     if (this.dragState) {
-      const { hoverRow, hoverCol, plantType, mouseX, mouseY } = this.dragState;
-      if (hoverRow >= 0 && hoverRow < GAME_CONFIG.LAWN_ROWS &&
-          hoverCol >= 0 && hoverCol < GAME_CONFIG.LAWN_COLS) {
+      const { hoverRow, hoverCol, plantType } = this.dragState;
+      if (hoverRow >= 0 && hoverRow < this.lawn.rows &&
+          hoverCol >= 0 && hoverCol < this.lawn.cols) {
         const cost = this._getPlantCost(plantType);
         const canPlace = this.lawn.canPlant(hoverRow, hoverCol) && this.sun >= cost && !this.isPlantOnCooldown(plantType);
-        this.ctx.fillStyle = canPlace ? 'rgba(100, 255, 100, 0.25)' : 'rgba(255, 80, 80, 0.3)';
-        this.ctx.strokeStyle = canPlace ? 'rgba(100, 255, 100, 0.7)' : 'rgba(255, 80, 80, 0.7)';
-        this.ctx.lineWidth = 2;
 
-        if (this.lawn.usePolyGrid) {
+        if (canPlace) {
+          // Draw plant ghost at tile center, scaled to tile size
           const tile = this.lawn.sceneGrid.tiles[`${hoverRow},${hoverCol}`];
           if (tile) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(tile.poly[0][0], tile.poly[0][1]);
-            for (let i = 1; i < tile.poly.length; i++) {
-              this.ctx.lineTo(tile.poly[i][0], tile.poly[i][1]);
+            const tileSize = this.lawn.getTileSize(hoverRow, hoverCol);
+            const sz = Math.min(tileSize.w, tileSize.h) * 0.7;
+            const cx = tile.center[0], cy = tile.center[1];
+
+            this.ctx.save();
+            this.ctx.globalAlpha = 0.45;
+            // If slanted column, tilt 45°
+            if (this.lawn.isSlanted(hoverCol)) {
+              this.ctx.translate(cx, cy);
+              this.ctx.rotate(-Math.PI / 4);
+              this.ctx.translate(-cx, -cy);
             }
-            this.ctx.closePath();
-            this.ctx.fill();
-            this.ctx.stroke();
+
+            const img = assetManager.getImage(plantType);
+            if (img) {
+              const imgScale = Math.min(sz / img.naturalWidth, sz / img.naturalHeight);
+              const dw = img.naturalWidth * imgScale;
+              const dh = img.naturalHeight * imgScale;
+              this.ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
+            } else {
+              if (plantType === 'sunflower') drawSunflower(this.ctx, cx - sz / 2, cy - sz / 2, sz, sz);
+              else if (plantType === 'peashooter') drawPeashooter(this.ctx, cx - sz / 2, cy - sz / 2, sz, sz, false);
+              else if (plantType === 'nut') drawNut(this.ctx, cx - sz / 2, cy - sz / 2, sz, sz, false);
+              else if (plantType === 'cherrybomb') drawCherryBomb(this.ctx, cx - sz / 2, cy - sz / 2, sz, sz, false);
+            }
+            this.ctx.restore();
           }
-        } else {
-          const cellX = hoverCol * GAME_CONFIG.CELL_WIDTH;
-          const cellY = hoverRow * GAME_CONFIG.CELL_HEIGHT;
-          this.ctx.fillRect(cellX + 1, cellY + 1, GAME_CONFIG.CELL_WIDTH - 2, GAME_CONFIG.CELL_HEIGHT - 2);
-          this.ctx.strokeRect(cellX + 1, cellY + 1, GAME_CONFIG.CELL_WIDTH - 2, GAME_CONFIG.CELL_HEIGHT - 2);
         }
       }
     }
 
     this.plants.forEach(plant => {
       const s = plant.scale || 1;
-      if (s !== 1) {
+      const r = plant.rotation || 0;
+      if (s !== 1 || r !== 0) {
         this.ctx.save();
         this.ctx.translate(plant.x, plant.y);
+        if (r !== 0) this.ctx.rotate(r);
         this.ctx.scale(s, s);
         const ox = plant.x, oy = plant.y;
         plant.x = -40;
@@ -383,9 +396,9 @@ export class BattleManager {
   }
 
   spawnZombie(type = 'normal') {
-    const row = Math.floor(Math.random() * 5);
+    const row = Math.floor(Math.random() * this.lawn.rows);
     const x = GAME_CONFIG.CANVAS_WIDTH;
-    const y = row * GAME_CONFIG.CELL_HEIGHT;
+    const y = this.lawn.getRowY(row);
     let zombie;
     switch (type) {
       case 'cone': zombie = new ConeZombie(x, y, row); break;

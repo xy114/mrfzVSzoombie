@@ -1,12 +1,18 @@
 // Scene grid definitions — manually calibrated
 export const SCENE_GRIDS = {
 
+  // Scene metadata: rows/cols per scene, special tiles
+  // waterRows: 0-indexed row indices that are water (unplantable without lily pad)
+  // slantedCols: 0-indexed column indices where plants tilt 45° left
+  // noPlace: true means no grid cells at all (ground scene)
+
   // day: 747x320 image
   day: {
     imageSize: [747, 320],
     canvasRect: [0, 0, 900, 540],
     rows: 5,
     cols: 9,
+    meta: {},
     tiles: {
       "0,0": { poly: [[165,77],[216,67],[218,161],[161,163]], center: [190,117] },
       "0,1": { poly: [[216,67],[268,62],[266,163],[218,161]], center: [242,113.3] },
@@ -61,6 +67,7 @@ export const SCENE_GRIDS = {
     imageSize: [1400, 600],
     canvasRect: [0, 0, 900, 540],
     rows: 5, cols: 9,
+    meta: {},
     tiles: (function() {
       var t = {};
       for (var r = 0; r < 5; r++) {
@@ -75,11 +82,42 @@ export const SCENE_GRIDS = {
   }
 };
 
-// NOTE: night/pool/fog/one/three/ground/dayRoof/nightRoof
+// NOTE: pool/fog/one/three/ground/dayRoof/nightRoof
 // still need calibration. They currently fall back to day or use rectangular grid.
+
+// Per-scene metadata: waterRows, slantedCols, etc.
+// Keyed by sceneId; falls back to empty object if not listed.
+const SCENE_META = {
+  day:        {},
+  night:      {},
+  pool:       { waterRows: [2, 3] },
+  fog:        { waterRows: [2, 3] },
+  one:        {},
+  three:      {},
+  ground:     { noPlace: true },
+  dayRoof:    { slantedCols: [0, 1, 2, 3, 4] },
+  nightRoof:  { slantedCols: [0, 1, 2, 3, 4] },
+};
 
 export function getSceneGrid(sceneId) {
   return SCENE_GRIDS[sceneId] || SCENE_GRIDS['day'];
+}
+
+export function getSceneMeta(sceneId) {
+  return SCENE_META[sceneId] || {};
+}
+
+// Compute the "invisible standard row" Y for a given row — average of all tile center Ys
+export function getRowY(grid, row) {
+  var sum = 0, count = 0;
+  for (var c = 0; c < grid.cols; c++) {
+    var tile = grid.tiles[row + ',' + c];
+    if (tile) {
+      sum += tile.center[1];
+      count++;
+    }
+  }
+  return count > 0 ? sum / count : row * 108; // Fallback to 108px per row
 }
 
 export function createDefaultGrid() {

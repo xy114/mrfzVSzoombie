@@ -32,8 +32,8 @@ export class CherryBomb extends Plant {
 
     const cellW = 100;
     for (const zombie of game.zombies) {
-      const dx = Math.abs(zombie.x + 30 - (this.x + 40));
-      const dy = Math.abs(zombie.y + 40 - (this.y + 40));
+      const dx = Math.abs(zombie.x + 30 - this.x);
+      const dy = Math.abs(zombie.y + 40 - this.y);
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < this.explosionRadius * cellW * 0.6) {
         zombie.takeDamage(this.explosionDamage, 'physical');

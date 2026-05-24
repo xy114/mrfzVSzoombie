@@ -109,10 +109,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
         const placed = bm.handlePlantClick(x, y, ui.dragState.plantType);
-        if (placed) {
-          ui.deselectPlant();
-          updateDrag();
-        }
+        // Always cancel drag on drop — valid placement succeeded, invalid = cancel without cooldown
+        ui.deselectPlant();
+        updateDrag();
         return;
       }
 

@@ -16,7 +16,8 @@
   "devDependencies": {
     "electron": "42.2.0",
     "electron-builder": "24.13.3",
-    "electron-packager": "^17.1.2"
+    "electron-packager": "^17.1.2",
+    "playwright": "^1.60.0"
   },
   "build": {
     "appId": "com.mrfz.vszombie",

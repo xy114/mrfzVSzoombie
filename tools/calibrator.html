@@ -39,10 +39,8 @@
 </div>
 <canvas id="cvs" width="900" height="540"></canvas>
 <div class="help">
-  <b>操作:</b> 按从上到下、从左到右的顺序点击每个<b>网格交点</b>（6行×10列 = <b>60个点</b>）<br>
-  第1行（最上面那行）: [0,0]→[0,1]→[0,2]→...→[0,9] 共10点<br>
-  第2行: [1,0]→[1,1]→...→[1,9] 共10点<br>
-  ... 直到第6行最底部<br>
+  <b>操作:</b> 按从上到下、从左到右的顺序点击每个<b>网格交点</b>（共 <b id="helpTotal">60</b> 个点：<b id="helpRows">6</b>行×<b id="helpCols">10</b>列）<br>
+  从上到下逐行标记，每行从最左边点开始<br>
   <b>当前标记:</b> <span id="currentDot" style="color:#0f0;">[0,0]</span> &nbsp; 已标记: <span id="pointCount" style="color:#ff0;">0/60</span>
 </div>
 <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -57,10 +55,21 @@
 <script>
 const canvas = document.getElementById('cvs');
 const ctx = canvas.getContext('2d');
-const ROWS = 5, COLS = 9;
-const PTS_PER_ROW = COLS + 1; // 10
-const TOTAL_PTS = (ROWS + 1) * PTS_PER_ROW; // 60
 const SCENE_IDS = ['day','night','pool','fog','one','three','ground','dayRoof','nightRoof'];
+const SCENE_LAYOUT = {
+  day:        { rows: 5, cols: 9 },
+  night:      { rows: 5, cols: 9 },
+  pool:       { rows: 6, cols: 9 },
+  fog:        { rows: 6, cols: 9 },
+  one:        { rows: 1, cols: 9 },
+  three:      { rows: 3, cols: 9 },
+  ground:     { rows: 0, cols: 0 },
+  dayRoof:    { rows: 5, cols: 9 },
+  nightRoof:  { rows: 5, cols: 9 },
+};
+let ROWS = 5, COLS = 9;
+let PTS_PER_ROW = COLS + 1;
+let TOTAL_PTS = (ROWS + 1) * PTS_PER_ROW;
 
 let currentImage = null;
 let currentSceneId = null;
@@ -86,7 +95,7 @@ document.getElementById('btnDownload').onclick = downloadFull;
 canvas.onclick = (e) => {
   if (!currentImage) return;
   if (points.length >= TOTAL_PTS) {
-    document.getElementById('info').textContent = '已完成全部60个点! 请保存';
+    document.getElementById('info').textContent = `已完成全部${TOTAL_PTS}个点! (${ROWS+1}行×${COLS+1}列) 请保存`;
     return;
   }
   const rect = canvas.getBoundingClientRect();
@@ -107,14 +116,34 @@ const sceneFiles = {
 function loadScene(sceneId) {
   currentSceneId = sceneId;
   points = [];
+  // Apply scene-specific layout
+  const layout = SCENE_LAYOUT[sceneId] || { rows: 5, cols: 9 };
+  ROWS = layout.rows;
+  COLS = layout.cols;
+  PTS_PER_ROW = COLS + 1;
+  TOTAL_PTS = (ROWS + 1) * PTS_PER_ROW;
   if (savedGrids[sceneId] && savedGrids[sceneId].points) {
     points = savedGrids[sceneId].points.map(p => ({x: p[0], y: p[1]}));
+  }
+  if (ROWS === 0 && COLS === 0) {
+    document.getElementById('info').textContent = `${sceneId} — 无可放置格子`;
+    document.getElementById('helpTotal').textContent = '0';
+    document.getElementById('helpRows').textContent = '0';
+    document.getElementById('helpCols').textContent = '0';
+    document.getElementById('pointCount').textContent = '0/0';
+    currentImage = null;
+    draw();
+    return;
   }
   const img = new Image();
   img.onload = () => {
     currentImage = img; imageW = img.naturalWidth; imageH = img.naturalHeight;
     document.getElementById('info').textContent =
-      `已加载 ${sceneId} (${imageW}x${imageH}) — 请点击网格交点`;
+      `已加载 ${sceneId} (${imageW}x${imageH}, ${ROWS}×${COLS}) — 请点击网格交点`;
+    document.getElementById('helpTotal').textContent = TOTAL_PTS;
+    document.getElementById('helpRows').textContent = ROWS + 1;
+    document.getElementById('helpCols').textContent = COLS + 1;
+    document.getElementById('pointCount').textContent = `0/${TOTAL_PTS}`;
     draw();
   };
   img.onerror = () => { document.getElementById('info').textContent = `加载失败: ${sceneFiles[sceneId]}`; };
@@ -212,10 +241,10 @@ function draw() {
     const nr = Math.floor(points.length / PTS_PER_ROW);
     const nc = points.length % PTS_PER_ROW;
     document.getElementById('currentDot').textContent = `[${nr},${nc}]`;
-    document.getElementById('pointCount').textContent = `${points.length}/60`;
+    document.getElementById('pointCount').textContent = `${points.length}/${TOTAL_PTS}`;
   } else {
     document.getElementById('currentDot').textContent = '完成!';
-    document.getElementById('pointCount').textContent = '60/60';
+    document.getElementById('pointCount').textContent = `${TOTAL_PTS}/${TOTAL_PTS}`;
   }
 }
 
@@ -249,10 +278,16 @@ function saveCurrent() {
     document.getElementById('info').textContent = `还需要 ${TOTAL_PTS - points.length} 个点!`;
     return;
   }
+  if (ROWS === 0 || COLS === 0) {
+    document.getElementById('info').textContent = '此场景无可放置格子，无需校准';
+    return;
+  }
   const tiles = gridFrom60(points);
   savedGrids[currentSceneId] = {
     points: points.map(p => [p.x, p.y]),
     imageSize: [imageW, imageH],
+    rows: ROWS,
+    cols: COLS,
     tiles: tiles,
   };
   localStorage.setItem('calibratedGrids60', JSON.stringify(savedGrids));
@@ -266,18 +301,19 @@ function downloadFull() {
   for (const id of SCENE_IDS) {
     if (savedGrids[id]) {
       const data = savedGrids[id];
+      const dRows = data.rows || 5, dCols = data.cols || 9;
       entries.push(`  // ${id}: ${data.imageSize[0]}x${data.imageSize[1]} image
   ${id}: {
     imageSize: [${data.imageSize[0]}, ${data.imageSize[1]}],
     canvasRect: [0, 0, ${canvas.width}, ${canvas.height}],
-    rows: ${ROWS},
-    cols: ${COLS},
+    rows: ${dRows},
+    cols: ${dCols},
     tiles: ${JSON.stringify(data.tiles, null, 6).replace(/"(\d+,\d+)"/g, '"$1"')}
   },`);
     }
   }
   if (entries.length === 0) { alert('还没有保存任何场景!'); return; }
-  const content = `// Auto-generated 60-point calibrated scene grid definitions
+  const content = `// Auto-generated calibrated scene grid definitions
 export const SCENE_GRIDS = {
 ${entries.join('\n')}
 };

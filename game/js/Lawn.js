@@ -1,6 +1,6 @@
 import { GAME_CONFIG } from './constants.js';
 import { assetManager } from './AssetManager.js';
-import { getSceneGrid, createDefaultGrid } from './SceneGrid.js';
+import { getSceneGrid, createDefaultGrid, getSceneMeta, getRowY } from './SceneGrid.js';
 
 export class Lawn {
   constructor(sceneId = 'day') {
@@ -13,6 +13,18 @@ export class Lawn {
     this.sceneId = sceneId;
     this.sceneGrid = getSceneGrid(sceneId);
     this.usePolyGrid = !!this.sceneGrid;
+    this.meta = getSceneMeta(sceneId);
+
+    // Update rows/cols from scene grid (varies per scene)
+    this.rows = this.sceneGrid.rows || this.rows;
+    this.cols = this.sceneGrid.cols || this.cols;
+    this.grid = Array(this.rows).fill(null).map(() => Array(this.cols).fill(null));
+
+    // Pre-compute invisible standard row Y values
+    this.rowY = [];
+    for (var r = 0; r < this.rows; r++) {
+      this.rowY.push(getRowY(this.sceneGrid, r));
+    }
 
     this.debugGrid = (typeof localStorage !== 'undefined' && localStorage.getItem('debugGrid') === '1') ||
       (typeof URLSearchParams !== 'undefined' &&
@@ -24,7 +36,24 @@ export class Lawn {
   }
 
   canPlant(row, col) {
-    return row >= 0 && row < this.rows && col >= 0 && col < this.cols && !this.grid[row][col];
+    if (this.meta.noPlace) return false;
+    if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) return false;
+    if (this.grid[row][col]) return false;
+    if (this.meta.waterRows && this.meta.waterRows.includes(row)) return false;
+    if (!this.sceneGrid.tiles[row + ',' + col]) return false;
+    return true;
+  }
+
+  isWater(row) {
+    return this.meta.waterRows && this.meta.waterRows.includes(row);
+  }
+
+  isSlanted(col) {
+    return this.meta.slantedCols && this.meta.slantedCols.includes(col);
+  }
+
+  getRowY(row) {
+    return this.rowY[row] !== undefined ? this.rowY[row] : row * this.cellHeight;
   }
 
   plant(row, col, plant) {
@@ -47,6 +76,9 @@ export class Lawn {
       }
       const avgSize = this.getAvgTileSize();
       plant.scale = avgSize.w / this.cellWidth;
+      if (this.isSlanted(col)) {
+        plant.rotation = -Math.PI / 4; // 45° left tilt for roof slant
+      }
       return true;
     }
     return false;

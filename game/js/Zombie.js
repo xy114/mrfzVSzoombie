@@ -28,8 +28,8 @@ export class Zombie {
   update(deltaTime, game) {
     const plantInFront = game.plants.find(p =>
       p.row === this.row &&
-      p.x < this.x + 80 &&
-      p.x > this.x - 110
+      p.x < this.x + 120 &&
+      p.x > this.x - 130
     );
 
     if (plantInFront) {

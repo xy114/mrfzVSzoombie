@@ -12,6 +12,7 @@ export class Plant {
     this.health = 100;
     this.alive = true;
     this.scale = 1;
+    this.rotation = 0;
     this._doHealthScaling();
   }
 
