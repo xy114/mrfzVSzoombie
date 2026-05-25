@@ -12,7 +12,9 @@ const DEFAULT_SAVE = {
   devMode: false,
   displayPlant: 'sunflower',
   unlockedSquadSlots: 6,
-  savedSquads: {}
+  savedSquads: {},
+  visitorSquad: [],
+  unlockedVisitors: ['katana_zero']
 };
 
 let saveData = null;
@@ -183,5 +185,34 @@ export const StorageManager = {
 
   getLastSquad() {
     return (saveData.savedSquads && saveData.savedSquads._last) || [];
+  },
+
+  // Visitor system
+  isVisitorUnlocked(visitorId) {
+    if (saveData.devMode) return true;
+    return (saveData.unlockedVisitors || []).includes(visitorId);
+  },
+
+  unlockVisitor(visitorId) {
+    if (!saveData.unlockedVisitors) saveData.unlockedVisitors = [];
+    if (!saveData.unlockedVisitors.includes(visitorId)) {
+      saveData.unlockedVisitors.push(visitorId);
+      this.save();
+      return true;
+    }
+    return false;
+  },
+
+  getVisitorSquad() {
+    return saveData.visitorSquad || [];
+  },
+
+  saveVisitorSquad(visitorIds) {
+    saveData.visitorSquad = visitorIds;
+    this.save();
+  },
+
+  getUnlockedVisitors() {
+    return (saveData.unlockedVisitors || []).filter(id => this.isVisitorUnlocked(id));
   }
 };
