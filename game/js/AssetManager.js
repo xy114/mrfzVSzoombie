@@ -46,7 +46,11 @@ export class AssetManager {
       plant_card_bg: 'resources/others/Almanac_PlantCard.png',
       zombie_card_bg: 'resources/others/Almanac_ZombieCard.png',
       // Crystal icon
-      crystal_icon: 'resources/others/浅蓝正八面体.png'
+      crystal_icon: 'resources/others/浅蓝正八面体.png',
+      // Visitor resources
+      visitor_katana_zero: 'resources/special/Katana Zero.jpg',
+      visitor_katana_zero_time: 'resources/special/Katana Zero time.png',
+      visitor_slash: 'resources/special/刀光.png'
     };
   }
 
