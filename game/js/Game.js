@@ -42,6 +42,10 @@ export class BattleManager {
     this.plantCooldowns = {}; // { plantType: remainingMs }
     this._currentTime = 0;
     this.dragState = null; // set by main.js for ghost rendering
+    this.timeScale = 1.0;
+    this.visitors = [];
+    this.damageNumbers = [];
+    this.slashEffects = [];
 
     this.onVictory = null;
     this.onDefeat = null;
@@ -75,11 +79,13 @@ export class BattleManager {
     const currentTime = performance.now();
     this._currentTime = currentTime;
 
+    const scaledDelta = deltaTime * this.timeScale;
+
     // Update plant cooldowns
     let cooldownsChanged = false;
     for (const type of Object.keys(this.plantCooldowns)) {
       if (this.plantCooldowns[type] > 0) {
-        this.plantCooldowns[type] = Math.max(0, this.plantCooldowns[type] - deltaTime);
+        this.plantCooldowns[type] = Math.max(0, this.plantCooldowns[type] - scaledDelta);
         cooldownsChanged = true;
       }
     }
@@ -87,30 +93,44 @@ export class BattleManager {
       this.onCooldownUpdate(this.getCooldowns());
     }
 
-    this.waveManager.update(deltaTime, currentTime);
+    this.waveManager.update(scaledDelta, currentTime);
 
-    this.sunSpawnTimer += deltaTime;
+    this.sunSpawnTimer += scaledDelta;
     if (this.sunSpawnTimer >= SUN_CONFIG.SPAWN_INTERVAL) {
       this.sunSpawnTimer = 0;
       this.spawnRandomSun();
     }
 
-    this.plants.forEach(plant => plant.update(deltaTime, this));
+    this.plants.forEach(plant => plant.update(scaledDelta, this));
 
     this.bullets = this.bullets.filter(bullet => {
       if (bullet instanceof FireBullet) {
-        bullet.update(deltaTime, this);
+        bullet.update(scaledDelta, this);
       } else {
-        bullet.update(deltaTime);
+        bullet.update(scaledDelta);
       }
       return bullet.active;
     });
 
-    this.zombies.forEach(zombie => zombie.update(deltaTime, this));
+    this.zombies.forEach(zombie => zombie.update(scaledDelta, this));
 
     this.suns = this.suns.filter(sun => {
-      sun.update(deltaTime);
+      sun.update(scaledDelta);
       return sun.active;
+    });
+
+    // Visitors always operate at real time (unaffected by timeScale)
+    this.visitors.forEach(v => v.update(deltaTime, this));
+
+    // Visual effects always animate at real time
+    this.damageNumbers = this.damageNumbers.filter(dn => {
+      dn.update(deltaTime);
+      return dn.active;
+    });
+
+    this.slashEffects = this.slashEffects.filter(se => {
+      se.update(deltaTime);
+      return se.active;
     });
 
     this.checkCollisions();
@@ -198,6 +218,15 @@ export class BattleManager {
     this.zombies.forEach(zombie => zombie.render(this.ctx));
     this.suns.forEach(sun => sun.render(this.ctx));
 
+    // Visitors
+    this.visitors.forEach(v => v.render(this.ctx));
+
+    // Slash effects
+    this.slashEffects.forEach(se => se.render(this.ctx));
+
+    // Damage numbers (on top of everything)
+    this.damageNumbers.forEach(dn => dn.render(this.ctx));
+
     // Draw drag ghost on top (GIF优先，程序化fallback)
     if (this.dragState && this.dragState.mouseX !== undefined) {
       const { plantType, mouseX, mouseY } = this.dragState;
@@ -221,6 +250,15 @@ export class BattleManager {
         else if (plantType === 'nut') drawNut(this.ctx, gx, gy, 80, 80, false);
         else if (plantType === 'cherrybomb') drawCherryBomb(this.ctx, gx, gy, 80, 80, false);
       }
+      this.ctx.restore();
+    }
+
+    // Time-stop visual overlay
+    if (this.timeScale <= GAME_CONFIG.TIME_STOP + 0.01) {
+      this.ctx.save();
+      this.ctx.globalAlpha = 0.2;
+      this.ctx.fillStyle = '#a000c8';
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       this.ctx.restore();
     }
   }
@@ -320,6 +358,14 @@ export class BattleManager {
   addZombie(zombie) { this.zombies.push(zombie); }
   addBullet(bullet) { this.bullets.push(bullet); }
   addSun(sun) { this.suns.push(sun); }
+
+  addVisitor(visitor) { this.visitors.push(visitor); }
+  addDamageNumber(dn) { this.damageNumbers.push(dn); }
+  addSlashEffect(se) { this.slashEffects.push(se); }
+
+  setTimeScale(scale) {
+    this.timeScale = scale;
+  }
 
   collectSun(value) {
     this.sun += value;

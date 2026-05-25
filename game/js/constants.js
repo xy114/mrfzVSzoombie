@@ -5,7 +5,9 @@ export const GAME_CONFIG = {
   LAWN_COLS: 9,
   CELL_WIDTH: 100,
   CELL_HEIGHT: 108,
-  FPS: 60
+  FPS: 60,
+  TIME_PANEL: 0.25,
+  TIME_STOP: 0.05
 };
 
 export const PLANT_TYPES = {
