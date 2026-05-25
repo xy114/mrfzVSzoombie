@@ -18,15 +18,14 @@ export const PLANT_TYPES = {
 };
 
 export const ZOMBIE_TYPES = {
-  NORMAL: { name: 'normal', health: 100, speed: 0.3, defense: 0, magicResist: 0 },
-  CONE: { name: 'cone', health: 200, speed: 0.3, defense: 0, magicResist: 0 },
-  SHIELD: { name: 'shield', health: 180, speed: 0.25, defense: 15, magicResist: 0 },
-  IMP: { name: 'imp', health: 60, speed: 0.6, defense: 0, magicResist: 0 }
+  NORMAL: { name: 'normal', health: 100, speed: 0.3, defense: 0, magicResist: 0, bodyType: 'humanoid' },
+  CONE: { name: 'cone', health: 200, speed: 0.3, defense: 0, magicResist: 0, bodyType: 'humanoid' },
+  SHIELD: { name: 'shield', health: 180, speed: 0.25, defense: 15, magicResist: 0, bodyType: 'humanoid' },
+  IMP: { name: 'imp', health: 60, speed: 0.6, defense: 0, magicResist: 0, bodyType: 'humanoid' }
 };
 
 export const BULLET_CONFIG = {
-  PEASHOOTER: { speed: 5, damage: 20 },
-  FIRE_PEA: { speed: 7, damage: 50, explosionRadius: 1.5 }
+  PEASHOOTER: { speed: 5, damage: 20 }
 };
 
 export const SUN_CONFIG = {
@@ -44,9 +43,15 @@ export const STAR_CONFIG = {
 
 export const SKIN_CONFIG = {
   peashooter: {
-    flame_emperor: {
-      firePeaDamage: 80,
-      skillCooldown: 8000
+    wishadel: {
+      skillDamage: 120,
+      skillCooldown: 10000,
+      shellSpeed: 22,
+      aimDuration: 600,
+      explosionRadius: 2.5,
+      peaDamage: 25,
+      peaSpeed: 22,
+      bodyType: 'humanoid'
     }
   }
 };

@@ -5,7 +5,7 @@ import { getZombieDef, getAllZombieDefs, getThreatLabel } from './ZombieConfig.j
 import { drawNormalZombiePortrait, drawConeZombiePortrait, drawShieldZombiePortrait, drawImpZombiePortrait } from './ZombieRenderer.js';
 import { drawSunflowerPortrait, drawPeashooterPortrait, drawNutPortrait, drawCherryBombPortrait, drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
 import { assetManager } from './AssetManager.js';
-import { getVisitorDef, getAllVisitorDefs, getVisitorDisplayName } from './VisitorConfig.js';
+import { getVisitorDef, getAllVisitorDefs, getVisitorDisplayName, getVisitorCardOffset } from './VisitorConfig.js';
 import { GAME_CONFIG } from './constants.js';
 
 export class UIManager {
@@ -51,6 +51,9 @@ export class UIManager {
     this.$crystalVal = document.getElementById('crystal-value');
     this.$standeeEmoji = document.getElementById('standee-emoji');
     this.$psGrid = document.getElementById('ps-grid');
+    this.$dsGrid = document.getElementById('ds-grid');
+    this.$dsTitle = document.getElementById('ds-title');
+    this.$dsOverlay = document.getElementById('modal-display-skin');
     this.$devInput = document.getElementById('dev-input');
     this.$toast = document.getElementById('toast');
     this.$gearCanvas = document.getElementById('gear-canvas');
@@ -84,6 +87,7 @@ export class UIManager {
     on('hb-back', 'click', () => this.showPage('main'));
     on('ehb-back', 'click', () => this.showPage('main'));
     on('dev-btn', 'click', () => { this._onDevBtnClick(); });
+    on('version-btn', 'click', () => { this._showVersion(); });
     on('settings-gear-btn', 'click', () => { this.showModal('settings'); });
     if (this.$combatExitBtn) {
       this.$combatExitBtn.addEventListener('click', () => this._confirmExitCombat());
@@ -118,6 +122,22 @@ export class UIManager {
     if (this.$hbDetailOverlay) {
       this.$hbDetailOverlay.addEventListener('click', (e) => {
         if (e.target === this.$hbDetailOverlay) this.hideDetail();
+      });
+    }
+
+    // Visitor picker — wire once
+    const visitorPickerBack = document.getElementById('visitor-picker-back');
+    if (visitorPickerBack) {
+      visitorPickerBack.addEventListener('click', () => this.hideVisitorPicker());
+    }
+    const visitorPickerConfirm = document.getElementById('visitor-picker-confirm');
+    if (visitorPickerConfirm) {
+      visitorPickerConfirm.addEventListener('click', () => this._confirmVisitorPick());
+    }
+    // Specialize overlay close for visitor picker (re-show squad modal)
+    if (this.$visitorPickerOverlay) {
+      this.$visitorPickerOverlay.addEventListener('click', (e) => {
+        if (e.target === this.$visitorPickerOverlay) this.hideVisitorPicker();
       });
     }
   }
@@ -167,13 +187,24 @@ export class UIManager {
   }
 
   refreshDisplayPlant() {
-    const plantId = StorageManager.getDisplayPlant();
-    const def = getPlantDef(plantId);
-    if (!def) return;
+    const displayId = StorageManager.getDisplayPlant();
+    const visitorDef = getVisitorDef(displayId);
+    const plantDef = visitorDef ? null : getPlantDef(displayId);
+    if (!visitorDef && !plantDef) return;
     const frame = document.getElementById('standee-frame');
     if (!frame) return;
 
-    const img = assetManager.getImage(plantId) || assetManager.getImage(plantId + '_portrait');
+    const displaySkinId = visitorDef ? null : StorageManager.getEquippedSkin(displayId);
+    let img = visitorDef
+      ? assetManager.getImageNoBg('visitor_katana_zero')
+      : null;
+    if (!img && !visitorDef && displaySkinId) {
+      const skinPortraitKey = displayId + '_skin_' + displaySkinId + '_portrait';
+      img = assetManager.getImage(skinPortraitKey);
+    }
+    if (!img && !visitorDef) {
+      img = assetManager.getImage(displayId) || assetManager.getImage(displayId + '_portrait');
+    }
 
     let canvas = frame.querySelector('canvas');
     if (!canvas) {
@@ -208,7 +239,16 @@ export class UIManager {
         canvas.width = Math.round(availW);
         canvas.height = Math.round(availH);
         pctx.clearRect(0, 0, canvas.width, canvas.height);
-        this._drawPortrait(pctx, 'plant', plantId, canvas.width, canvas.height);
+        if (visitorDef) {
+          pctx.fillStyle = '#1a1a2e';
+          pctx.fillRect(0, 0, canvas.width, canvas.height);
+          pctx.fillStyle = '#c040ff';
+          pctx.font = '36px sans-serif';
+          pctx.textAlign = 'center';
+          pctx.fillText('???', canvas.width / 2, canvas.height / 2);
+        } else {
+          this._drawPortrait(pctx, 'plant', displayId, canvas.width, canvas.height, displaySkinId, true);
+        }
       }
       canvas.style.display = 'block';
     };
@@ -441,7 +481,8 @@ export class UIManager {
         const canvas = document.createElement('canvas');
         canvas.width = 56; canvas.height = 70;
         const cctx = canvas.getContext('2d');
-        this._drawPortrait(cctx, 'plant', plantId, 56, 70);
+        const skinId = StorageManager.getEquippedSkin(plantId);
+        this._drawPortrait(cctx, 'plant', plantId, 56, 70, skinId, true);
         slot.appendChild(canvas);
         if (def) {
           const nameEl = document.createElement('span');
@@ -504,9 +545,12 @@ export class UIManager {
         const canvas = document.createElement('canvas');
         canvas.width = 56; canvas.height = 70;
         const cctx = canvas.getContext('2d');
-        const img = assetManager.getImage('visitor_katana_zero');
+        const img = assetManager.getImageNoBg('visitor_katana_zero');
         if (img) {
-          cctx.drawImage(img, 0, 0, 56, 70);
+          const s = Math.min(56 / img.naturalWidth, 70 / img.naturalHeight);
+          const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+          const off = getVisitorCardOffset(vid, 'squadSlot');
+          cctx.drawImage(img, (56 - dw) / 2 + off.x * s, (70 - dh) / 2 + off.y * s, dw, dh);
         } else {
           cctx.fillStyle = '#333';
           cctx.fillRect(0, 0, 56, 70);
@@ -533,6 +577,7 @@ export class UIManager {
           this.renderVisitorSquad();
         });
         slot.appendChild(removeBtn);
+        slot.addEventListener('click', () => this.showVisitorPicker(i));
       } else {
         const emptyIcon = document.createElement('span');
         emptyIcon.className = 'slot-empty-text';
@@ -546,35 +591,9 @@ export class UIManager {
 
   showVisitorPicker(slotIndex) {
     this._visitorSlotIndex = slotIndex;
-    this._selectedVisitorId = null;
-    this.hideModal(); // hide squad modal behind picker
-
-    // Wire events
-    const backBtn = document.getElementById('visitor-picker-back');
-    if (backBtn) {
-      const newBack = backBtn.cloneNode(true);
-      backBtn.parentNode.replaceChild(newBack, backBtn);
-      newBack.addEventListener('click', () => this.hideVisitorPicker());
-    }
-
-    const confirmBtn = document.getElementById('visitor-picker-confirm');
-    if (confirmBtn) {
-      const newConfirm = confirmBtn.cloneNode(true);
-      confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
-      newConfirm.disabled = true;
-      newConfirm.addEventListener('click', () => this._confirmVisitorPick());
-    }
-
-    // Close on overlay click
-    if (this.$visitorPickerOverlay) {
-      const newOverlay = this.$visitorPickerOverlay.cloneNode(true);
-      this.$visitorPickerOverlay.parentNode.replaceChild(newOverlay, this.$visitorPickerOverlay);
-      this.$visitorPickerOverlay = newOverlay;
-      this.$visitorPickerGrid = document.getElementById('visitor-picker-grid');
-      newOverlay.addEventListener('click', (e) => {
-        if (e.target === newOverlay) this.hideVisitorPicker();
-      });
-    }
+    const allSquad = StorageManager.getVisitorSquad();
+    this._selectedVisitorId = allSquad[slotIndex] || null;
+    this.hideModal();
 
     this.renderVisitorPicker();
     this.showModal('visitor-picker');
@@ -587,9 +606,21 @@ export class UIManager {
 
     const allVisitors = getAllVisitorDefs();
     const unlocked = allVisitors.filter(v => StorageManager.isVisitorUnlocked(v.id));
-    const inSquad = new Set(StorageManager.getVisitorSquad().filter(Boolean));
+    const allSquad = StorageManager.getVisitorSquad();
+    // Exclude current slot's occupant so it remains selectable
+    const inSquad = new Set(allSquad.filter((v, i) => Boolean(v) && i !== this._visitorSlotIndex));
 
-    for (const v of unlocked) {
+    // Sort: pre-selected visitor first
+    const sorted = [...unlocked];
+    if (this._selectedVisitorId) {
+      sorted.sort((a, b) => {
+        if (a.id === this._selectedVisitorId) return -1;
+        if (b.id === this._selectedVisitorId) return 1;
+        return 0;
+      });
+    }
+
+    for (const v of sorted) {
       const card = document.createElement('div');
       card.className = 'squad-picker-card';
       card.dataset.visitorId = v.id;
@@ -598,12 +629,19 @@ export class UIManager {
         card.classList.add('disabled');
       }
 
+      if (v.id === this._selectedVisitorId) {
+        card.classList.add('selected');
+      }
+
       const canvas = document.createElement('canvas');
       canvas.width = 64; canvas.height = 84;
       const cctx = canvas.getContext('2d');
-      const img = assetManager.getImage('visitor_katana_zero');
+      const img = assetManager.getImageNoBg('visitor_katana_zero');
       if (img) {
-        cctx.drawImage(img, 0, 0, 64, 84);
+        const s = Math.min(64 / img.naturalWidth, 84 / img.naturalHeight);
+        const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+        const off = getVisitorCardOffset(v.id, 'pickerCard');
+        cctx.drawImage(img, (64 - dw) / 2 + off.x * s, (84 - dh) / 2 + off.y * s, dw, dh);
       } else {
         cctx.fillStyle = '#1a1a2e';
         cctx.fillRect(0, 0, 64, 84);
@@ -621,11 +659,15 @@ export class UIManager {
 
       if (!inSquad.has(v.id)) {
         card.addEventListener('click', () => {
+          if (this._selectedVisitorId === v.id) {
+            this._selectedVisitorId = null;
+            grid.querySelectorAll('.squad-picker-card').forEach(c => c.classList.remove('selected'));
+            return;
+          }
+
           grid.querySelectorAll('.squad-picker-card').forEach(c => c.classList.remove('selected'));
           card.classList.add('selected');
           this._selectedVisitorId = v.id;
-          const confirmBtn = document.getElementById('visitor-picker-confirm');
-          if (confirmBtn) confirmBtn.disabled = false;
         });
       }
 
@@ -642,23 +684,20 @@ export class UIManager {
   }
 
   _confirmVisitorPick() {
-    if (!this._selectedVisitorId) return;
     const squad = StorageManager.getVisitorSquad();
     while (squad.length <= this._visitorSlotIndex) squad.push(null);
-    squad[this._visitorSlotIndex] = this._selectedVisitorId;
-    StorageManager.saveVisitorSquad(squad.filter(Boolean));
+    squad[this._visitorSlotIndex] = this._selectedVisitorId || null;
+    // Compact: keep non-null entries, pad to 3 slots with nulls
+    const compacted = squad.filter(Boolean);
+    while (compacted.length < 3) compacted.push(null);
+    StorageManager.saveVisitorSquad(compacted);
     this.hideVisitorPicker();
   }
 
   _onFilledSlotClick(index) {
     const plantId = this._squad[index];
     if (!plantId) return;
-    // Click on filled slot: show plant detail with option to remove
-    // For now, remove the plant and allow re-selection
-    this._squad[index] = null;
-    this._compactSquad();
-    this._wireSquadButtons();
-    this.renderSquadGrid();
+    this.showSquadPicker(index, plantId);
   }
 
   _unlockSlot() {
@@ -716,8 +755,9 @@ export class UIManager {
   }
 
   // === Squad Plant Picker ===
-  showSquadPicker(slotIndex) {
+  showSquadPicker(slotIndex, preSelectPlantId = null) {
     this._squadSlotIndex = slotIndex;
+    this._selectedPickerPlant = preSelectPlantId;
     this.hideModal(); // hide squad modal first
     this._wireSquadPickerButtons();
     this.renderSquadPicker();
@@ -729,15 +769,23 @@ export class UIManager {
     if (!grid) return;
     grid.innerHTML = '';
 
-    // Hide detail panel on re-render
-    this._selectedPickerPlant = null;
     this._updatePickerDetail();
 
     const allPlants = getAllPlantDefs();
     const unlocked = allPlants.filter(p => StorageManager.isPlantUnlocked(p.id));
-    const inSquad = new Set(this._squad.filter(Boolean));
+    const inSquad = new Set(this._squad.filter((p, i) => Boolean(p) && i !== this._squadSlotIndex));
 
-    for (const plant of unlocked) {
+    // Sort: pre-selected plant first
+    const sorted = [...unlocked];
+    if (this._selectedPickerPlant) {
+      sorted.sort((a, b) => {
+        if (a.id === this._selectedPickerPlant) return -1;
+        if (b.id === this._selectedPickerPlant) return 1;
+        return 0;
+      });
+    }
+
+    for (const plant of sorted) {
       const card = document.createElement('div');
       card.className = 'squad-picker-card';
       card.dataset.plantId = plant.id;
@@ -746,10 +794,14 @@ export class UIManager {
         card.classList.add('disabled');
       }
 
+      if (plant.id === this._selectedPickerPlant) {
+        card.classList.add('selected');
+      }
+
       const canvas = document.createElement('canvas');
       canvas.width = 64; canvas.height = 84;
       const cctx = canvas.getContext('2d');
-      this._drawPortrait(cctx, 'plant', plant.id, 64, 84);
+      this._drawPortrait(cctx, 'plant', plant.id, 64, 84, undefined, true);
       card.appendChild(canvas);
 
       const nameEl = document.createElement('div');
@@ -768,7 +820,6 @@ export class UIManager {
         // If clicking the already-selected card, deselect
         if (this._selectedPickerPlant === plant.id) {
           this._selectedPickerPlant = null;
-          // Remove 'selected' from all cards
           grid.querySelectorAll('.squad-picker-card').forEach(c => c.classList.remove('selected'));
           this._updatePickerDetail();
           return;
@@ -792,13 +843,15 @@ export class UIManager {
     if (!detail || !info || !skinsRow) return;
 
     if (!this._selectedPickerPlant) {
-      detail.style.display = 'none';
+      detail.style.display = 'flex';
+      info.innerHTML = '';
+      skinsRow.innerHTML = '';
       return;
     }
 
     const plantId = this._selectedPickerPlant;
     const def = getPlantDef(plantId);
-    if (!def) { detail.style.display = 'none'; return; }
+    if (!def) { detail.style.display = 'flex'; info.innerHTML = ''; skinsRow.innerHTML = ''; return; }
 
     const starLevel = StorageManager.getPlantStar(plantId);
     const nextCost = starLevel < 3 ? getStarCost(starLevel, starLevel + 1) : Infinity;
@@ -840,7 +893,8 @@ export class UIManager {
 
     // Owned skins
     for (const skin of skins) {
-      if (!StorageManager.ownsSkin(plantId, skin.id)) continue;
+      const owned = skin.owned || StorageManager.ownsSkin(plantId, skin.id);
+      if (!owned) continue;
       skinHTML += `
         <div class="spd-skin-item${equippedSkin === skin.id ? ' equipped' : ''}" data-skin-id="${skin.id}">
           <canvas width="40" height="48"></canvas>
@@ -850,7 +904,8 @@ export class UIManager {
 
     // Unowned skins (locked, show cost)
     for (const skin of skins) {
-      if (StorageManager.ownsSkin(plantId, skin.id)) continue;
+      const owned = skin.owned || StorageManager.ownsSkin(plantId, skin.id);
+      if (owned) continue;
       skinHTML += `
         <div class="spd-skin-item locked" data-skin-id="${skin.id}" data-skin-cost="${skin.cost || 0}">
           <canvas width="40" height="48"></canvas>
@@ -868,9 +923,9 @@ export class UIManager {
       if (cvs) {
         const ctx = cvs.getContext('2d');
         if (skinId) {
-          this._drawPortrait(ctx, 'plant', plantId, 40, 48, skinId);
+          this._drawPortrait(ctx, 'plant', plantId, 40, 48, skinId, true);
         } else {
-          this._drawPortrait(ctx, 'plant', plantId, 40, 48);
+          this._drawPortrait(ctx, 'plant', plantId, 40, 48, undefined, true);
         }
       }
     });
@@ -929,18 +984,22 @@ export class UIManager {
     if (confirmBtn) {
       confirmBtn.addEventListener('click', () => {
         const plantId = this._selectedPickerPlant;
-        if (!plantId) return;
-        // Remove this plant from any other slot first
-        for (let i = 0; i < this._squad.length; i++) {
-          if (this._squad[i] === plantId) this._squad[i] = null;
+        if (plantId) {
+          // Remove this plant from any other slot first
+          for (let i = 0; i < this._squad.length; i++) {
+            if (this._squad[i] === plantId && i !== this._squadSlotIndex) {
+              this._squad[i] = null;
+            }
+          }
         }
         while (this._squad.length <= this._squadSlotIndex) this._squad.push(null);
-        this._squad[this._squadSlotIndex] = plantId;
+        this._squad[this._squadSlotIndex] = plantId || null;
         this._compactSquad();
         this._selectedPickerPlant = null;
         this.hideModal();
         this._wireSquadButtons();
         this.renderSquadGrid();
+        this.renderVisitorSquad();
         this.showModal('squad');
       });
     }
@@ -980,7 +1039,12 @@ export class UIManager {
 
       if (isUnlocked) {
         // 1. Plant GIF — fit inside transparent window with margin
-        const spriteImg = assetManager.getImage(plant.id) || assetManager.getImage(plant.id + '_portrait');
+        let spriteImg = null;
+        if (skinId) {
+          spriteImg = assetManager.getImage(plant.id + '_skin_' + skinId + '_headshot')
+            || assetManager.getImage(plant.id + '_skin_' + skinId + '_portrait');
+        }
+        if (!spriteImg) spriteImg = assetManager.getImage(plant.id) || assetManager.getImage(plant.id + '_portrait');
         if (spriteImg) {
           const availW = winW - 2 * margin, availH = winH - 2 * margin;
           const gifScale = Math.min(availW / spriteImg.naturalWidth, availH / spriteImg.naturalHeight);
@@ -993,7 +1057,7 @@ export class UIManager {
           const pCanvas = document.createElement('canvas');
           pCanvas.width = winW - 2 * margin; pCanvas.height = winH - 2 * margin;
           const pctx = pCanvas.getContext('2d');
-          this._drawPortrait(pctx, 'plant', plant.id, pCanvas.width, pCanvas.height);
+          this._drawPortrait(pctx, 'plant', plant.id, pCanvas.width, pCanvas.height, skinId, true);
           ctx.drawImage(pCanvas, winX + margin, winY + margin);
         }
       }
@@ -1005,6 +1069,13 @@ export class UIManager {
       } else {
         ctx.fillStyle = '#1c1c28'; // bg-card
         ctx.fillRect(0, 0, cardW, cardH);
+      }
+
+      // 3-star maxed: gold tint base + purple border class
+      if (isUnlocked && star >= 3) {
+        ctx.fillStyle = 'rgba(200, 180, 100, 0.12)';
+        ctx.fillRect(0, 0, cardW, cardH);
+        card.classList.add('star3');
       }
 
       if (!isUnlocked) {
@@ -1022,24 +1093,18 @@ export class UIManager {
 
       // Name
       ctx.fillStyle = isUnlocked ? textColor : '#484440'; // text-dim
-      ctx.font = `bold ${Math.round(14 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      ctx.font = `bold ${Math.round(28 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       ctx.fillText(isUnlocked ? plant.name : '???', cardW / 2, nameY);
 
-      // Stars — muted gold
-      ctx.fillStyle = isUnlocked ? '#a09868' : '#484440';
-      ctx.font = `${Math.round(12 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      // Stars — muted gold, brighter for maxed 3-star
+      ctx.fillStyle = isUnlocked ? (star >= 3 ? '#c0b878' : '#a09868') : '#484440';
+      ctx.font = `${Math.round(24 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       ctx.fillText(isUnlocked ? '★'.repeat(star) + '☆'.repeat(3 - star) : '☆☆☆', cardW / 2, starY);
-
-      // Description
-      ctx.fillStyle = isUnlocked ? textColor : '#484440';
-      ctx.font = `${Math.round(11 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
-      const desc = isUnlocked ? plant.description : '未解锁';
-      ctx.fillText(desc.length > 16 ? desc.slice(0, 15) + '...' : desc, cardW / 2, descY);
 
       // Skin info — muted cyan
       if (isUnlocked && skin) {
         ctx.fillStyle = '#5a8a9a';
-        ctx.font = `${Math.round(10 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+        ctx.font = `${Math.round(18 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
         ctx.fillText('皮肤: ' + skin.name, cardW / 2, skinY);
       }
 
@@ -1068,6 +1133,11 @@ export class UIManager {
     const srcW = 316, srcH = 473;
     const cardH = Math.round(cardW * srcH / srcW);
 
+    const cardScale = cardW / srcW;
+    const winX = 63 * cardScale, winY = 22 * cardScale;
+    const winW = 189 * cardScale, winH = 143 * cardScale;
+    const margin = 10;
+
     for (const v of allVisitors) {
       const isUnlocked = StorageManager.isVisitorUnlocked(v.id);
       const card = document.createElement('canvas');
@@ -1077,19 +1147,24 @@ export class UIManager {
       const ctx = card.getContext('2d');
 
       if (isUnlocked) {
-        const img = assetManager.getImage('visitor_katana_zero');
+        const img = assetManager.getImageNoBg('visitor_katana_zero');
         if (img) {
-          const scale = Math.min(cardW / img.naturalWidth, (cardH * 0.55) / img.naturalHeight);
-          const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
-          ctx.drawImage(img, (cardW - dw) / 2, 20, dw, dh);
+          const availW = winW - 2 * margin, availH = winH - 2 * margin;
+          const imgScale = Math.min(availW / img.naturalWidth, availH / img.naturalHeight);
+          const dw = img.naturalWidth * imgScale, dh = img.naturalHeight * imgScale;
+          const off = getVisitorCardOffset(v.id, 'handbookCard');
+          const dx = winX + (winW - dw) / 2 + off.x * imgScale;
+          const dy = winY + (winH - dh) / 2 + off.y * imgScale;
+          ctx.drawImage(img, dx, dy, dw, dh);
         }
       } else {
+        const lockW = winW * 0.6, lockH = winH * 0.6;
         ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(cardW * 0.25, 20, cardW * 0.5, cardH * 0.55);
+        ctx.fillRect(winX + (winW - lockW) / 2, winY + (winH - lockH) / 2, lockW, lockH);
         ctx.fillStyle = '#333';
         ctx.font = '48px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('?', cardW / 2, cardH * 0.45);
+        ctx.fillText('?', cardW / 2, winY + winH / 2 + 16);
       }
 
       const cardBg = assetManager.getImage('plant_card_bg');
@@ -1106,11 +1181,22 @@ export class UIManager {
       ctx.textAlign = 'center';
       ctx.fillStyle = isUnlocked ? 'rgb(89,32,8)' : '#484440';
       ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
-      ctx.fillText(isUnlocked ? v.name : '???', cardW / 2, cardH * 0.72);
+      ctx.fillText(isUnlocked ? v.name : '???', cardW / 2, cardH * 0.69);
 
-      ctx.fillStyle = isUnlocked ? 'rgb(89,32,8)' : '#484440';
-      ctx.font = '11px "Microsoft YaHei", sans-serif';
-      ctx.fillText(isUnlocked ? v.description : '未解锁', cardW / 2, cardH * 0.78);
+      if (isUnlocked) {
+        ctx.fillStyle = 'rgb(89,32,8)';
+        ctx.font = '11px "Microsoft YaHei", sans-serif';
+        const lines = v.description.split('<br>');
+        const lineH = 14;
+        const startY = cardH * 0.84 - (lines.length - 1) * lineH / 2;
+        for (let li = 0; li < lines.length; li++) {
+          ctx.fillText(lines[li], cardW / 2, startY + li * lineH);
+        }
+      } else {
+        ctx.fillStyle = '#484440';
+        ctx.font = '11px "Microsoft YaHei", sans-serif';
+        ctx.fillText('未解锁', cardW / 2, cardH * 0.84);
+      }
 
       if (isUnlocked) {
         card.style.cursor = 'pointer';
@@ -1128,11 +1214,11 @@ export class UIManager {
       const ctx = card.getContext('2d');
 
       ctx.fillStyle = '#111';
-      ctx.fillRect(cardW * 0.3, 20, cardW * 0.4, cardH * 0.5);
-      ctx.fillStyle = '#222';
-      ctx.font = '40px sans-serif';
+      ctx.fillRect(cardW * 0.25, 20, cardW * 0.5, cardH * 0.5);
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 28px "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('?', cardW / 2, cardH * 0.4);
+      ctx.fillText('？？？', cardW / 2, cardH * 0.42);
 
       const cardBg = assetManager.getImage('plant_card_bg');
       if (cardBg) ctx.drawImage(cardBg, 0, 0, cardW, cardH);
@@ -1140,10 +1226,10 @@ export class UIManager {
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
       ctx.fillRect(0, 0, cardW, cardH);
 
-      ctx.fillStyle = '#484440';
+      ctx.fillStyle = '#585450';
       ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('???', cardW / 2, cardH * 0.72);
+      ctx.fillText('？？？', cardW / 2, cardH * 0.72);
 
       grid.appendChild(card);
     }
@@ -1163,11 +1249,12 @@ export class UIManager {
       canvas.width = 200; canvas.height = 260;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const img = assetManager.getImage('visitor_katana_zero');
+      const img = assetManager.getImageNoBg('visitor_katana_zero');
       if (img) {
         const s = Math.min(200 / img.naturalWidth, 260 / img.naturalHeight);
-        ctx.drawImage(img, (200 - img.naturalWidth * s) / 2, (260 - img.naturalHeight * s) / 2,
-          img.naturalWidth * s, img.naturalHeight * s);
+        const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+        const off = getVisitorCardOffset(visitorId, 'handbookDetail');
+        ctx.drawImage(img, (200 - dw) / 2 + off.x * s, (260 - dh) / 2 + off.y * s, dw, dh);
       }
     }
 
@@ -1176,6 +1263,7 @@ export class UIManager {
     statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">攻击</span><span class="hb-stat-value">无（纯技能型）</span></div>';
     statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">主动技能</span><span class="hb-stat-value">时停0.5s · 10连斩 · 每刀50+10%最大HP · 冷却' + (def.combat.activeSkillCooldown / 1000) + 's</span></div>';
     statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">被动技能</span><span class="hb-stat-value">受击时停0.3s · 同行斩 · 每刀100+70%最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's</span></div>';
+    statsHTML += '<div class="hb-stat-desc" style="margin-top:12px;line-height:1.6;">' + def.description.replace(/<br>/g, '<br>') + '</div>';
 
     this.$hbDetailStats.innerHTML = statsHTML;
     this.$hbDetailOverlay.classList.add('active');
@@ -1229,7 +1317,7 @@ export class UIManager {
           const pCanvas = document.createElement('canvas');
           pCanvas.width = winW - 2 * margin; pCanvas.height = winH - 2 * margin;
           const pctx = pCanvas.getContext('2d');
-          this._drawPortrait(pctx, 'enemy', enemy.id, pCanvas.width, pCanvas.height);
+          this._drawPortrait(pctx, 'enemy', enemy.id, pCanvas.width, pCanvas.height, undefined, true);
           ctx.drawImage(pCanvas, winX + margin, winY + margin);
         }
       }
@@ -1257,21 +1345,22 @@ export class UIManager {
 
       // Name
       ctx.fillStyle = isEncountered ? textColor : '#484440'; // text-dim
-      ctx.font = `bold ${Math.round(14 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      ctx.font = `bold ${Math.round(28 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       ctx.fillText(isEncountered ? enemy.name : '???', cardW / 2, nameY);
 
       // Threat badge
       ctx.fillStyle = isEncountered ?
         (threat.class === 'threat-extreme' ? '#c04040' : threat.class === 'threat-elite' ? '#d09030' : '#3aaf5a') :
         '#484440';
-      ctx.font = `${Math.round(12 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      ctx.font = `${Math.round(24 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       ctx.fillText(isEncountered ? threat.text : '???', cardW / 2, threatY);
 
       // Description
       ctx.fillStyle = isEncountered ? textColor : '#484440';
-      ctx.font = `${Math.round(11 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+      ctx.font = `${Math.round(22 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       const desc = isEncountered ? enemy.description : '尚未遭遇';
-      ctx.fillText(desc.length > 16 ? desc.slice(0, 15) + '...' : desc, cardW / 2, descY);
+      const maxCharsE = Math.floor(cardW / (22 * scale * 0.5));
+      ctx.fillText(desc.length > maxCharsE ? desc.slice(0, maxCharsE - 1) + '...' : desc, cardW / 2, descY);
 
       if (isEncountered) {
         card.style.cursor = 'pointer';
@@ -1301,14 +1390,15 @@ export class UIManager {
 
     this.$hbDetailName.textContent = def.name;
     this.$hbDetailThreat.style.display = 'none';
-    // Draw portrait on canvas — _drawPortrait handles GIF + proportional scaling
+    // Draw portrait — canvas sized to fill left panel
     const canvas = this.$hbDetailCanvas;
     if (canvas) {
-      canvas.width = 200;
-      canvas.height = 260;
+      const sz = this._getDetailCanvasSize();
+      canvas.width = sz.w;
+      canvas.height = sz.h;
       const pctx = canvas.getContext('2d');
       pctx.clearRect(0, 0, canvas.width, canvas.height);
-      this._drawPortrait(pctx, 'plant', plantId, canvas.width, canvas.height);
+      this._drawPortrait(pctx, 'plant', plantId, canvas.width, canvas.height, skinId);
     }
 
     let statsHTML = '';
@@ -1408,8 +1498,9 @@ export class UIManager {
       </div>`;
     }
 
-    // Description
-    statsHTML += `<div class="hb-stat-desc">${def.description}</div>`;
+    // Description (use skin description if available)
+    const skinDesc = (skin && skin.description) ? skin.description : def.description;
+    statsHTML += `<div class="hb-stat-row"><span class="hb-stat-label">描述</span><span class="hb-stat-value">${skinDesc}</span></div>`;
 
     // Skin info
     if (skin) {
@@ -1470,11 +1561,12 @@ export class UIManager {
     this.$hbDetailThreat.style.display = '';
     this.$hbDetailThreat.textContent = threat.text;
     this.$hbDetailThreat.className = 'hb-detail-threat ' + threat.class;
-    // Draw portrait on canvas — _drawPortrait handles GIF + proportional scaling
+    // Draw portrait — canvas sized to fill left panel
     const canvas = this.$hbDetailCanvas;
     if (canvas) {
-      canvas.width = 200;
-      canvas.height = 260;
+      const sz = this._getDetailCanvasSize();
+      canvas.width = sz.w;
+      canvas.height = sz.h;
       const pctx = canvas.getContext('2d');
       pctx.clearRect(0, 0, canvas.width, canvas.height);
       if (isEncountered) {
@@ -1563,12 +1655,28 @@ export class UIManager {
     this._detailId = null;
   }
 
-  _drawPortrait(ctx, category, id, maxW, maxH, skinId) {
-    // Try skin-specific portrait first
+  _getDetailCanvasSize() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const modalW = Math.min(vw * 0.9, 1100);
+    const modalH = vh * 0.85;
+    const leftW = modalW * 0.6 - 48;   // 60% minus padding
+    const leftH = modalH - 60 - 48;     // minus title and padding
+    return { w: Math.floor(leftW), h: Math.floor(leftH) };
+  }
+
+  _drawPortrait(ctx, category, id, maxW, maxH, skinId, preferHeadshot = false) {
+    // Try skin-specific image: portrait first, or headshot first for small cards
     let portraitKey;
     if (skinId) {
-      portraitKey = id + '_skin_' + skinId + '_portrait';
-      const skinImg = assetManager.getImage(portraitKey);
+      const first = preferHeadshot ? '_headshot' : '_portrait';
+      const second = preferHeadshot ? '_portrait' : '_headshot';
+      portraitKey = id + '_skin_' + skinId + first;
+      let skinImg = assetManager.getImage(portraitKey);
+      if (!skinImg) {
+        portraitKey = id + '_skin_' + skinId + second;
+        skinImg = assetManager.getImage(portraitKey);
+      }
       if (skinImg) {
         const margin = 0.9;
         const availW = maxW * margin, availH = maxH * margin;
@@ -1659,22 +1767,28 @@ export class UIManager {
     if (!container) return;
     container.innerHTML = '';
     const skins = getSkins(plantId);
-    if (skins.length === 0) {
-      container.innerHTML = '<span style="color:var(--text-dim);font-size:12px;">该植物暂无皮肤</span>';
-      return;
-    }
     const equipped = StorageManager.getEquippedSkin(plantId);
+    const isDefaultEquipped = !equipped;
+
+    const allSkins = [
+      { id: null, name: '原版立绘', emoji: '🖼️', description: '默认皮肤', cost: 0, owned: true }
+    ];
     for (const skin of skins) {
+      allSkins.push(skin);
+    }
+
+    for (const skin of allSkins) {
       const item = document.createElement('div');
       item.className = 'hb-detail-skin-item';
-      if (equipped === skin.id) item.classList.add('equipped');
-      const owned = StorageManager.ownsSkin(plantId, skin.id);
+      const skinEquipped = skin.id === null ? isDefaultEquipped : equipped === skin.id;
+      if (skinEquipped) item.classList.add('equipped');
+      const owned = skin.owned || StorageManager.ownsSkin(plantId, skin.id);
 
       const skinCanvas = document.createElement('canvas');
       skinCanvas.width = 50;
       skinCanvas.height = 65;
       const sctx = skinCanvas.getContext('2d');
-      this._drawPortrait(sctx, 'plant', plantId, 50, 65);
+      this._drawPortrait(sctx, 'plant', plantId, 50, 65, skin.id);
       item.appendChild(skinCanvas);
 
       const labelEl = document.createElement('div');
@@ -1684,21 +1798,98 @@ export class UIManager {
 
       const subEl = document.createElement('div');
       subEl.className = 'skin-sub';
-      subEl.textContent = owned ? '已拥有' : `${skin.cost} 晶核`;
+      subEl.textContent = owned ? (skinEquipped ? '使用中' : '已拥有') : `${skin.cost} 晶核`;
       item.appendChild(subEl);
       item.addEventListener('click', () => {
-        if (!owned) {
-          this._buySkin(plantId, skin.id, skin.cost);
+        if (skin.id === null) {
+          this._equipDefaultSkin(plantId);
         } else {
-          StorageManager.equipSkin(plantId, skin.id);
-          this.showToast(`已装备皮肤: ${skin.name}`);
-          this.showPlantDetail(plantId);
-          this.renderHandbook();
-          this.refreshDisplayPlant();
+          this._showSkinPreview(plantId, skin, owned);
         }
       });
       container.appendChild(item);
     }
+  }
+
+  _equipDefaultSkin(plantId) {
+    StorageManager.equipSkin(plantId, null);
+    this.showPlantDetail(plantId);
+  }
+
+  _showSkinPreview(plantId, skin, owned) {
+    this._previewSkinData = { plantId, skin, owned };
+
+    const plant = getPlantDef(plantId);
+    document.getElementById('sp-name').textContent = plant.name + ' - ' + skin.name;
+
+    // Large portrait (立绘)
+    const portraitCanvas = document.getElementById('sp-portrait-canvas');
+    if (portraitCanvas) {
+      const pctx = portraitCanvas.getContext('2d');
+      pctx.clearRect(0, 0, portraitCanvas.width, portraitCanvas.height);
+      const skinPortraitKey = skin.id ? (plantId + '_skin_' + skin.id + '_portrait') : null;
+      let portraitImg = null;
+      if (skinPortraitKey) portraitImg = assetManager.getImage(skinPortraitKey);
+      if (!portraitImg) portraitImg = assetManager.getImage(plantId + '_portrait') || assetManager.getImage(plantId);
+      if (portraitImg) {
+        const s = Math.min(portraitCanvas.width / portraitImg.naturalWidth, portraitCanvas.height / portraitImg.naturalHeight);
+        const dw = portraitImg.naturalWidth * s, dh = portraitImg.naturalHeight * s;
+        pctx.drawImage(portraitImg, (portraitCanvas.width - dw) / 2, (portraitCanvas.height - dh) / 2, dw, dh);
+      } else {
+        this._drawPortrait(pctx, 'plant', plantId, portraitCanvas.width, portraitCanvas.height);
+      }
+    }
+
+    // Battle sprite (战斗形象) — small box at bottom-left of portrait
+    const spriteCanvas = document.getElementById('sp-sprite-canvas');
+    if (spriteCanvas) {
+      const sctx = spriteCanvas.getContext('2d');
+      sctx.clearRect(0, 0, spriteCanvas.width, spriteCanvas.height);
+      sctx.fillStyle = 'rgba(0,0,0,0.5)';
+      sctx.fillRect(0, 0, spriteCanvas.width, spriteCanvas.height);
+      let battleImg = null;
+      if (skin.id) {
+        const skinCombatKey = plantId + '_skin_' + skin.id + '_combat';
+        battleImg = assetManager.getImageNoBg(skinCombatKey) || assetManager.getImage(skinCombatKey);
+      }
+      if (!battleImg) battleImg = assetManager.getImage(plantId);
+      if (battleImg) {
+        const bs = Math.min(spriteCanvas.width / battleImg.naturalWidth, spriteCanvas.height / battleImg.naturalHeight);
+        const bdw = battleImg.naturalWidth * bs, bdh = battleImg.naturalHeight * bs;
+        sctx.drawImage(battleImg, (spriteCanvas.width - bdw) / 2, (spriteCanvas.height - bdh) / 2, bdw, bdh);
+      }
+    }
+
+    // Actions
+    const actionsEl = document.getElementById('sp-actions');
+    if (actionsEl) {
+      actionsEl.innerHTML = '';
+      if (owned) {
+        const equipBtn = document.createElement('button');
+        equipBtn.className = 'primary';
+        equipBtn.textContent = '装备皮肤';
+        equipBtn.addEventListener('click', () => {
+          StorageManager.equipSkin(plantId, skin.id);
+          this.showToast('已装备皮肤: ' + skin.name);
+          this.hideModal();
+          if (this._detailType === 'plant' && this._detailId) this.showPlantDetail(this._detailId);
+          this.renderHandbook();
+          this.refreshDisplayPlant();
+        });
+        actionsEl.appendChild(equipBtn);
+      } else {
+        const buyBtn = document.createElement('button');
+        buyBtn.className = 'primary';
+        buyBtn.textContent = '购买 ' + skin.cost + ' 晶核';
+        buyBtn.addEventListener('click', () => {
+          this._buySkin(plantId, skin.id, skin.cost);
+          this.hideModal();
+        });
+        actionsEl.appendChild(buyBtn);
+      }
+    }
+
+    this.showModal('skin-preview');
   }
 
   _buySkin(plantId, skinId, cost) {
@@ -1814,8 +2005,10 @@ export class UIManager {
   renderPlantSelect() {
     this.$psGrid.innerHTML = '';
     const allPlants = getAllPlantDefs();
+    const allVisitors = getAllVisitorDefs();
     const currentDisplay = StorageManager.getDisplayPlant();
     const unlocked = allPlants.filter(p => StorageManager.isPlantUnlocked(p.id));
+
     for (const plant of unlocked) {
       const opt = document.createElement('div');
       opt.className = 'ps-option';
@@ -1825,7 +2018,8 @@ export class UIManager {
       canvas.width = 60;
       canvas.height = 78;
       const pctx = canvas.getContext('2d');
-      this._drawPortrait(pctx, 'plant', plant.id, 60, 78);
+      const skinId = StorageManager.getEquippedSkin(plant.id);
+      this._drawPortrait(pctx, 'plant', plant.id, 60, 78, skinId, true);
       opt.appendChild(canvas);
 
       const nameDiv = document.createElement('div');
@@ -1834,15 +2028,137 @@ export class UIManager {
       opt.appendChild(nameDiv);
 
       opt.addEventListener('click', () => {
-        StorageManager.setDisplayPlant(plant.id);
+        this.showDisplaySkinPicker(plant.id);
+      });
+      this.$psGrid.appendChild(opt);
+    }
+
+    // Visitor options — no skins, set directly
+    const unlockedVisitors = allVisitors.filter(v => StorageManager.isVisitorUnlocked(v.id));
+    for (const v of unlockedVisitors) {
+      const opt = document.createElement('div');
+      opt.className = 'ps-option';
+      if (v.id === currentDisplay && !StorageManager.getDisplayPlantSkin()) opt.classList.add('selected');
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 60;
+      canvas.height = 78;
+      const pctx = canvas.getContext('2d');
+      const img = assetManager.getImageNoBg('visitor_katana_zero');
+      if (img) {
+        const s = Math.min(60 / img.naturalWidth, 78 / img.naturalHeight);
+        pctx.drawImage(img, (60 - img.naturalWidth * s) / 2, (78 - img.naturalHeight * s) / 2,
+          img.naturalWidth * s, img.naturalHeight * s);
+      } else {
+        pctx.fillStyle = '#1a1a2e';
+        pctx.fillRect(0, 0, 60, 78);
+        pctx.fillStyle = '#c040ff';
+        pctx.font = '16px sans-serif';
+        pctx.textAlign = 'center';
+        pctx.fillText('???', 30, 42);
+      }
+      opt.appendChild(canvas);
+
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'ps-name';
+      nameDiv.textContent = v.name;
+      opt.appendChild(nameDiv);
+
+      opt.addEventListener('click', () => {
+        StorageManager.setDisplayPlant(v.id);
+        StorageManager.setDisplayPlantSkin(null);
         this.refreshDisplayPlant();
         this.hideModal();
       });
       this.$psGrid.appendChild(opt);
     }
-    if (unlocked.length === 0) {
-      this.$psGrid.innerHTML = '<p style="color:var(--text-dim)">暂无可用植物</p>';
+
+    if (unlocked.length === 0 && unlockedVisitors.length === 0) {
+      this.$psGrid.innerHTML = '<p style="color:var(--text-dim)">暂无可用展示</p>';
     }
+  }
+
+  showDisplaySkinPicker(plantId) {
+    const plant = getPlantDef(plantId);
+    if (!plant) return;
+    this.hideModal(); // hide plant select
+
+    this.$dsTitle.textContent = plant.name + ' - 选择皮肤';
+    this.$dsGrid.innerHTML = '';
+
+    const skins = getSkins(plantId);
+    const currentSkin = StorageManager.getDisplayPlant() === plantId ? StorageManager.getDisplayPlantSkin() : null;
+
+    // Default portrait (立绘) — always available, no skin name
+    const defaultOpt = document.createElement('div');
+    defaultOpt.className = 'ds-skin-option';
+    if (!currentSkin) defaultOpt.classList.add('selected');
+
+    const defaultCanvas = document.createElement('canvas');
+    defaultCanvas.width = 100; defaultCanvas.height = 130;
+    const dctx = defaultCanvas.getContext('2d');
+    const portraitImg = assetManager.getImage(plantId + '_portrait') || assetManager.getImage(plantId);
+    if (portraitImg) {
+      const s = Math.min(100 / portraitImg.naturalWidth, 130 / portraitImg.naturalHeight);
+      dctx.drawImage(portraitImg, (100 - portraitImg.naturalWidth * s) / 2,
+        (130 - portraitImg.naturalHeight * s) / 2, portraitImg.naturalWidth * s, portraitImg.naturalHeight * s);
+    } else {
+      this._drawPortrait(dctx, 'plant', plantId, 100, 130);
+    }
+    defaultOpt.appendChild(defaultCanvas);
+
+    const defaultLabel = document.createElement('div');
+    defaultLabel.className = 'ds-skin-label';
+    defaultLabel.textContent = '立绘';
+    defaultOpt.appendChild(defaultLabel);
+
+    const defaultSub = document.createElement('div');
+    defaultSub.className = 'ds-skin-default';
+    defaultSub.textContent = '默认形象';
+    defaultOpt.appendChild(defaultSub);
+
+    defaultOpt.addEventListener('click', () => {
+      StorageManager.setDisplayPlant(plantId);
+      StorageManager.setDisplayPlantSkin(null);
+      this.refreshDisplayPlant();
+      this.hideModal();
+    });
+    this.$dsGrid.appendChild(defaultOpt);
+
+    // Available skins
+    for (const skin of skins) {
+      const opt = document.createElement('div');
+      opt.className = 'ds-skin-option';
+      if (skin.id === currentSkin) opt.classList.add('selected');
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 100; canvas.height = 130;
+      const sctx = canvas.getContext('2d');
+      const skinPortrait = assetManager.getImage(plantId + '_skin_' + skin.id + '_portrait') || portraitImg;
+      if (skinPortrait) {
+        const s = Math.min(100 / skinPortrait.naturalWidth, 130 / skinPortrait.naturalHeight);
+        sctx.drawImage(skinPortrait, (100 - skinPortrait.naturalWidth * s) / 2,
+          (130 - skinPortrait.naturalHeight * s) / 2, skinPortrait.naturalWidth * s, skinPortrait.naturalHeight * s);
+      } else {
+        this._drawPortrait(sctx, 'plant', plantId, 100, 130);
+      }
+      opt.appendChild(canvas);
+
+      const label = document.createElement('div');
+      label.className = 'ds-skin-label';
+      label.textContent = skin.name;
+      opt.appendChild(label);
+
+      opt.addEventListener('click', () => {
+        StorageManager.setDisplayPlant(plantId);
+        StorageManager.setDisplayPlantSkin(skin.id);
+        this.refreshDisplayPlant();
+        this.hideModal();
+      });
+      this.$dsGrid.appendChild(opt);
+    }
+
+    this.showModal('display-skin');
   }
 
   // === Dev Mode ===
@@ -1881,6 +2197,10 @@ export class UIManager {
     } else {
       this.showModal('dev');
     }
+  }
+
+  _showVersion() {
+    this.showToast('Arknights PvZ — 版本 0.2.0', 2500);
   }
 
   // === Settings ===
@@ -2070,8 +2390,14 @@ export class UIManager {
       canvas.height = 48;
       const cctx = canvas.getContext('2d');
 
-      // Use GIF sprite if available, fallback to programmatic drawing
-      const plantImg = assetManager.getImage(plantId);
+      // Use skin headshot if equipped, fallback to base GIF
+      const skinId = StorageManager.getEquippedSkin(plantId);
+      let plantImg = null;
+      if (skinId) {
+        plantImg = assetManager.getImage(plantId + '_skin_' + skinId + '_headshot')
+          || assetManager.getImage(plantId + '_skin_' + skinId + '_portrait');
+      }
+      if (!plantImg) plantImg = assetManager.getImage(plantId);
       if (plantImg) {
         const margin = 4, availW = 40, availH = 40;
         const scale = Math.min(availW / plantImg.naturalWidth, availH / plantImg.naturalHeight);
@@ -2100,15 +2426,12 @@ export class UIManager {
       costEl.textContent = '☀' + def.combat.cost;
       card.appendChild(costEl);
 
-      card.addEventListener('click', () => {
+      card.addEventListener('mousedown', (e) => {
+        e.preventDefault();
         if (card.classList.contains('on-cooldown')) return;
-        if (this.dragState && this.dragState.plantType === plantId) {
-          this.deselectPlant();
-        } else {
-          this.$combatFooter.querySelectorAll('.combat-plant-card').forEach(c => c.classList.remove('selected'));
-          this.dragState = { plantType: plantId, mouseX: 0, mouseY: 0, hoverRow: -1, hoverCol: -1 };
-          card.classList.add('selected');
-        }
+        this.$combatFooter.querySelectorAll('.combat-plant-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        this.startDrag(plantId);
       });
       this.$combatFooter.appendChild(card);
     }
@@ -2125,8 +2448,8 @@ export class UIManager {
     }
     container.style.display = 'flex';
 
-    const placedVisitors = this.battleManager
-      ? this.battleManager.visitors.map(v => v.id)
+    const placedVisitors = this.battleManager && this.battleManager._deployedVisitorIds
+      ? [...this.battleManager._deployedVisitorIds]
       : [];
 
     for (const vid of visitorSquad) {
@@ -2140,25 +2463,34 @@ export class UIManager {
       if (placed) {
         card.style.opacity = '0.4';
         card.style.cursor = 'default';
-      } else {
-        card.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          this.startDrag(vid);
-        });
-        card.addEventListener('click', (e) => {
-          const visitor = this.battleManager && this.battleManager.visitors.find(v => v.id === vid);
-          if (visitor) {
-            this.showVisitorPanel(visitor);
-          }
-        });
       }
+
+      card.addEventListener('mousedown', (e) => {
+        if (placed) return;
+        e.preventDefault();
+        this.$combatFooter.querySelectorAll('.combat-plant-card').forEach(c => c.classList.remove('selected'));
+        this.startDrag(vid);
+      });
+
+      card.addEventListener('click', (e) => {
+        if (this.dragState && this.dragState.plantType === vid) {
+          this.deselectPlant();
+        }
+        const visitor = this.battleManager && this.battleManager.visitors.find(v => v.id === vid && v.alive);
+        if (visitor) {
+          this.showVisitorPanel(visitor);
+        }
+      });
 
       const canvas = document.createElement('canvas');
       canvas.width = 72; canvas.height = 96;
       const cctx = canvas.getContext('2d');
-      const img = assetManager.getImage('visitor_katana_zero');
+      const img = assetManager.getImageNoBg('visitor_katana_zero');
       if (img) {
-        cctx.drawImage(img, 0, 0, 72, 96);
+        const s = Math.min(72 / img.naturalWidth, 96 / img.naturalHeight);
+        const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+        const off = getVisitorCardOffset('katana_zero', 'combatCard');
+        cctx.drawImage(img, (72 - dw) / 2 + off.x * s, (96 - dh) / 2 + off.y * s, dw, dh);
       } else {
         cctx.fillStyle = '#333';
         cctx.fillRect(0, 0, 72, 96);
@@ -2196,9 +2528,15 @@ export class UIManager {
     if (canvas) {
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, 200, 280);
-      const img = assetManager.getImage('visitor_katana_zero');
+      const img = assetManager.getImageNoBg('visitor_katana_zero');
+      ctx.save();
       if (img) {
-        ctx.drawImage(img, 0, 0, 200, 280);
+        const s = Math.min(200 / img.naturalWidth, 280 / img.naturalHeight);
+        const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+        const off = getVisitorCardOffset('katana_zero', 'handbookDetail');
+        const sx = (200 - dw) / 2 + off.x * s;
+        const sy = (280 - dh) / 2 + off.y * s;
+        ctx.drawImage(img, sx, sy, dw, dh);
       } else {
         ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(0, 0, 200, 280);
@@ -2207,6 +2545,7 @@ export class UIManager {
         ctx.textAlign = 'center';
         ctx.fillText('???', 100, 150);
       }
+      ctx.restore();
     }
 
     const skillBtn = document.getElementById('vp-active-btn');

@@ -56,20 +56,28 @@ export class Nut extends Plant {
     } else {
       drawNut(ctx, this.x, this.y, 80, 80, this.isSkillActive);
     }
+  }
+
+  renderBars(ctx) {
     const hpPct = this.health / this.maxHealth;
-    ctx.fillStyle = '#22c55e';
-    ctx.fillRect(this.x + 10, this.y + 5, 80 * hpPct, 5);
-    ctx.strokeStyle = '#fff';
-    ctx.strokeRect(this.x + 10, this.y + 5, 80, 5);
+    const barW = 70;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(this.x + 10, this.y + 5, barW, 5);
+    ctx.fillStyle = '#0dc5d0';
+    ctx.fillRect(this.x + 10, this.y + 5, barW * hpPct, 5);
     if (this.isSkillActive) {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(this.x + 10, this.y + 92, barW, 3);
       ctx.fillStyle = 'rgba(100,180,255,0.4)';
-      ctx.fillRect(this.x + 10, this.y + 92, 80 * (this.skillTimer / this.skillDuration), 3);
+      ctx.fillRect(this.x + 10, this.y + 92, barW * (this.skillTimer / this.skillDuration), 3);
     } else if (this.skillCooldown > 0) {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(this.x + 10, this.y + 92, barW, 3);
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(this.x + 10, this.y + 92, 80 * (this.skillCooldown / this.skillMaxCooldown), 3);
+      ctx.fillRect(this.x + 10, this.y + 92, barW * (this.skillCooldown / this.skillMaxCooldown), 3);
     } else {
       ctx.fillStyle = '#60a5fa';
-      ctx.fillRect(this.x + 10, this.y + 92, 80, 3);
+      ctx.fillRect(this.x + 10, this.y + 92, barW, 3);
     }
   }
 }

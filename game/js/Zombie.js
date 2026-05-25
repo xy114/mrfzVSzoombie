@@ -7,8 +7,8 @@ export class Zombie {
     this.x = x;
     this.y = y;
     this.row = row;
-    this.width = 60;
-    this.height = 80;
+    this.width = 86;
+    this.height = 115;
     this.health = 100;
     this.maxHealth = 100;
     this.speed = 0.3;
@@ -33,15 +33,21 @@ export class Zombie {
       return;
     }
 
-    const plantInFront = game.plants.find(p =>
-      p.row === this.row &&
-      p.x < this.x + 120 &&
-      p.x > this.x - 130
-    );
+    const blocker =
+      game.plants.find(p =>
+        p.row === this.row &&
+        p.x < this.x + 100 &&
+        p.x > this.x - 100
+      ) ||
+      game.visitors.find(v =>
+        v.alive && v.row === this.row &&
+        v.x < this.x + 100 &&
+        v.x > this.x - 100
+      );
 
-    if (plantInFront) {
+    if (blocker) {
       this.attacking = true;
-      this.targetPlant = plantInFront;
+      this.targetPlant = blocker;
       this.attackTimer += deltaTime;
       if (this.attackTimer >= this.attackInterval) {
         this.attackTimer = 0;
@@ -82,17 +88,19 @@ export class Zombie {
     let img = assetManager.getImage(attackKey) || assetManager.getImage(this.type);
 
     if (img) {
-      ctx.drawImage(img, this.x, this.y, 60, 80);
+      ctx.drawImage(img, this.x, this.y, 86, 115);
     } else if (this.type === 'cone') {
-      drawConeZombie(ctx, this.x, this.y, 60, 80, this.attacking);
+      drawConeZombie(ctx, this.x, this.y, 86, 115, this.attacking);
     } else {
-      drawNormalZombie(ctx, this.x, this.y, 60, 80, this.attacking);
+      drawNormalZombie(ctx, this.x, this.y, 86, 115, this.attacking);
     }
+  }
 
+  renderBars(ctx) {
     const healthPercent = this.health / this.maxHealth;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(this.x + 7, this.y - 5, 72, 5);
     ctx.fillStyle = '#ef4444';
-    ctx.fillRect(this.x + 5, this.y - 5, 50 * healthPercent, 5);
-    ctx.strokeStyle = '#fff';
-    ctx.strokeRect(this.x + 5, this.y - 5, 50, 5);
+    ctx.fillRect(this.x + 7, this.y - 5, 72 * healthPercent, 5);
   }
 }

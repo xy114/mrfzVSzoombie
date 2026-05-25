@@ -11,6 +11,7 @@ const DEFAULT_SAVE = {
   encounteredEnemies: [],
   devMode: false,
   displayPlant: 'sunflower',
+  displayPlantSkin: null,
   unlockedSquadSlots: 6,
   savedSquads: {},
   visitorSquad: [],
@@ -96,6 +97,8 @@ export const StorageManager = {
 
   getDisplayPlant() { return saveData.displayPlant; },
   setDisplayPlant(plantId) { saveData.displayPlant = plantId; this.save(); },
+  getDisplayPlantSkin() { return saveData.displayPlantSkin || null; },
+  setDisplayPlantSkin(skinId) { saveData.displayPlantSkin = skinId; this.save(); },
 
   encounterEnemy(enemyId) {
     if (!saveData.encounteredEnemies.includes(enemyId)) {
@@ -123,7 +126,8 @@ export const StorageManager = {
         plantStars: { ...saveData.plantStars },
         plantSkins: { ...saveData.plantSkins },
         ownedSkins: JSON.parse(JSON.stringify(saveData.ownedSkins)),
-        displayPlant: saveData.displayPlant
+        displayPlant: saveData.displayPlant,
+        displayPlantSkin: saveData.displayPlantSkin
       };
     }
     saveData.devMode = true;
@@ -145,6 +149,7 @@ export const StorageManager = {
     saveData.plantSkins = snap.plantSkins;
     saveData.ownedSkins = snap.ownedSkins;
     saveData.displayPlant = snap.displayPlant;
+    saveData.displayPlantSkin = snap.displayPlantSkin || null;
     saveData.devMode = false;
     delete saveData._preDevSnapshot;
     this.save();

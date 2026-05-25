@@ -21,14 +21,9 @@ export class ShieldZombie extends Zombie {
     const attackKey = 'shield_attack';
     const img = assetManager.getImage(attackKey) || assetManager.getImage('shield');
     if (img) {
-      ctx.drawImage(img, this.x, this.y, 60, 80);
+      ctx.drawImage(img, this.x, this.y, 86, 115);
     } else {
-      drawShieldZombie(ctx, this.x, this.y, 60, 80, this.attacking);
+      drawShieldZombie(ctx, this.x, this.y, 86, 115, this.attacking);
     }
-    const hpPct = this.health / this.maxHealth;
-    ctx.fillStyle = '#ef4444';
-    ctx.fillRect(this.x + 5, this.y - 5, 50 * hpPct, 5);
-    ctx.strokeStyle = '#fff';
-    ctx.strokeRect(this.x + 5, this.y - 5, 50, 5);
   }
 }

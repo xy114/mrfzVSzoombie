@@ -45,6 +45,7 @@
 
   <div id="page-combat" class="page">
     <button id="combat-exit-btn" title="退出作战">&lt;</button>
+    <button id="debug-export-btn" title="导出网格" style="display:none;position:absolute;top:0;right:100px;z-index:100;padding:4px 12px;background:#ff0;color:#000;border:1px solid #880;cursor:pointer;font-size:12px;">导出网格</button>
     <div id="combat-header">
       <span class="sun-display">☀️ <span id="combat-sun">150</span></span>
       <span class="wave-display">波次 <span id="combat-wave">1</span></span>
@@ -146,6 +147,29 @@
       <button class="modal-close">&times;</button>
       <div class="modal-title">选择展示植物</div>
       <div class="plant-select-grid" id="ps-grid"></div>
+    </div>
+  </div>
+
+  <!-- Skin Preview Overlay -->
+  <div class="modal-overlay" id="modal-skin-preview">
+    <div class="skin-preview-box">
+      <button class="modal-close">&times;</button>
+      <div class="skin-preview-name" id="sp-name"></div>
+      <div class="skin-preview-main">
+        <canvas id="sp-portrait-canvas" width="360" height="500"></canvas>
+        <div class="sp-battle-sprite-wrap">
+          <canvas id="sp-sprite-canvas" width="80" height="80"></canvas>
+        </div>
+      </div>
+      <div class="skin-preview-actions" id="sp-actions"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-display-skin">
+    <div class="modal-box">
+      <button class="modal-close" id="ds-close-btn">&times;</button>
+      <div class="modal-title" id="ds-title">选择皮肤</div>
+      <div class="display-skin-grid" id="ds-grid"></div>
     </div>
   </div>
 
@@ -278,6 +302,8 @@
       </div>
     </div>
   </div>
+
+  <button id="version-btn" class="standard-btn">查询版本</button>
 
   <div id="toast"></div>
 

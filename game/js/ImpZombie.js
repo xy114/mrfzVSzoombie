@@ -17,22 +17,25 @@ export class ImpZombie extends Zombie {
     this.type = 'imp';
     this.rewardType = 'imp';
     this.rewardValue = 1;
-    this.width = 45;
-    this.height = 60;
+    this.width = 65;
+    this.height = 86;
   }
 
   render(ctx) {
     const attackKey = 'imp_attack';
     const img = assetManager.getImage(attackKey) || assetManager.getImage('imp');
     if (img) {
-      ctx.drawImage(img, this.x, this.y, 45, 60);
+      ctx.drawImage(img, this.x, this.y, 65, 86);
     } else {
-      drawImpZombie(ctx, this.x, this.y, 45, 60, this.attacking);
+      drawImpZombie(ctx, this.x, this.y, 65, 86, this.attacking);
     }
+  }
+
+  renderBars(ctx) {
     const hpPct = this.health / this.maxHealth;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(this.x + 5, this.y - 5, 55, 4);
     ctx.fillStyle = '#ef4444';
-    ctx.fillRect(this.x + 3, this.y - 5, 39 * hpPct, 4);
-    ctx.strokeStyle = '#fff';
-    ctx.strokeRect(this.x + 3, this.y - 5, 39, 4);
+    ctx.fillRect(this.x + 5, this.y - 5, 55 * hpPct, 4);
   }
 }

@@ -1,6 +1,6 @@
 import { GAME_CONFIG } from './constants.js';
 import { assetManager } from './AssetManager.js';
-import { getSceneGrid, createDefaultGrid, getSceneMeta, getRowY } from './SceneGrid.js';
+import { getSceneGrid, createDefaultGrid, getSceneMeta, getRowY, rebuildTiles } from './SceneGrid.js';
 
 export class Lawn {
   constructor(sceneId = 'day') {
@@ -25,6 +25,9 @@ export class Lawn {
     for (var r = 0; r < this.rows; r++) {
       this.rowY.push(getRowY(this.sceneGrid, r));
     }
+
+    // Standard cell rect — average of all tile sizes, used as reference unit
+    this.standardCell = this.getAvgTileSize();
 
     this.debugGrid = (typeof localStorage !== 'undefined' && localStorage.getItem('debugGrid') === '1') ||
       (typeof URLSearchParams !== 'undefined' &&
@@ -61,11 +64,14 @@ export class Lawn {
       this.grid[row][col] = plant;
       plant.row = row;
       plant.col = col;
+      const sc = this.standardCell;
       if (this.usePolyGrid) {
         const tile = this.sceneGrid.tiles[`${row},${col}`];
         if (tile) {
-          plant.x = tile.center[0];
-          plant.y = tile.center[1];
+          const s = sc.w / this.cellWidth;
+          const tileH = this.getTileSize(row, col).h;
+          plant.x = tile.center[0] - plant.width / 2 * s;
+          plant.y = tile.center[1] - plant.height / 2 * s - tileH / 2 * 0.1;
         } else {
           plant.x = col * this.cellWidth;
           plant.y = row * this.cellHeight;
@@ -74,8 +80,7 @@ export class Lawn {
         plant.x = col * this.cellWidth;
         plant.y = row * this.cellHeight;
       }
-      const avgSize = this.getAvgTileSize();
-      plant.scale = avgSize.w / this.cellWidth;
+      plant.scale = sc.w / this.cellWidth;
       if (this.isSlanted(col)) {
         plant.rotation = -Math.PI / 4; // 45° left tilt for roof slant
       }
@@ -137,28 +142,89 @@ export class Lawn {
     return { w: this.cellWidth, h: this.cellHeight };
   }
 
+  getTileCenter(row, col) {
+    if (this.usePolyGrid) {
+      const tile = this.sceneGrid.tiles[`${row},${col}`];
+      if (tile && tile.center) return { x: tile.center[0], y: tile.center[1] };
+    }
+    return { x: col * this.cellWidth + this.cellWidth / 2, y: row * this.cellHeight + this.cellHeight / 2 };
+  }
+
   getAvgTileSize() {
     if (this.usePolyGrid) {
-      let totalW = 0, totalH = 0, count = 0;
+      let totalArea = 0, count = 0;
       for (let row = 0; row < this.rows; row++) {
         for (let col = 0; col < this.cols; col++) {
           const s = this.getTileSize(row, col);
-          totalW += s.w;
-          totalH += s.h;
+          totalArea += s.w * s.h;
           count++;
         }
       }
-      return { w: totalW / count, h: totalH / count };
+      const avgArea = totalArea / count;
+      const side = Math.sqrt(avgArea);
+      return { w: side, h: side };
     }
     return { w: this.cellWidth, h: this.cellHeight };
+  }
+
+  findNearestVertex(x, y, threshold) {
+    if (!threshold) threshold = 15;
+    let best = null;
+    let bestDist = threshold;
+    const verts = this.sceneGrid.vertices;
+    for (let r = 0; r < verts.length; r++) {
+      for (let c = 0; c < verts[r].length; c++) {
+        const dx = x - verts[r][c][0];
+        const dy = y - verts[r][c][1];
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = { r, c };
+        }
+      }
+    }
+    return best;
+  }
+
+  moveVertex(r, c, x, y) {
+    const verts = this.sceneGrid.vertices;
+    if (!verts[r] || !verts[r][c]) return;
+    verts[r][c][0] = x;
+    verts[r][c][1] = y;
+    // Rebuild all affected tiles (up to 4 tiles share this vertex)
+    rebuildTiles(this.sceneId);
+  }
+
+  exportGrid() {
+    const verts = this.sceneGrid.vertices;
+    const out = [];
+    for (let r = 0; r < verts.length; r++) {
+      const row = [];
+      for (let c = 0; c < verts[r].length; c++) {
+        row.push([Math.round(verts[r][c][0]), Math.round(verts[r][c][1])]);
+      }
+      out.push(row);
+    }
+    console.log('=== VERTEX GRID EXPORT (copy and paste into SceneGrid.js) ===');
+    const lines = [];
+    for (let r = 0; r < out.length; r++) {
+      const inner = out[r].map(p => `[${p[0]},${p[1]}]`).join(',');
+      lines.push(`      [${inner}]`);
+    }
+    console.log('[\n' + lines.join(',\n') + '\n]');
+    console.log('=== END EXPORT ===');
   }
 
   renderDebugGrid(ctx) {
     if (!this.debugGrid || !this.usePolyGrid) return;
 
+    const verts = this.sceneGrid.vertices;
+    if (!verts) return;
+
+    // Draw tile polygons
     for (let row = 0; row < this.rows; row++) {
       for (let col = 0; col < this.cols; col++) {
-        const tile = this.sceneGrid.tiles[`${row},${col}`];
+        const tile = this.sceneGrid.tiles[row + ',' + col];
         if (!tile) continue;
 
         ctx.save();
@@ -181,21 +247,69 @@ export class Lawn {
         ctx.font = 'bold 10px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`${row},${col}`, tile.center[0], tile.center[1]);
+        ctx.fillText(row + ',' + col, tile.center[0], tile.center[1]);
         ctx.restore();
       }
+    }
+
+    // Draw shared vertex handles (60 points)
+    for (let r = 0; r < verts.length; r++) {
+      for (let c = 0; c < verts[r].length; c++) {
+        const vx = verts[r][c][0];
+        const vy = verts[r][c][1];
+        ctx.save();
+        ctx.fillStyle = '#00ffff';
+        ctx.beginPath();
+        ctx.arc(vx, vy, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#008899';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // Small label
+        ctx.fillStyle = '#00cccc';
+        ctx.font = '7px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(r + ',' + c, vx, vy - 7);
+        ctx.restore();
+      }
+    }
+
+    // Highlight dragged vertex
+    if (this._dragVertex) {
+      const v = verts[this._dragVertex.r][this._dragVertex.c];
+      ctx.save();
+      ctx.fillStyle = '#ff4444';
+      ctx.beginPath();
+      ctx.arc(v[0], v[1], 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
     }
   }
 
   render(ctx) {
-    const bgKey = this.getImageKey();
-    const bgImg = assetManager.getImage(bgKey) || assetManager.getImage('lawn_bg');
+    const bgImg = assetManager.getImage(this.getImageKey()) || assetManager.getImage('lawn_bg');
 
     if (bgImg && this.usePolyGrid && this.sceneGrid.canvasRect) {
       const [cx, cy, cw, ch] = this.sceneGrid.canvasRect;
-      ctx.drawImage(bgImg, cx, cy, cw, ch);
+      const scale = Math.max(cw / bgImg.naturalWidth, ch / bgImg.naturalHeight);
+      const dw = bgImg.naturalWidth * scale;
+      const dh = bgImg.naturalHeight * scale;
+      const dx = cx + (cw - dw) / 2;
+      const dy = cy + (ch - dh) / 2;
+      ctx.drawImage(bgImg, dx, dy, dw, dh);
     } else if (bgImg) {
-      ctx.drawImage(bgImg, 0, 0, this.cols * this.cellWidth, this.rows * this.cellHeight);
+      const canvasW = this.cols * this.cellWidth;
+      const canvasH = this.rows * this.cellHeight;
+      const scale = Math.max(canvasW / bgImg.naturalWidth, canvasH / bgImg.naturalHeight);
+      const dw = bgImg.naturalWidth * scale;
+      const dh = bgImg.naturalHeight * scale;
+      const dx = (canvasW - dw) / 2;
+      const dy = (canvasH - dh) / 2;
+      ctx.drawImage(bgImg, dx, dy, dw, dh);
     } else {
       const gradient = ctx.createLinearGradient(0, 0, 0, this.rows * this.cellHeight);
       gradient.addColorStop(0, '#4a7a3a');

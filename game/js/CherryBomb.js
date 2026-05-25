@@ -1,13 +1,16 @@
 import { Plant } from './Plant.js';
+import { STAR_CONFIG } from './constants.js';
 import { assetManager } from './AssetManager.js';
 import { drawCherryBomb } from './PlantRenderer.js';
 
 export class CherryBomb extends Plant {
   constructor(x, y, starLevel = 1) {
     super(x, y, starLevel);
-    this.baseMaxHealth = 100;
-    this._doHealthScaling();
-    this.explosionDamage = 200;
+    // Cherry Bomb doesn't need HP — it explodes on arm. Scale damage instead.
+    this.maxHealth = 100;
+    this.health = 100;
+    const damageMult = (STAR_CONFIG[starLevel] || STAR_CONFIG[1]).damageMult;
+    this.explosionDamage = Math.floor(200 * damageMult);
     this.explosionRadius = 3;
     this.armingTime = 1500;
     this.armTimer = 0;
@@ -57,11 +60,14 @@ export class CherryBomb extends Plant {
     } else {
       drawCherryBomb(ctx, this.x, this.y, 80, 80, this.armed);
     }
-    // Arming progress
+  }
+
+  renderBars(ctx) {
+    if (this.exploded) return;
     if (!this.armed) {
       const pct = this.armTimer / this.armingTime;
       ctx.fillStyle = 'rgba(255,0,0,0.6)';
-      ctx.fillRect(this.x + 10, this.y + 5, 80 * pct, 5);
+      ctx.fillRect(this.x + 10, this.y + 5, 70 * pct, 5);
     }
   }
 }

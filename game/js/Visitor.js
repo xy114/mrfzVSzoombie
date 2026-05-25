@@ -18,6 +18,9 @@ export class Visitor {
     this.maxHealth = def.combat.health;
     this.alive = true;
     this.category = 'visitor';
+
+    this.getBodyType = () => 'humanoid';
+    this.getRenderSize = () => 80;
     this.scale = 1;
     this.rotation = 0;
     this._timeStopForm = false;
@@ -72,9 +75,15 @@ export class Visitor {
 
   render(ctx) {
     const imgKey = this._timeStopForm ? 'visitor_katana_zero_time' : 'visitor_katana_zero';
-    const img = assetManager.getImage(imgKey);
+    const img = assetManager.getImageNoBg(imgKey);
+    ctx.save();
     if (img) {
-      ctx.drawImage(img, this.x, this.y, this.width, this.height);
+      // Keep aspect ratio, center in bounding box, flip to face right
+      const s = Math.min(this.width / img.naturalWidth, this.height / img.naturalHeight);
+      const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+      const offX = (this.width - dw) / 2;
+      const offY = (this.height - dh) / 2;
+      ctx.drawImage(img, this.x + offX, this.y + offY, dw, dh);
     } else {
       ctx.fillStyle = this._timeStopForm ? '#a040d0' : '#607080';
       ctx.fillRect(this.x, this.y, this.width, this.height);
@@ -82,7 +91,10 @@ export class Visitor {
       ctx.font = '12px sans-serif';
       ctx.fillText('???', this.x + 15, this.y + 45);
     }
+    ctx.restore();
+  }
 
+  renderBars(ctx) {
     if (this._activeCooldownRemaining > 0) {
       const ratio = this.getCooldownRatio('active');
       ctx.fillStyle = '#333';

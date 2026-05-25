@@ -28,6 +28,20 @@ export class Plant {
   render(ctx) {
   }
 
+  getBodyType() { return 'plant'; }
+  getRenderSize() { return 80; }
+
+  renderBars(ctx) {
+    const sz = this.getRenderSize();
+    const barW = GAME_CONFIG.CELL_WIDTH * 0.7;
+    const healthPercent = this.health / this.maxHealth;
+    const barX = this.x + (sz - barW) / 2;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(barX, this.y - 8, barW, 5);
+    ctx.fillStyle = '#0dc5d0';
+    ctx.fillRect(barX, this.y - 8, barW * healthPercent, 5);
+  }
+
   takeDamage(damage) {
     this.health -= damage;
     if (this.health <= 0) {

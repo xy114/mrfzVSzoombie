@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>武士零位置调整</title>
+<style>
+  body { background: #2c2c34; color: #e0e0e6; font-family: 'Microsoft YaHei', sans-serif; padding: 30px; }
+  h1 { font-size: 18px; letter-spacing: 4px; color: #c070ff; margin-bottom: 24px; }
+  .layout { display: flex; gap: 30px; align-items: flex-start; }
+  .left { flex-shrink: 0; }
+  .left h3 { font-size: 14px; letter-spacing: 2px; color: #9898a0; margin: 0 0 6px; }
+  .preview-grid { display: flex; flex-direction: column; gap: 20px; }
+  .preview-item { text-align: center; }
+  .preview-item p { font-size: 11px; color: #9898a0; margin: 4px 0 0; }
+  .preview-item p b { color: #c070ff; }
+
+  .center { flex: 1; display: flex; flex-direction: column; align-items: center; }
+  .big-wrap { position: relative; display: inline-block; }
+  .big-wrap canvas { display: block; cursor: grab; }
+  .big-wrap canvas:active { cursor: grabbing; }
+  #frame {
+    position: absolute; border: 2px solid #c070ff; pointer-events: none; z-index: 5;
+    box-shadow: 0 0 8px rgba(192,112,255,0.5), 0 0 0 9999px rgba(0,0,0,0.5);
+  }
+  #flabel {
+    position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: #c070ff; font-weight: bold; letter-spacing: 2px;
+    white-space: nowrap; pointer-events: none; z-index: 6;
+    text-shadow: 0 0 6px rgba(0,0,0,0.8);
+  }
+  #status { color: #f0a030; font-size: 13px; margin: 10px 0; }
+
+  .right { flex-shrink: 0; width: 210px; }
+  .right h3 { font-size: 14px; letter-spacing: 2px; color: #9898a0; margin: 0 0 10px; }
+  .size-btn {
+    display: block; width: 100%; padding: 10px 14px; margin-bottom: 6px;
+    font-size: 13px; font-weight: bold; letter-spacing: 2px; border-radius: 4px;
+    background: #3e3e4a; border: 1px solid rgba(255,255,255,0.08);
+    color: #9898a0; cursor: pointer; transition: all 0.12s;
+  }
+  .size-btn:hover { border-color: #c070ff; color: #c070ff; }
+  .size-btn.active { border-color: #c070ff; color: #c070ff; background: rgba(192,112,255,0.1); }
+
+  .offset-row { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; }
+  .offset-row label { font-size: 14px; font-weight: bold; width: 16px; }
+  .offset-row input { flex:1; padding:6px 8px; font-size:14px; text-align:center;
+    background:#2c2c34; border:1px solid rgba(255,255,255,0.1); color:#e0e0e6; border-radius:4px; }
+  .offset-row input:focus { outline: none; border-color: #c070ff; }
+
+  .btn { width:100%; padding:8px; font-size:13px; font-weight:bold; letter-spacing:2px;
+    background:#ececf0; border:1px solid rgba(0,0,0,0.12); color:#1a1a22;
+    cursor:pointer; border-radius:4px; margin-bottom:6px; transition:all 0.12s; }
+  .btn:hover { background:#f4f4f6; }
+  .btn:active { transform:scale(0.96); background:#d0d0d8; }
+  .btn.danger { background:#f4c8c8; color:#4a1a1a; }
+  .btn.danger:hover { background:#f8d8d8; }
+  .btn.primary { background:#c8e6c9; color:#1b3a1b; }
+  .btn.primary:hover { background:#d8f0d9; }
+
+  .export-box { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .export-box textarea {
+    width:100%; height:100px; font-size:11px; font-family:monospace;
+    background:#2c2c34; color:#e0e0e6; border:1px solid rgba(255,255,255,0.1);
+    border-radius:4px; padding:8px; resize:none; margin-bottom:6px;
+  }
+  .export-box .tip { font-size:11px; color:#9898a0; margin-bottom:6px; }
+</style>
+</head>
+<body>
+
+<h1>武士零位置调整</h1>
+
+<div class="layout">
+  <div class="left">
+    <h3>卡面预览（游戏实际背景）</h3>
+    <div class="preview-grid" id="preview-grid"></div>
+  </div>
+
+  <div class="center">
+    <div id="status">⏳ 正在加载资源...</div>
+    <div class="big-wrap" id="big-wrap" style="display:none;">
+      <canvas id="big-cv"></canvas>
+      <div id="frame"><div id="flabel"></div></div>
+    </div>
+    <p style="color:#9898a0; font-size:12px; margin-top:12px;">拖动立绘来调整紫色卡面框的位置</p>
+  </div>
+
+  <div class="right">
+    <h3>选择卡面</h3>
+    <div id="size-btns"></div>
+    <div class="offset-row"><label>X</label><input type="number" id="ox" value="0" step="1"></div>
+    <div class="offset-row"><label>Y</label><input type="number" id="oy" value="0" step="1"></div>
+    <button class="btn" id="btn-reset-one">重置当前</button>
+    <button class="btn danger" id="btn-reset-all">全部重置</button>
+    <div class="export-box">
+      <div class="tip">调整完成复制参数给我</div>
+      <textarea id="export-text" readonly></textarea>
+      <button class="btn primary" id="btn-copy">复制参数</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// === 卡面定义（含游戏实际背景色和边框） ===
+const DEFS = [
+  { name: '编队槽位', w: 56, h: 70, bg: '#1e1530', border: 'rgba(160,60,220,0.3)' },
+  { name: '选择器',   w: 64, h: 84, bg: '#484854', border: 'rgba(255,255,255,0.06)' },
+  { name: '战斗卡面', w: 72, h: 96, bg: '#ececf0', border: 'rgba(0,0,0,0.12)' },
+  { name: '展示选择', w: 60, h: 78, bg: '#484854', border: 'rgba(255,255,255,0.06)' },
+  { name: '图鉴详情', w: 200, h: 260, bg: '#3e3e4a', border: 'rgba(255,255,255,0.06)' },
+  { name: '图鉴卡面', w: 168, h: 139, bg: '#3e3e4a', border: 'rgba(255,255,255,0.06)' },
+];
+let offsets = DEFS.map(() => ({ x: 0, y: 0 }));
+let active = 0;
+let noBgImg = null;
+
+// === 构建 DOM ===
+const previewGrid = document.getElementById('preview-grid');
+const previewCanvases = [];
+DEFS.forEach((d, i) => {
+  const div = document.createElement('div');
+  div.className = 'preview-item';
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = `display:inline-block;padding:0;line-height:0;`;
+  const cv = document.createElement('canvas');
+  cv.width = d.w; cv.height = d.h;
+  cv.style.cssText = `border-radius:4px;`;
+  wrapper.appendChild(cv);
+  div.appendChild(wrapper);
+  const p = document.createElement('p');
+  p.id = 'pv' + i;
+  div.appendChild(p);
+  previewGrid.appendChild(div);
+  previewCanvases.push(cv);
+});
+
+const sizeBtns = document.getElementById('size-btns');
+DEFS.forEach((d, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'size-btn';
+  btn.textContent = d.name + ' ' + d.w + '×' + d.h;
+  btn.addEventListener('click', () => { active = i; refreshAll(); });
+  sizeBtns.appendChild(btn);
+});
+
+const bigCv = document.getElementById('big-cv');
+const bctx = bigCv.getContext('2d');
+const frame = document.getElementById('frame');
+const flabel = document.getElementById('flabel');
+const statusEl = document.getElementById('status');
+
+// === 绘制函数 ===
+function drawBg(ctx, w, h, bg, border) {
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+}
+
+function refreshAll() {
+  const d = DEFS[active];
+
+  // 卡面预览
+  for (let i = 0; i < DEFS.length; i++) {
+    const dd = DEFS[i], off = offsets[i];
+    const cv = previewCanvases[i], ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, dd.w, dd.h);
+    drawBg(ctx, dd.w, dd.h, dd.bg, dd.border);
+    if (noBgImg) {
+      const s = Math.min(dd.w / noBgImg.naturalWidth, dd.h / noBgImg.naturalHeight);
+      const dw = noBgImg.naturalWidth * s, dh = noBgImg.naturalHeight * s;
+      const cx = (dd.w - dw) / 2 + off.x * s;
+      const cy = (dd.h - dh) / 2 + off.y * s;
+      ctx.drawImage(noBgImg, cx, cy, dw, dh);
+    }
+    document.getElementById('pv'+i).innerHTML = `偏移 <b>(${off.x>0?'+':''}${off.x}, ${off.y>0?'+':''}${off.y})</b>`;
+  }
+
+  // 大立绘区域
+  const bigW = Math.min(400, noBgImg ? noBgImg.naturalWidth : 400);
+  const bigH = Math.min(400, noBgImg ? noBgImg.naturalHeight : 400);
+  bigCv.width = bigW; bigCv.height = bigH;
+  bctx.clearRect(0, 0, bigW, bigH);
+  drawBg(bctx, bigW, bigH, d.bg, d.border);
+
+  if (noBgImg) {
+    const scale = Math.min(bigW / noBgImg.naturalWidth, bigH / noBgImg.naturalHeight);
+    const sw = noBgImg.naturalWidth * scale, sh = noBgImg.naturalHeight * scale;
+    bctx.drawImage(noBgImg, 0, 0, sw, sh);
+
+    const off = offsets[active];
+    const cs = Math.min(d.w / noBgImg.naturalWidth, d.h / noBgImg.naturalHeight);
+    const cdw = noBgImg.naturalWidth * cs * scale, cdh = noBgImg.naturalHeight * cs * scale;
+    const fcx = (sw - cdw) / 2 + off.x * scale;
+    const fcy = (sh - cdh) / 2 + off.y * scale;
+    frame.style.left = fcx + 'px';
+    frame.style.top = fcy + 'px';
+    frame.style.width = cdw + 'px';
+    frame.style.height = cdh + 'px';
+    flabel.textContent = d.name + ' ' + d.w + '×' + d.h;
+    document.getElementById('big-wrap').style.display = 'inline-block';
+    statusEl.style.display = 'none';
+  }
+
+  document.getElementById('ox').value = offsets[active].x;
+  document.getElementById('oy').value = offsets[active].y;
+  sizeBtns.querySelectorAll('button').forEach((b, i) => b.classList.toggle('active', i === active));
+  updateExport();
+}
+
+function updateExport() {
+  document.getElementById('export-text').value = DEFS.map((d, i) =>
+    `${d.name}(${d.w}x${d.h}): offsetX=${offsets[i].x}, offsetY=${offsets[i].y}`
+  ).join('\n');
+}
+
+// 先画初始状态
+refreshAll();
+
+// === 拖动 ===
+let dragging = false, dsx = 0, dsy = 0, dox = 0, doy = 0;
+bigCv.addEventListener('mousedown', e => {
+  if (!noBgImg) return;
+  dragging = true;
+  dsx = e.clientX; dsy = e.clientY;
+  dox = offsets[active].x; doy = offsets[active].y;
+  e.preventDefault();
+});
+window.addEventListener('mousemove', e => {
+  if (!dragging || !noBgImg) return;
+  const scale = Math.min(bigCv.width / noBgImg.naturalWidth, bigCv.height / noBgImg.naturalHeight);
+  offsets[active].x = Math.round(dox + (e.clientX - dsx) / scale);
+  offsets[active].y = Math.round(doy + (e.clientY - dsy) / scale);
+  refreshAll();
+});
+window.addEventListener('mouseup', () => { dragging = false; });
+
+// === 控制 ===
+document.getElementById('ox').addEventListener('input', function() { offsets[active].x = parseInt(this.value) || 0; refreshAll(); });
+document.getElementById('oy').addEventListener('input', function() { offsets[active].y = parseInt(this.value) || 0; refreshAll(); });
+document.getElementById('btn-reset-one').addEventListener('click', () => { offsets[active] = { x: 0, y: 0 }; refreshAll(); });
+document.getElementById('btn-reset-all').addEventListener('click', () => { offsets = DEFS.map(() => ({ x: 0, y: 0 })); refreshAll(); });
+document.getElementById('btn-copy').addEventListener('click', () => {
+  const ta = document.getElementById('export-text');
+  ta.select(); document.execCommand('copy');
+  const b = document.getElementById('btn-copy');
+  b.textContent = '已复制!'; setTimeout(() => { b.textContent = '复制参数'; }, 1500);
+});
+
+// 滚轮微调
+bigCv.addEventListener('wheel', e => {
+  if (!noBgImg) return;
+  e.preventDefault();
+  offsets[active].x += e.deltaX > 0 ? -1 : e.deltaX < 0 ? 1 : 0;
+  offsets[active].y += e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0;
+  refreshAll();
+}, { passive: false });
+
+// === 去黑底 ===
+function removeBlackBg(img) {
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, w, h), px = data.data;
+  const vis = new Uint8Array(w * h), q = [];
+  const isBk = idx => { const i = idx * 4; return px[i] === 0 && px[i+1] === 0 && px[i+2] === 0; };
+  for (let x = 0; x < w; x++) {
+    const t = x, b = (h-1)*w+x;
+    if (isBk(t) && !vis[t]) { vis[t] = 1; q.push(t); }
+    if (isBk(b) && !vis[b]) { vis[b] = 1; q.push(b); }
+  }
+  for (let y = 1; y < h-1; y++) {
+    const l = y*w, r = y*w+(w-1);
+    if (isBk(l) && !vis[l]) { vis[l] = 1; q.push(l); }
+    if (isBk(r) && !vis[r]) { vis[r] = 1; q.push(r); }
+  }
+  let head = 0;
+  while (head < q.length) {
+    const idx = q[head++], x = idx % w, y = Math.floor(idx / w);
+    for (const [dx, dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      const nx = x+dx, ny = y+dy;
+      if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+      const ni = ny*w+nx;
+      if (!vis[ni] && isBk(ni)) { vis[ni] = 1; q.push(ni); }
+    }
+  }
+  for (let i = 0; i < w*h; i++) if (vis[i]) px[i*4+3] = 0;
+  ctx.putImageData(data, 0, 0);
+  c.naturalWidth = w; c.naturalHeight = h;
+  return c;
+}
+
+function loadImg(path) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('加载失败: ' + path));
+    img.src = path;
+  });
+}
+
+async function init() {
+  try {
+    // 加载武士零图片
+    const raw = await loadImg('resources/special/Katana_Zero.png');
+    noBgImg = removeBlackBg(raw);
+
+    // 加载卡面基底图片
+    for (const bgKey of ['plant_card_bg', 'zombie_card_bg']) {
+      try {
+        const bgImg = await loadImg('resources/others/' + (bgKey === 'plant_card_bg' ? 'Almanac_PlantCard.png' : 'Almanac_ZombieCard.png'));
+        window[bgKey] = bgImg;
+      } catch(e) { /* 基底图片可选 */ }
+    }
+
+    statusEl.textContent = '✅ 加载完成 (' + noBgImg.naturalWidth + '×' + noBgImg.naturalHeight + ')';
+    statusEl.style.color = '#3ecf6b';
+    setTimeout(() => { statusEl.style.display = 'none'; }, 1500);
+    refreshAll();
+  } catch (e) {
+    statusEl.textContent = '❌ ' + e.message;
+    statusEl.style.color = '#e84040';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

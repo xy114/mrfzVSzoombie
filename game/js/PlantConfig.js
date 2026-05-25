@@ -11,10 +11,10 @@ export const PLANT_DEFS = [
     id: 'peashooter',
     name: '豌豆射手',
     emoji: '🫛',
-    description: '发射豌豆攻击前方僵尸，技能：火焰豌豆',
+    description: '发射豌豆攻击前方僵尸',
     unlockLevel: null,
     combat: { cost: 100, health: 100, shootInterval: 1500, damage: 20, bulletSpeed: 5,
-      skillMaxCooldown: 10000, skillDamage: 50, explosionRadius: 1.5 }
+      skillMaxCooldown: 10000 }
   },
   {
     id: 'nut',
@@ -46,12 +46,12 @@ export const STAR_COST = { '1-2': 100, '2-3': 300 };
 export const SKIN_DEFS = {
   peashooter: [
     {
-      id: 'flame_emperor',
-      name: '焰皇',
-      cost: 200,
-      emoji: '🔥',
-      effects: { firePeaDamage: 80, skillCooldown: 8000 },
-      description: '火焰豌豆伤害+30，冷却-2秒'
+      id: 'wishadel',
+      name: '维什戴尔',
+      emoji: '💥',
+      description: '异界的轰鸣点燃草坪，碾碎不识好歹的敌人',
+      cost: 300,
+      owned: true
     }
   ]
 };
