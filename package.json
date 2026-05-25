@@ -1,26 +1,29 @@
 {
   "author": "xy <3411135364@qq.com>",
   "name": "mrfz-vs-zombie",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Plant vs Zombie style tower defense game",
   "license": "MIT",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "build": "electron-builder --win portable",
-    "build:installer": "electron-builder --win nsis",
-    "package": "electron-packager . 植物大战僵尸 --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/icon.ico",
+    "build:win": "electron-builder --win portable --x64",
+    "build:mac": "electron-builder --mac --x64",
+    "build:all": "electron-builder --win portable --mac --x64",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
-    "electron": "42.2.0",
+    "electron": "^42.2.0",
     "electron-builder": "24.13.3",
-    "electron-packager": "^17.1.2"
+    "electron-packager": "^17.1.2",
+    "playwright": "^1.60.0",
+    "sharp": "^0.34.5"
   },
   "build": {
     "appId": "com.mrfz.vszombie",
     "productName": "植物大战僵尸",
+    "artifactName": "${productName}-${version}-${os}.${ext}",
     "directories": {
       "output": "dist"
     },
@@ -38,6 +41,17 @@
       "target": [
         {
           "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        {
+          "target": "dmg",
           "arch": [
             "x64"
           ]

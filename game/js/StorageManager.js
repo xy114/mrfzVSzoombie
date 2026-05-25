@@ -10,7 +10,12 @@ const DEFAULT_SAVE = {
   completedLevels: {},
   encounteredEnemies: [],
   devMode: false,
-  displayPlant: 'sunflower'
+  displayPlant: 'sunflower',
+  displayPlantSkin: null,
+  unlockedSquadSlots: 6,
+  savedSquads: {},
+  visitorSquad: [],
+  unlockedVisitors: ['katana_zero']
 };
 
 let saveData = null;
@@ -92,6 +97,8 @@ export const StorageManager = {
 
   getDisplayPlant() { return saveData.displayPlant; },
   setDisplayPlant(plantId) { saveData.displayPlant = plantId; this.save(); },
+  getDisplayPlantSkin() { return saveData.displayPlantSkin || null; },
+  setDisplayPlantSkin(skinId) { saveData.displayPlantSkin = skinId; this.save(); },
 
   encounterEnemy(enemyId) {
     if (!saveData.encounteredEnemies.includes(enemyId)) {
@@ -119,7 +126,8 @@ export const StorageManager = {
         plantStars: { ...saveData.plantStars },
         plantSkins: { ...saveData.plantSkins },
         ownedSkins: JSON.parse(JSON.stringify(saveData.ownedSkins)),
-        displayPlant: saveData.displayPlant
+        displayPlant: saveData.displayPlant,
+        displayPlantSkin: saveData.displayPlantSkin
       };
     }
     saveData.devMode = true;
@@ -141,6 +149,7 @@ export const StorageManager = {
     saveData.plantSkins = snap.plantSkins;
     saveData.ownedSkins = snap.ownedSkins;
     saveData.displayPlant = snap.displayPlant;
+    saveData.displayPlantSkin = snap.displayPlantSkin || null;
     saveData.devMode = false;
     delete saveData._preDevSnapshot;
     this.save();
@@ -148,7 +157,67 @@ export const StorageManager = {
   },
 
   resetSave() {
-    saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {}, encounteredEnemies: [] };
+    saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {}, encounteredEnemies: [], unlockedSquadSlots: 6, savedSquads: {} };
     this.save();
+  },
+
+  // Squad system
+  getUnlockedSquadSlots() { return saveData.unlockedSquadSlots || 6; },
+
+  getSquadSlotUnlockCost() {
+    const unlocked = this.getUnlockedSquadSlots();
+    if (unlocked >= 12) return Infinity;
+    const costs = { 6: 100, 7: 200, 8: 400, 9: 800, 10: 1500, 11: 3000 };
+    return costs[unlocked] || 0;
+  },
+
+  unlockSquadSlot() {
+    const cost = this.getSquadSlotUnlockCost();
+    if (cost === Infinity) return false;
+    if (this.spendCrystals(cost)) {
+      saveData.unlockedSquadSlots = (saveData.unlockedSquadSlots || 6) + 1;
+      this.save();
+      return true;
+    }
+    return false;
+  },
+
+  saveSquad(plantIds) {
+    if (!saveData.savedSquads) saveData.savedSquads = {};
+    saveData.savedSquads._last = plantIds;
+    this.save();
+  },
+
+  getLastSquad() {
+    return (saveData.savedSquads && saveData.savedSquads._last) || [];
+  },
+
+  // Visitor system
+  isVisitorUnlocked(visitorId) {
+    if (saveData.devMode) return true;
+    return (saveData.unlockedVisitors || []).includes(visitorId);
+  },
+
+  unlockVisitor(visitorId) {
+    if (!saveData.unlockedVisitors) saveData.unlockedVisitors = [];
+    if (!saveData.unlockedVisitors.includes(visitorId)) {
+      saveData.unlockedVisitors.push(visitorId);
+      this.save();
+      return true;
+    }
+    return false;
+  },
+
+  getVisitorSquad() {
+    return saveData.visitorSquad || [];
+  },
+
+  saveVisitorSquad(visitorIds) {
+    saveData.visitorSquad = visitorIds;
+    this.save();
+  },
+
+  getUnlockedVisitors() {
+    return (saveData.unlockedVisitors || []).filter(id => this.isVisitorUnlocked(id));
   }
 };

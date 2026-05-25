@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Handle startCombat event from UIManager
   window.addEventListener('startCombat', (e) => {
-    const { levelId } = e.detail;
+    const { levelId, squad } = e.detail;
     const levelConfig = getLevel(levelId);
     if (!levelConfig) return;
 
@@ -54,14 +54,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bm = new BattleManager(ui.canvas, levelConfig, playerData);
     ui.battleManager = bm;
 
-    // Setup combat footer with available plant types
-    const availablePlants = [];
-    for (const plantDef of getAllPlantDefs()) {
-      if (plantDef && StorageManager.isPlantUnlocked(plantDef.id)) {
-        availablePlants.push(plantDef.id);
+    // Setup combat footer — use squad if provided, otherwise all unlocked plants
+    let availablePlants;
+    if (squad && squad.length > 0) {
+      availablePlants = squad;
+    } else {
+      availablePlants = [];
+      for (const plantDef of getAllPlantDefs()) {
+        if (plantDef && StorageManager.isPlantUnlocked(plantDef.id)) {
+          availablePlants.push(plantDef.id);
+        }
       }
     }
     ui.setupCombatFooter(availablePlants);
+
+    const visitorSquad = e.detail.visitorSquad || StorageManager.getVisitorSquad();
+    ui.renderVisitorCards(visitorSquad);
 
     // Wire canvas interactions — PvZ-style drag-and-drop
     const updateDrag = () => {
@@ -74,7 +82,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
 
+    // Helper to get canvas coords
+    const canvasCoords = (ev) => {
+      const rect = ui.canvas.getBoundingClientRect();
+      return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+    };
+
     ui.canvas.onmousemove = (ev) => {
+      // Debug mode: drag vertex
+      if (bm.lawn.debugGrid) {
+        const { x, y } = canvasCoords(ev);
+        bm.handleDebugMouseMove(x, y);
+        return;
+      }
       if (!ui.dragState) return;
       const rect = ui.canvas.getBoundingClientRect();
       const mx = ev.clientX - rect.left;
@@ -87,6 +107,54 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateDrag();
     };
 
+    ui.canvas.onmousedown = (ev) => {
+      // Debug mode: grab vertex
+      if (bm.lawn.debugGrid) {
+        const { x, y } = canvasCoords(ev);
+        bm.handleDebugMouseDown(x, y);
+        return;
+      }
+    };
+
+    ui.canvas.onmouseup = (ev) => {
+      // Debug mode: release vertex
+      if (bm.lawn.debugGrid) {
+        bm.handleDebugMouseUp();
+        return;
+      }
+      if (!ui.dragState) return;
+      const rect = ui.canvas.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const y = ev.clientY - rect.top;
+
+      // Check if dropping on a visitor — just cancel drag, let onclick handle it
+      for (const visitor of bm.visitors) {
+        const dx = x - visitor.x;
+        const dy = y - visitor.y;
+        if (dx > -10 && dx < visitor.width + 10 && dy > -10 && dy < visitor.height + 10) {
+          ui.deselectPlant();
+          updateDrag();
+          return;
+        }
+      }
+
+      if (bm.isPlantOnCooldown(ui.dragState.plantType)) {
+        ui.showToast('该物体正在冷却中...');
+        ui.deselectPlant();
+        updateDrag();
+        return;
+      }
+      const placed = bm.handleDrop(x, y, ui.dragState.plantType);
+      if (!placed) {
+        const cell = bm.lawn.getCellFromPosition(x, y);
+        if (cell.row >= 0 && cell.col >= 0) {
+          bm._flashCell = { row: cell.row, col: cell.col, timer: 300 };
+        }
+      }
+      ui.deselectPlant();
+      updateDrag();
+    };
+
     ui.canvas.onmouseleave = () => {
       if (ui.dragState) {
         ui.dragState.hoverRow = -1;
@@ -95,26 +163,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
 
+    // Global mouseup — clear ghost wherever the mouse is released
+    window.addEventListener('mouseup', () => {
+      if (bm.lawn.debugGrid) {
+        bm.handleDebugMouseUp();
+        return;
+      }
+      if (ui.dragState) {
+        ui.deselectPlant();
+        updateDrag();
+      }
+    });
+
     ui.canvas.onclick = (ev) => {
+      if (bm.lawn.debugGrid) return; // No combat interactions in debug mode
       const rect = ui.canvas.getBoundingClientRect();
       const x = ev.clientX - rect.left;
       const y = ev.clientY - rect.top;
-
-      // Drag-and-drop plant placement
-      if (ui.dragState) {
-        if (bm.isPlantOnCooldown(ui.dragState.plantType)) {
-          ui.showToast('该植物正在冷却中...');
-          ui.deselectPlant();
-          updateDrag();
-          return;
-        }
-        const placed = bm.handlePlantClick(x, y, ui.dragState.plantType);
-        if (placed) {
-          ui.deselectPlant();
-          updateDrag();
-        }
-        return;
-      }
 
       // Sun collection
       for (const sun of bm.suns) {
@@ -140,6 +205,16 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
       }
+
+      // Click visitor — open panel
+      for (const visitor of bm.visitors) {
+        const dx = x - visitor.x;
+        const dy = y - visitor.y;
+        if (dx > -10 && dx < visitor.width + 10 && dy > -10 && dy < visitor.height + 10) {
+          ui.showVisitorPanel(visitor);
+          return;
+        }
+      }
     };
 
     ui.canvas.oncontextmenu = (ev) => {
@@ -150,8 +225,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
 
-    // Keyboard: Space for skills, Escape to cancel drag
+    // Keyboard: Space for skills, Escape to cancel drag, E to export grid, D to toggle debug
     const keyHandler = (ev) => {
+      if (ev.code === 'KeyD') {
+        bm.lawn.debugGrid = !bm.lawn.debugGrid;
+        if (bm.lawn.debugGrid) {
+          localStorage.setItem('debugGrid', '1');
+          ui.showToast('调试模式已开启 (按D关闭)', 2000);
+        } else {
+          localStorage.removeItem('debugGrid');
+          ui.showToast('调试模式已关闭', 2000);
+        }
+        const exportBtn2 = document.getElementById('debug-export-btn');
+        if (exportBtn2) exportBtn2.style.display = bm.lawn.debugGrid ? '' : 'none';
+        return;
+      }
+      if (ev.code === 'KeyE' && bm.lawn.debugGrid) {
+        bm.lawn.exportGrid();
+        ui.showToast('网格已导出到控制台 (F12查看)', 2000);
+        return;
+      }
       if (ev.code === 'Escape') {
         if (ui.dragState) {
           ui.deselectPlant();
@@ -169,6 +262,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     document.addEventListener('keydown', keyHandler);
     bm._keyHandler = keyHandler;
+
+    // Debug export button
+    const exportBtn = document.getElementById('debug-export-btn');
+    if (exportBtn && bm.lawn.debugGrid) {
+      exportBtn.style.display = '';
+      exportBtn.onclick = () => {
+        const json = bm.lawn.exportGrid();
+        navigator.clipboard.writeText(json).then(() => {
+          ui.showToast('网格数据已复制到剪贴板！', 2000);
+        }).catch(() => {
+          ui.showToast('复制失败，请查看控制台(F12)', 3000);
+        });
+      };
+    }
 
     // Callbacks
     bm.onSunChange = (sun) => {

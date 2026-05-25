@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Scene Grid Calibrator</title>
+<style>
+  body { margin: 0; padding: 10px; background: #1a1a2e; color: #ccc; font-family: monospace; }
+  #toolbar { margin-bottom: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  select, button { padding: 6px 12px; font-size: 14px; }
+  button { cursor: pointer; background: #3a3a5e; color: #fff; border: 1px solid #555; border-radius: 4px; }
+  button:hover { background: #4a4a7e; }
+  button.primary { background: #5a8a3a; border-color: #8f8; }
+  button.warn { background: #a04030; border-color: #f88; }
+  #info { color: #ff0; font-size: 13px; }
+  canvas { border: 2px solid #444; cursor: crosshair; display: block; }
+  .help { color: #888; font-size: 12px; margin-top: 5px; line-height: 1.6; }
+  .help b { color: #ff0; }
+  #savedList { margin-top: 6px; font-size: 12px; }
+  #savedList .done { color: #0f0; margin-right: 6px; }
+  #savedList .missing { color: #555; margin-right: 6px; }
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <label>场景:</label>
+  <select id="sceneSelect">
+    <option value="day">白天 (day)</option>
+    <option value="night">晚上 (night)</option>
+    <option value="pool">泳池 (pool)</option>
+    <option value="fog">迷雾 (fog)</option>
+    <option value="one">一条 (one)</option>
+    <option value="three">三条 (three)</option>
+    <option value="ground">土地 (ground)</option>
+    <option value="dayRoof">白天屋顶 (dayRoof)</option>
+    <option value="nightRoof">晚上屋顶 (nightRoof)</option>
+  </select>
+  <button id="btnLoad" class="primary">加载</button>
+  <span id="info">点击网格交点，顺序：从左到右，从上到下</span>
+</div>
+<canvas id="cvs" width="900" height="540"></canvas>
+<div class="help">
+  <b>操作:</b> 按从上到下、从左到右的顺序点击每个<b>网格交点</b>（共 <b id="helpTotal">60</b> 个点：<b id="helpRows">6</b>行×<b id="helpCols">10</b>列）<br>
+  从上到下逐行标记，每行从最左边点开始<br>
+  <b>当前标记:</b> <span id="currentDot" style="color:#0f0;">[0,0]</span> &nbsp; 已标记: <span id="pointCount" style="color:#ff0;">0/60</span>
+</div>
+<div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;">
+  <button id="btnUndo">撤销 (Undo)</button>
+  <button id="btnClear">清除全部</button>
+  <button id="btnSave" class="primary">保存当前场景</button>
+  <button id="btnDownload" class="primary">下载完整 SceneGrid.js</button>
+  <span id="saveStatus" style="color:#0f0;"></span>
+</div>
+<div id="savedList">已保存: <span id="savedScenes"></span></div>
+
+<script>
+const canvas = document.getElementById('cvs');
+const ctx = canvas.getContext('2d');
+const SCENE_IDS = ['day','night','pool','fog','one','three','ground','dayRoof','nightRoof'];
+const SCENE_LAYOUT = {
+  day:        { rows: 5, cols: 9 },
+  night:      { rows: 5, cols: 9 },
+  pool:       { rows: 6, cols: 9 },
+  fog:        { rows: 6, cols: 9 },
+  one:        { rows: 1, cols: 9 },
+  three:      { rows: 3, cols: 9 },
+  ground:     { rows: 0, cols: 0 },
+  dayRoof:    { rows: 5, cols: 9 },
+  nightRoof:  { rows: 5, cols: 9 },
+};
+let ROWS = 5, COLS = 9;
+let PTS_PER_ROW = COLS + 1;
+let TOTAL_PTS = (ROWS + 1) * PTS_PER_ROW;
+
+let currentImage = null;
+let currentSceneId = null;
+let imageW = 0, imageH = 0;
+let points = []; // 60 {x,y}
+let savedGrids = JSON.parse(localStorage.getItem('calibratedGrids60') || '{}');
+
+function updateSavedList() {
+  document.getElementById('savedScenes').innerHTML = SCENE_IDS.map(id => {
+    const cls = savedGrids[id] ? 'done' : 'missing';
+    return `<span class="${cls}">${id}</span>`;
+  }).join(' ');
+}
+
+document.getElementById('btnLoad').onclick = () => loadScene(document.getElementById('sceneSelect').value);
+document.getElementById('btnUndo').onclick = () => {
+  if (points.length > 0) { points.pop(); draw(); }
+};
+document.getElementById('btnClear').onclick = () => { points = []; draw(); };
+document.getElementById('btnSave').onclick = saveCurrent;
+document.getElementById('btnDownload').onclick = downloadFull;
+
+canvas.onclick = (e) => {
+  if (!currentImage) return;
+  if (points.length >= TOTAL_PTS) {
+    document.getElementById('info').textContent = `已完成全部${TOTAL_PTS}个点! (${ROWS+1}行×${COLS+1}列) 请保存`;
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.max(0, Math.min(canvas.width, Math.round(e.clientX - rect.left)));
+  const y = Math.max(0, Math.min(canvas.height, Math.round(e.clientY - rect.top)));
+  points.push({x, y});
+  draw();
+};
+
+const sceneFiles = {
+  day: '../resources/scene/白天.jpg', night: '../resources/scene/晚上.jpg',
+  pool: '../resources/scene/泳池.jpg', fog: '../resources/scene/迷雾.jpg',
+  one: '../resources/scene/一条.jpg', three: '../resources/scene/三条.jpg',
+  ground: '../resources/scene/土地.jpg', dayRoof: '../resources/scene/白天屋顶.jpg',
+  nightRoof: '../resources/scene/晚上屋顶.jpg',
+};
+
+function loadScene(sceneId) {
+  currentSceneId = sceneId;
+  points = [];
+  // Apply scene-specific layout
+  const layout = SCENE_LAYOUT[sceneId] || { rows: 5, cols: 9 };
+  ROWS = layout.rows;
+  COLS = layout.cols;
+  PTS_PER_ROW = COLS + 1;
+  TOTAL_PTS = (ROWS + 1) * PTS_PER_ROW;
+  if (savedGrids[sceneId] && savedGrids[sceneId].points) {
+    points = savedGrids[sceneId].points.map(p => ({x: p[0], y: p[1]}));
+  }
+  if (ROWS === 0 && COLS === 0) {
+    document.getElementById('info').textContent = `${sceneId} — 无可放置格子`;
+    document.getElementById('helpTotal').textContent = '0';
+    document.getElementById('helpRows').textContent = '0';
+    document.getElementById('helpCols').textContent = '0';
+    document.getElementById('pointCount').textContent = '0/0';
+    currentImage = null;
+    draw();
+    return;
+  }
+  const img = new Image();
+  img.onload = () => {
+    currentImage = img; imageW = img.naturalWidth; imageH = img.naturalHeight;
+    document.getElementById('info').textContent =
+      `已加载 ${sceneId} (${imageW}x${imageH}, ${ROWS}×${COLS}) — 请点击网格交点`;
+    document.getElementById('helpTotal').textContent = TOTAL_PTS;
+    document.getElementById('helpRows').textContent = ROWS + 1;
+    document.getElementById('helpCols').textContent = COLS + 1;
+    document.getElementById('pointCount').textContent = `0/${TOTAL_PTS}`;
+    draw();
+  };
+  img.onerror = () => { document.getElementById('info').textContent = `加载失败: ${sceneFiles[sceneId]}`; };
+  img.src = sceneFiles[sceneId];
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (currentImage) ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+
+  // Draw completed points
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const row = Math.floor(i / PTS_PER_ROW);
+    const col = i % PTS_PER_ROW;
+
+    // Point
+    ctx.fillStyle = (row === 0 || row === ROWS || col === 0 || col === COLS) ? '#0f0' : '#ff0';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Label
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${row},${col}`, p.x, p.y - 8);
+  }
+
+  // Row connecting lines
+  for (let r = 0; r <= ROWS; r++) {
+    const startIdx = r * PTS_PER_ROW;
+    if (startIdx + 1 >= points.length) break;
+    ctx.strokeStyle = 'rgba(255,255,0,0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(points[startIdx].x, points[startIdx].y);
+    const endCol = Math.min(COLS, points.length - 1 - startIdx);
+    for (let c = 1; c <= endCol; c++) {
+      ctx.lineTo(points[startIdx + c].x, points[startIdx + c].y);
+    }
+    ctx.stroke();
+  }
+
+  // Column connecting lines
+  for (let c = 0; c <= COLS; c++) {
+    if (c >= points.length) break;
+    ctx.strokeStyle = 'rgba(255,100,100,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(points[c].x, points[c].y);
+    for (let r = 1; r <= ROWS; r++) {
+      const idx = r * PTS_PER_ROW + c;
+      if (idx >= points.length) break;
+      ctx.lineTo(points[idx].x, points[idx].y);
+    }
+    ctx.stroke();
+  }
+
+  // Fill completed cells
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const tl = r * PTS_PER_ROW + c;
+      const tr = tl + 1;
+      const bl = (r + 1) * PTS_PER_ROW + c;
+      const br = bl + 1;
+      if (br >= points.length) break;
+      ctx.fillStyle = 'rgba(255,255,0,0.04)';
+      ctx.strokeStyle = 'rgba(255,255,0,0.25)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(points[tl].x, points[tl].y);
+      ctx.lineTo(points[tr].x, points[tr].y);
+      ctx.lineTo(points[br].x, points[br].y);
+      ctx.lineTo(points[bl].x, points[bl].y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Center label
+      const cx = (points[tl].x + points[tr].x + points[bl].x + points[br].x) / 4;
+      const cy = (points[tl].y + points[tr].y + points[bl].y + points[br].y) / 4;
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${r},${c}`, cx, cy);
+    }
+  }
+
+  // Next dot indicator
+  if (points.length < TOTAL_PTS) {
+    const nr = Math.floor(points.length / PTS_PER_ROW);
+    const nc = points.length % PTS_PER_ROW;
+    document.getElementById('currentDot').textContent = `[${nr},${nc}]`;
+    document.getElementById('pointCount').textContent = `${points.length}/${TOTAL_PTS}`;
+  } else {
+    document.getElementById('currentDot').textContent = '完成!';
+    document.getElementById('pointCount').textContent = `${TOTAL_PTS}/${TOTAL_PTS}`;
+  }
+}
+
+function gridFrom60(pts) {
+  const tiles = {};
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const tl = r * PTS_PER_ROW + c;
+      const tr = tl + 1;
+      const bl = (r + 1) * PTS_PER_ROW + c;
+      const br = bl + 1;
+      const poly = [
+        [pts[tl].x, pts[tl].y],
+        [pts[tr].x, pts[tr].y],
+        [pts[br].x, pts[br].y],
+        [pts[bl].x, pts[bl].y],
+      ];
+      const cx = (poly[0][0] + poly[1][0] + poly[2][0] + poly[3][0]) / 4;
+      const cy = (poly[0][1] + poly[1][1] + poly[2][1] + poly[3][1]) / 4;
+      tiles[`${r},${c}`] = {
+        poly: poly.map(p => [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10]),
+        center: [Math.round(cx * 10) / 10, Math.round(cy * 10) / 10],
+      };
+    }
+  }
+  return tiles;
+}
+
+function saveCurrent() {
+  if (points.length < TOTAL_PTS) {
+    document.getElementById('info').textContent = `还需要 ${TOTAL_PTS - points.length} 个点!`;
+    return;
+  }
+  if (ROWS === 0 || COLS === 0) {
+    document.getElementById('info').textContent = '此场景无可放置格子，无需校准';
+    return;
+  }
+  const tiles = gridFrom60(points);
+  savedGrids[currentSceneId] = {
+    points: points.map(p => [p.x, p.y]),
+    imageSize: [imageW, imageH],
+    rows: ROWS,
+    cols: COLS,
+    tiles: tiles,
+  };
+  localStorage.setItem('calibratedGrids60', JSON.stringify(savedGrids));
+  updateSavedList();
+  document.getElementById('saveStatus').textContent =
+    `已保存 ${currentSceneId}! (${Object.keys(savedGrids).length}/9)`;
+}
+
+function downloadFull() {
+  const entries = [];
+  for (const id of SCENE_IDS) {
+    if (savedGrids[id]) {
+      const data = savedGrids[id];
+      const dRows = data.rows || 5, dCols = data.cols || 9;
+      entries.push(`  // ${id}: ${data.imageSize[0]}x${data.imageSize[1]} image
+  ${id}: {
+    imageSize: [${data.imageSize[0]}, ${data.imageSize[1]}],
+    canvasRect: [0, 0, ${canvas.width}, ${canvas.height}],
+    rows: ${dRows},
+    cols: ${dCols},
+    tiles: ${JSON.stringify(data.tiles, null, 6).replace(/"(\d+,\d+)"/g, '"$1"')}
+  },`);
+    }
+  }
+  if (entries.length === 0) { alert('还没有保存任何场景!'); return; }
+  const content = `// Auto-generated calibrated scene grid definitions
+export const SCENE_GRIDS = {
+${entries.join('\n')}
+};
+
+export function getSceneGrid(sceneId) {
+  return SCENE_GRIDS[sceneId] || SCENE_GRIDS['day'];
+}
+
+export function createDefaultGrid() {
+  const tiles = {};
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 9; c++) {
+      const x1 = c * 100, y1 = r * 108;
+      const x2 = (c + 1) * 100, y2 = (r + 1) * 108;
+      tiles[\`\${r},\${c}\`] = {
+        poly: [[x1, y1], [x2, y1], [x2, y2], [x1, y2]],
+        center: [x1 + 50, y1 + 54],
+      };
+    }
+  }
+  return { rows: 5, cols: 9, tiles };
+}
+`;
+  const blob = new Blob([content], {type: 'text/javascript'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'SceneGrid.js';
+  a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById('info').textContent = `已下载 (${entries.length} 个场景)`;
+}
+
+updateSavedList();
+loadScene('day');
+</script>
+</body>
+</html>

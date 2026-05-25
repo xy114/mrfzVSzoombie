@@ -27,7 +27,6 @@
       <div id="standee-frame">
         <span id="standee-emoji">🌻</span>
       </div>
-      <div id="standee-name">向日葵</div>
       <button id="edit-standee-btn">编辑展示</button>
     </div>
     <div id="main-right">
@@ -46,12 +45,38 @@
 
   <div id="page-combat" class="page">
     <button id="combat-exit-btn" title="退出作战">&lt;</button>
+    <button id="debug-export-btn" title="导出网格" style="display:none;position:absolute;top:0;right:100px;z-index:100;padding:4px 12px;background:#ff0;color:#000;border:1px solid #880;cursor:pointer;font-size:12px;">导出网格</button>
     <div id="combat-header">
       <span class="sun-display">☀️ <span id="combat-sun">150</span></span>
       <span class="wave-display">波次 <span id="combat-wave">1</span></span>
       <span class="crystal-display">💎 <span id="combat-crystal">0</span></span>
     </div>
     <canvas id="game-canvas"></canvas>
+    <div id="visitor-cards" style="display:none; position:absolute; top:60px; right:12px; gap:8px; z-index:50;"></div>
+    <div id="visitor-panel" class="visitor-panel" style="display:none;">
+      <div class="vp-bg"></div>
+      <div class="vp-content">
+        <div class="vp-portrait">
+          <canvas id="vp-canvas" width="200" height="280"></canvas>
+        </div>
+        <div class="vp-info">
+          <div class="vp-name" id="vp-name">???</div>
+          <div class="vp-hp" id="vp-hp">HP: ---</div>
+          <div class="vp-atk" id="vp-atk">ATK: ---</div>
+          <div class="vp-skills">
+            <div class="vp-skill" id="vp-active-skill">
+              <div class="vp-skill-name">主动技能</div>
+              <div class="vp-skill-desc" id="vp-active-desc"></div>
+              <button class="vp-skill-btn" id="vp-active-btn">释 放</button>
+            </div>
+            <div class="vp-skill" id="vp-passive-skill">
+              <div class="vp-skill-name">被动技能</div>
+              <div class="vp-skill-desc" id="vp-passive-desc"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div id="combat-footer"></div>
     <div id="battle-result">
       <div class="result-title" id="result-title"></div>
@@ -69,6 +94,13 @@
         <div class="hb-section-title">植 物 图 鉴</div>
         <div id="hb-plant-scroll" class="hb-scroll-container">
           <div id="hb-plant-grid" class="hb-card-grid"></div>
+        </div>
+      </div>
+      <div id="hb-visitor-section" class="hb-section">
+        <div class="hb-section-title">???</div>
+        <div class="hb-visitor-subtitle">似乎是来自世界之外的力量</div>
+        <div id="hb-visitor-scroll" class="hb-scroll-container">
+          <div id="hb-visitor-grid" class="hb-card-grid"></div>
         </div>
       </div>
     </div>
@@ -115,6 +147,29 @@
       <button class="modal-close">&times;</button>
       <div class="modal-title">选择展示植物</div>
       <div class="plant-select-grid" id="ps-grid"></div>
+    </div>
+  </div>
+
+  <!-- Skin Preview Overlay -->
+  <div class="modal-overlay" id="modal-skin-preview">
+    <div class="skin-preview-box">
+      <button class="modal-close">&times;</button>
+      <div class="skin-preview-name" id="sp-name"></div>
+      <div class="skin-preview-main">
+        <canvas id="sp-portrait-canvas" width="360" height="500"></canvas>
+        <div class="sp-battle-sprite-wrap">
+          <canvas id="sp-sprite-canvas" width="80" height="80"></canvas>
+        </div>
+      </div>
+      <div class="skin-preview-actions" id="sp-actions"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-display-skin">
+    <div class="modal-box">
+      <button class="modal-close" id="ds-close-btn">&times;</button>
+      <div class="modal-title" id="ds-title">选择皮肤</div>
+      <div class="display-skin-grid" id="ds-grid"></div>
     </div>
   </div>
 
@@ -166,6 +221,89 @@
       </div>
     </div>
   </div>
+
+  <!-- Level Detail Overlay -->
+  <div class="modal-overlay" id="modal-level-detail">
+    <div class="level-detail-box">
+      <button class="modal-close" id="ld-close-btn">&times;</button>
+      <div class="ld-content">
+        <div class="ld-left">
+          <div class="ld-title" id="ld-title"></div>
+          <div class="ld-scene-wrap">
+            <canvas id="ld-scene-canvas" width="360" height="216"></canvas>
+          </div>
+          <div class="ld-meta" id="ld-meta"></div>
+        </div>
+        <div class="ld-right">
+          <div class="ld-section">
+            <div class="ld-section-title">敌 情 侦 查</div>
+            <div class="ld-enemy-list" id="ld-enemy-list"></div>
+          </div>
+          <div class="ld-section">
+            <div class="ld-section-title">掉 落 信 息</div>
+            <div class="ld-drop-info" id="ld-drop-info"></div>
+          </div>
+          <button class="btn-ark ld-start-btn" id="ld-start-btn">作 战</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Squad Select Overlay -->
+  <div class="modal-overlay" id="modal-squad">
+    <div class="squad-box">
+      <div class="squad-header">
+        <button class="squad-back-btn" id="squad-back-btn">&larr; 返回</button>
+        <div class="squad-title">编 队 选 择</div>
+        <div class="squad-slot-info" id="squad-slot-info">0/6</div>
+      </div>
+      <div class="squad-grid" id="squad-grid"></div>
+      <div class="visitor-squad-section">
+        <div class="visitor-squad-header">
+          <span class="visitor-squad-title">???</span>
+          <span class="visitor-squad-subtitle">你准备好放弃大脑了吗</span>
+        </div>
+        <div class="visitor-squad-grid" id="visitor-squad-grid"></div>
+      </div>
+      <div class="squad-footer">
+        <button class="btn-ark squad-start-btn" id="squad-start-btn" disabled>开 始 作 战</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Squad Plant Picker Overlay -->
+  <div class="modal-overlay" id="modal-squad-picker">
+    <div class="squad-picker-box">
+      <div class="squad-picker-header">
+        <button class="squad-picker-back" id="squad-picker-back">&larr; 返回编队</button>
+        <div class="squad-picker-title">选 择 植 物</div>
+      </div>
+      <div class="squad-picker-grid" id="squad-picker-grid"></div>
+      <div class="squad-picker-detail" id="squad-picker-detail" style="display:none;">
+        <div class="spd-top">
+          <div class="spd-info" id="spd-info"></div>
+          <button class="spd-confirm-btn" id="spd-confirm-btn">确 认</button>
+        </div>
+        <div class="spd-skins" id="spd-skins"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visitor Picker Overlay -->
+  <div class="modal-overlay" id="modal-visitor-picker">
+    <div class="squad-picker-box visitor-picker-box">
+      <div class="squad-picker-header">
+        <button class="squad-picker-back" id="visitor-picker-back">&larr; 返回编队</button>
+        <div class="squad-picker-title">选择异客</div>
+      </div>
+      <div class="squad-picker-grid" id="visitor-picker-grid"></div>
+      <div class="visitor-picker-footer">
+        <button class="btn-ark" id="visitor-picker-confirm">确 认</button>
+      </div>
+    </div>
+  </div>
+
+  <button id="version-btn" class="standard-btn">查询版本</button>
 
   <div id="toast"></div>
 

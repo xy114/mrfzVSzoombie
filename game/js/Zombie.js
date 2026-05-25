@@ -7,8 +7,8 @@ export class Zombie {
     this.x = x;
     this.y = y;
     this.row = row;
-    this.width = 60;
-    this.height = 80;
+    this.width = 86;
+    this.height = 115;
     this.health = 100;
     this.maxHealth = 100;
     this.speed = 0.3;
@@ -23,18 +23,31 @@ export class Zombie {
     this.type = 'normal';
     this.rewardType = 'normal';
     this.rewardValue = 1;
+    this._pauseTimer = 0;
   }
 
   update(deltaTime, game) {
-    const plantInFront = game.plants.find(p =>
-      p.row === this.row &&
-      p.x < this.x + 80 &&
-      p.x > this.x - 110
-    );
+    // Pause during slash effect
+    if (this._pauseTimer > 0) {
+      this._pauseTimer -= deltaTime;
+      return;
+    }
 
-    if (plantInFront) {
+    const blocker =
+      game.plants.find(p => {
+        if (p.row !== this.row) return false;
+        const r = (p.getRenderSize ? p.getRenderSize() : 80) * (p.scale || 1);
+        return p.x < this.x + this.width && p.x > this.x - r - 5;
+      }) ||
+      game.visitors.find(v => {
+        if (!v.alive || v.row !== this.row) return false;
+        const r = (v.getRenderSize ? v.getRenderSize() : 80) * (v.scale || 1);
+        return v.x < this.x + this.width && v.x > this.x - r - 5;
+      });
+
+    if (blocker) {
       this.attacking = true;
-      this.targetPlant = plantInFront;
+      this.targetPlant = blocker;
       this.attackTimer += deltaTime;
       if (this.attackTimer >= this.attackInterval) {
         this.attackTimer = 0;
@@ -75,17 +88,19 @@ export class Zombie {
     let img = assetManager.getImage(attackKey) || assetManager.getImage(this.type);
 
     if (img) {
-      ctx.drawImage(img, this.x, this.y, 60, 80);
+      ctx.drawImage(img, this.x, this.y, 86, 115);
     } else if (this.type === 'cone') {
-      drawConeZombie(ctx, this.x, this.y, 60, 80, this.attacking);
+      drawConeZombie(ctx, this.x, this.y, 86, 115, this.attacking);
     } else {
-      drawNormalZombie(ctx, this.x, this.y, 60, 80, this.attacking);
+      drawNormalZombie(ctx, this.x, this.y, 86, 115, this.attacking);
     }
+  }
 
+  renderBars(ctx) {
     const healthPercent = this.health / this.maxHealth;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(this.x + 7, this.y - 5, 72, 5);
     ctx.fillStyle = '#ef4444';
-    ctx.fillRect(this.x + 5, this.y - 5, 50 * healthPercent, 5);
-    ctx.strokeStyle = '#fff';
-    ctx.strokeRect(this.x + 5, this.y - 5, 50, 5);
+    ctx.fillRect(this.x + 7, this.y - 5, 72 * healthPercent, 5);
   }
 }

@@ -34,55 +34,63 @@ export function drawPea(ctx, x, y, r) {
   ctx.restore();
 }
 
-// Fire pea bullet — fiery orange-red with flame effect
-export function drawFirePea(ctx, x, y, r) {
+// Wishadel pea — purple-red shell (half-dome head + cylinder body)
+export function drawWishadelPea(ctx, x, y, w, h) {
   ctx.save();
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const domeR = h / 2;      // half-sphere radius
+  const bodyLen = w - domeR; // cylinder length behind dome
 
-  // Outer flame glow
-  ctx.fillStyle = 'rgba(255,100,0,0.2)';
+  // Glow
+  const glowGrad = ctx.createRadialGradient(cx + domeR * 0.3, cy, domeR * 0.2, cx, cy, domeR * 1.8);
+  glowGrad.addColorStop(0, 'rgba(200, 40, 80, 0.35)');
+  glowGrad.addColorStop(1, 'rgba(200, 40, 80, 0)');
+  ctx.fillStyle = glowGrad;
   ctx.beginPath();
-  ctx.arc(x, y, r * 1.6, 0, Math.PI * 2);
+  ctx.arc(cx, cy, domeR * 1.8, 0, Math.PI * 2);
   ctx.fill();
 
-  // Flame tendrils
-  const flameCount = 6;
-  for (let i = 0; i < flameCount; i++) {
-    const angle = (i / flameCount) * Math.PI * 2 + (performance.now() * 0.003) % (Math.PI * 2);
-    const sx = x + Math.cos(angle) * r;
-    const sy = y + Math.sin(angle) * r;
-    const ex = x + Math.cos(angle) * r * 1.7;
-    const ey = y + Math.sin(angle) * r * 1.7;
+  // Body cylinder (left of center)
+  const bodyGrad = ctx.createLinearGradient(x, 0, x + bodyLen, 0);
+  bodyGrad.addColorStop(0, '#6b1030');
+  bodyGrad.addColorStop(0.4, '#8b1840');
+  bodyGrad.addColorStop(1, '#b82858');
+  ctx.fillStyle = bodyGrad;
+  ctx.fillRect(x, y + domeR * 0.3, bodyLen, domeR * 1.4);
 
-    ctx.fillStyle = 'rgba(255,150,20,0.4)';
-    ctx.beginPath();
-    ctx.moveTo(sx - 3, sy);
-    ctx.quadraticCurveTo(
-      x + Math.cos(angle + 0.3) * r * 1.4, y + Math.sin(angle + 0.3) * r * 1.4,
-      ex, ey
-    );
-    ctx.quadraticCurveTo(
-      x + Math.cos(angle - 0.3) * r * 1.4, y + Math.sin(angle - 0.3) * r * 1.4,
-      sx + 3, sy
-    );
-    ctx.fill();
-  }
+  // Body highlight
+  const hlGrad = ctx.createLinearGradient(0, y, 0, y + h);
+  hlGrad.addColorStop(0, 'rgba(255, 180, 200, 0.4)');
+  hlGrad.addColorStop(0.5, 'rgba(220, 60, 100, 0.15)');
+  hlGrad.addColorStop(1, 'rgba(100, 10, 30, 0.3)');
+  ctx.fillStyle = hlGrad;
+  ctx.fillRect(x, y + domeR * 0.3, bodyLen, domeR * 1.4);
 
-  // Inner fire glow
-  const fireGrad = ctx.createRadialGradient(x - r * 0.1, y - r * 0.2, r * 0.1, x, y, r);
-  fireGrad.addColorStop(0, '#ffee44');
-  fireGrad.addColorStop(0.3, '#ffaa22');
-  fireGrad.addColorStop(0.7, '#ff5500');
-  fireGrad.addColorStop(1, '#cc2200');
-  ctx.fillStyle = fireGrad;
+  // Dome (right half-sphere)
+  const domeGrad = ctx.createRadialGradient(cx - domeR * 0.2, cy - domeR * 0.2, domeR * 0.05, cx, cy, domeR);
+  domeGrad.addColorStop(0, '#ff6090');
+  domeGrad.addColorStop(0.4, '#d03060');
+  domeGrad.addColorStop(0.8, '#8b1840');
+  domeGrad.addColorStop(1, '#5a0a28');
+  ctx.fillStyle = domeGrad;
   ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.arc(cx, cy, domeR, -Math.PI / 2, Math.PI / 2);
   ctx.fill();
 
-  // Core highlight
-  ctx.fillStyle = 'rgba(255,255,200,0.5)';
+  // Dome specular highlight
+  ctx.fillStyle = 'rgba(255, 200, 220, 0.5)';
   ctx.beginPath();
-  ctx.arc(x - r * 0.2, y - r * 0.25, r * 0.3, 0, Math.PI * 2);
+  ctx.ellipse(cx - domeR * 0.15, cy - domeR * 0.35, domeR * 0.25, domeR * 0.18, -0.3, 0, Math.PI * 2);
   ctx.fill();
+
+  // Outline
+  ctx.strokeStyle = '#3a0818';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, domeR, -Math.PI / 2, Math.PI / 2);
+  ctx.stroke();
+  ctx.strokeRect(x, y + domeR * 0.3, bodyLen, domeR * 1.4);
 
   ctx.restore();
 }

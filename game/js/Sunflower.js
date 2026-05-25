@@ -30,10 +30,6 @@ export class Sunflower extends Plant {
     } else {
       drawSunflower(ctx, this.x, this.y, 80, 80);
     }
-    const healthPercent = this.health / this.maxHealth;
-    ctx.fillStyle = '#22c55e';
-    ctx.fillRect(this.x + 10, this.y + 5, 80 * healthPercent, 5);
-    ctx.strokeStyle = '#fff';
-    ctx.strokeRect(this.x + 10, this.y + 5, 80, 5);
   }
+
 }
