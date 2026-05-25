@@ -95,6 +95,94 @@ export function drawWishadelPea(ctx, x, y, w, h) {
   ctx.restore();
 }
 
+// Fire pea — orange-red flame bullet with flicker
+export function drawFirePea(ctx, x, y, r) {
+  ctx.save();
+
+  // Outer flame glow
+  const glowGrad = ctx.createRadialGradient(x, y, r * 0.2, x, y, r * 2);
+  glowGrad.addColorStop(0, 'rgba(255, 140, 30, 0.5)');
+  glowGrad.addColorStop(0.5, 'rgba(255, 80, 10, 0.2)');
+  glowGrad.addColorStop(1, 'rgba(255, 40, 0, 0)');
+  ctx.fillStyle = glowGrad;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Flame body gradient
+  const bodyGrad = ctx.createRadialGradient(x - r * 0.2, y - r * 0.25, r * 0.05, x, y, r);
+  bodyGrad.addColorStop(0, '#ffdd66');
+  bodyGrad.addColorStop(0.3, '#ff9933');
+  bodyGrad.addColorStop(0.7, '#ee5511');
+  bodyGrad.addColorStop(1, '#cc2200');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Flicker highlights
+  for (let i = 0; i < 3; i++) {
+    const angle = (Date.now() / 80 + i * 2.1) % (Math.PI * 2);
+    const dist = r * (0.4 + 0.35 * Math.sin(Date.now() / 150 + i));
+    const fx = x + Math.cos(angle) * dist;
+    const fy = y + Math.sin(angle) * dist;
+    ctx.fillStyle = 'rgba(255, 255, 180, 0.45)';
+    ctx.beginPath();
+    ctx.arc(fx, fy, r * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Outline
+  ctx.strokeStyle = '#992200';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// Fire pea explosion effect
+export function drawFireExplosion(ctx, cx, cy, r, alpha) {
+  ctx.save();
+
+  // Outer shockwave
+  const shockGrad = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r);
+  shockGrad.addColorStop(0, `rgba(255, 255, 200, ${alpha})`);
+  shockGrad.addColorStop(0.2, `rgba(255, 160, 40, ${alpha * 0.9})`);
+  shockGrad.addColorStop(0.5, `rgba(255, 60, 10, ${alpha * 0.6})`);
+  shockGrad.addColorStop(0.8, `rgba(180, 20, 0, ${alpha * 0.3})`);
+  shockGrad.addColorStop(1, 'rgba(80, 0, 0, 0)');
+  ctx.fillStyle = shockGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Inner bright core
+  const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.4);
+  coreGrad.addColorStop(0, `rgba(255, 255, 240, ${alpha})`);
+  coreGrad.addColorStop(0.5, `rgba(255, 200, 60, ${alpha * 0.8})`);
+  coreGrad.addColorStop(1, 'rgba(255, 100, 20, 0)');
+  ctx.fillStyle = coreGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Floating embers
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2;
+    const dist = r * (0.4 + Math.random() * 0.5);
+    const ex = cx + Math.cos(angle) * dist;
+    const ey = cy + Math.sin(angle) * dist;
+    ctx.fillStyle = `rgba(255, ${180 + Math.random() * 75}, ${20 + Math.random() * 40}, ${alpha * 0.7})`;
+    ctx.beginPath();
+    ctx.arc(ex, ey, 2 + Math.random() * 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
 // Sun — golden radiating star
 export function drawSun(ctx, x, y, r) {
   ctx.save();

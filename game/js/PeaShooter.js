@@ -1,5 +1,5 @@
 import { Plant } from './Plant.js';
-import { Bullet, WishadelPea, WishadelShell } from './Bullet.js';
+import { Bullet, WishadelPea, WishadelShell, FirePeaBullet } from './Bullet.js';
 import { GAME_CONFIG, SKIN_CONFIG, STAR_CONFIG } from './constants.js';
 import { assetManager } from './AssetManager.js';
 import { drawPeashooter } from './PlantRenderer.js';
@@ -139,8 +139,16 @@ export class PeaShooter extends Plant {
       return true;
     }
 
-    // Default: no skill without a skin
-    return false;
+    // Default skill: fire a flame pea that explodes on hit
+    const firePea = new FirePeaBullet(
+      this.x + 30, this.y + 4, this.row,
+      this.skillDamage
+    );
+    game.addBullet(firePea);
+    this.skillCooldown = this.skillMaxCooldown;
+    this.isSkillActive = true;
+    this.skillTimer = 300;
+    return true;
   }
 
   getBodyType() {

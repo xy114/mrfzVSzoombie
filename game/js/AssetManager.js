@@ -30,6 +30,7 @@ export class AssetManager {
       imp_portrait: 'resources/zombies/小鬼僵尸.gif',
       // Projectiles
       pea: 'resources/plants/豆.gif',
+      firePea: 'resources/plants/火豆.gif',
       sun: 'resources/tools/太阳.gif',
       // Lawn backgrounds — scenes
       lawn_bg: 'resources/scene/主页.png',

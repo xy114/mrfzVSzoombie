@@ -1,5 +1,5 @@
 import { assetManager } from './AssetManager.js';
-import { drawPea, drawWishadelPea } from './ProjectileRenderer.js';
+import { drawPea, drawWishadelPea, drawFirePea, drawFireExplosion } from './ProjectileRenderer.js';
 
 export class Bullet {
   constructor(x, y, row, damage = 20) {
@@ -257,5 +257,103 @@ export class WishadelShell {
       }
     }
     ctx.restore();
+  }
+}
+
+// Fire Pea skill bullet — explodes on hit, AoE 3×3 cells
+export class FirePeaBullet {
+  constructor(x, y, row, damage = 50, speed = 4.5) {
+    this.x = x;
+    this.y = y;
+    this.row = row;
+    this.speed = speed;
+    this.damage = damage;
+    this.damageType = 'magic';
+    this.width = 22;
+    this.height = 22;
+    this.active = true;
+    this.exploded = false;
+    this._explosionTimer = 0;
+    this._explosionR = 0;
+    this._maxExplosionR = 80;
+    this.skipCollisionCheck = true;
+  }
+
+  update(deltaTime, game) {
+    if (this.exploded) {
+      this._explosionTimer -= deltaTime;
+      this._explosionR += (this._maxExplosionR - this._explosionR) * 0.15;
+      if (this._explosionTimer <= 0) {
+        this.active = false;
+      }
+      return;
+    }
+
+    this.x += this.speed * (deltaTime / 16);
+    if (this.x > game.canvas.width + 30) {
+      this.active = false;
+      return;
+    }
+
+    // Hit detection — same row zombie with proximity check
+    const hit = game.zombies.find(z =>
+      z.alive && z.row === this.row &&
+      Math.abs(z.x + z.width / 2 - (this.x + this.width / 2)) < 30
+    );
+    if (hit) {
+      this.explode(game);
+    }
+  }
+
+  explode(game) {
+    this.exploded = true;
+    this._explosionTimer = 350;
+
+    const cx = this.x + this.width / 2;
+    const cy = this.y + this.height / 2;
+    const sc = game.lawn.standardCell;
+    const cellSize = Math.max(sc.w, sc.h);
+
+    // 3×3 cell AoE
+    const hitSet = new Set();
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const row = this.row + dr;
+        const tgtCol = Math.floor(cx / cellSize) + dc;
+        for (const z of game.zombies) {
+          if (hitSet.has(z)) continue;
+          if (z.alive && z.row === row) {
+            const zCol = Math.floor((z.x + z.width / 2) / cellSize);
+            if (Math.abs(zCol - tgtCol) <= 1) {
+              hitSet.add(z);
+              const dist = Math.sqrt(
+                (z.x + z.width / 2 - cx) ** 2 +
+                (z.y + z.height / 2 - cy) ** 2
+              );
+              const falloff = Math.max(0.4, 1 - dist / (cellSize * 2));
+              z.takeDamage(Math.floor(this.damage * falloff), 'magic');
+            }
+          }
+        }
+      }
+    }
+  }
+
+  render(ctx) {
+    if (this.exploded) {
+      const cx = this.x + this.width / 2;
+      const cy = this.y + this.height / 2;
+      const alpha = Math.max(0, this._explosionTimer / 350);
+      drawFireExplosion(ctx, cx, cy, this._explosionR, alpha);
+      return;
+    }
+    const img = assetManager.getImage('firePea');
+    if (img) {
+      const dw = this.width + 6;
+      const dh = this.height + 6;
+      ctx.drawImage(img, this.x - 3, this.y - 3, dw, dh);
+    } else {
+      drawFirePea(ctx, this.x + this.width / 2, this.y + this.height / 2, 12);
+    }
   }
 }
