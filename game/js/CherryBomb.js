@@ -67,7 +67,7 @@ export class CherryBomb extends Plant {
     if (!this.armed) {
       const pct = this.armTimer / this.armingTime;
       ctx.fillStyle = 'rgba(255,0,0,0.6)';
-      ctx.fillRect(this.x + 10, this.y + 5, 70 * pct, 5);
+      ctx.fillRect(this.x + 10, this.y - 8, 70 * pct, 5);
     }
   }
 }

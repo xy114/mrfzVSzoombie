@@ -32,12 +32,4 @@ export class Sunflower extends Plant {
     }
   }
 
-  renderBars(ctx) {
-    const healthPercent = this.health / this.maxHealth;
-    const barW = 70;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(this.x + 10, this.y + 5, barW, 5);
-    ctx.fillStyle = '#0dc5d0';
-    ctx.fillRect(this.x + 10, this.y + 5, barW * healthPercent, 5);
-  }
 }

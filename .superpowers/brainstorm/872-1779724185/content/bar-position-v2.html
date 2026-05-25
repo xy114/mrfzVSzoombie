@@ -1,0 +1,75 @@
+<h2>统一血条位置方案</h2>
+<p class="subtitle">所有植物血条统一放在植物上方 (this.y - 8)，与豌豆射手一致</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">当前 Sunflower / Nut</div>
+    <div class="mockup-body">
+      <canvas id="c1" width="300" height="200" style="background:#1a1a2e;border-radius:4px;"></canvas>
+      <p style="margin-top:8px;font-size:13px;color:#e44;">
+        血条在植物内部 (this.y + 5)
+      </p>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">修改后（推荐）</div>
+    <div class="mockup-body">
+      <canvas id="c2" width="300" height="200" style="background:#1a1a2e;border-radius:4px;"></canvas>
+      <p style="margin-top:8px;font-size:13px;color:#4e4;">
+        血条在植物上方 (this.y - 8)
+      </p>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:12px;color:#ff0;">另外：Nut 的技能条目前在植物下方 (y + 92)，是否也移到上方？</p>
+
+<script>
+function drawCell(ctx) {
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.strokeRect(10, 10, 100, 108);
+  ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(255,255,0,0.2)';
+  ctx.beginPath();
+  ctx.moveTo(0, 64); ctx.lineTo(300, 64);
+  ctx.stroke();
+}
+
+function drawPlant(ctx, x, y, w, h) {
+  ctx.fillStyle = 'rgba(34,197,94,0.3)';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, w, h);
+}
+
+function drawBar(ctx, x, y, w, h, color, fillPct) {
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w * (fillPct || 0.75), h);
+}
+
+// Current (y + 5, inside plant)
+{
+  const c = document.getElementById('c1');
+  const ctx = c.getContext('2d');
+  const px = 110, py = 30;
+  drawCell(ctx);
+  drawPlant(ctx, px, py, 80, 80);
+  drawBar(ctx, px + 10, py + 5, 70, 5, '#0dc5d0', 0.75);
+}
+
+// New (y - 8, above plant)
+{
+  const c = document.getElementById('c2');
+  const ctx = c.getContext('2d');
+  const px = 110, py = 30;
+  drawCell(ctx);
+  drawPlant(ctx, px, py, 80, 80);
+  const barW = 70, barX = px + (80 - barW) / 2;
+  drawBar(ctx, barX, py - 8, barW, 5, '#0dc5d0', 0.75);
+}
+</script>

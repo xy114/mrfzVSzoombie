@@ -59,25 +59,23 @@ export class Nut extends Plant {
   }
 
   renderBars(ctx) {
-    const hpPct = this.health / this.maxHealth;
+    super.renderBars(ctx);
+    const sz = this.getRenderSize();
     const barW = 70;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(this.x + 10, this.y + 5, barW, 5);
-    ctx.fillStyle = '#0dc5d0';
-    ctx.fillRect(this.x + 10, this.y + 5, barW * hpPct, 5);
+    const barX = this.x + (sz - barW) / 2;
     if (this.isSkillActive) {
       ctx.fillStyle = '#fff';
-      ctx.fillRect(this.x + 10, this.y + 92, barW, 3);
+      ctx.fillRect(barX, this.y - 14, barW, 3);
       ctx.fillStyle = 'rgba(100,180,255,0.4)';
-      ctx.fillRect(this.x + 10, this.y + 92, barW * (this.skillTimer / this.skillDuration), 3);
+      ctx.fillRect(barX, this.y - 14, barW * (this.skillTimer / this.skillDuration), 3);
     } else if (this.skillCooldown > 0) {
       ctx.fillStyle = '#fff';
-      ctx.fillRect(this.x + 10, this.y + 92, barW, 3);
+      ctx.fillRect(barX, this.y - 14, barW, 3);
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(this.x + 10, this.y + 92, barW * (this.skillCooldown / this.skillMaxCooldown), 3);
+      ctx.fillRect(barX, this.y - 14, barW * (this.skillCooldown / this.skillMaxCooldown), 3);
     } else {
       ctx.fillStyle = '#60a5fa';
-      ctx.fillRect(this.x + 10, this.y + 92, barW, 3);
+      ctx.fillRect(barX, this.y - 14, barW, 3);
     }
   }
 }

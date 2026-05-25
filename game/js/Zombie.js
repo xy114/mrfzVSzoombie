@@ -34,16 +34,16 @@ export class Zombie {
     }
 
     const blocker =
-      game.plants.find(p =>
-        p.row === this.row &&
-        p.x < this.x + 100 &&
-        p.x > this.x - 100
-      ) ||
-      game.visitors.find(v =>
-        v.alive && v.row === this.row &&
-        v.x < this.x + 100 &&
-        v.x > this.x - 100
-      );
+      game.plants.find(p => {
+        if (p.row !== this.row) return false;
+        const r = (p.getRenderSize ? p.getRenderSize() : 80) * (p.scale || 1);
+        return p.x < this.x + this.width && p.x > this.x - r - 5;
+      }) ||
+      game.visitors.find(v => {
+        if (!v.alive || v.row !== this.row) return false;
+        const r = (v.getRenderSize ? v.getRenderSize() : 80) * (v.scale || 1);
+        return v.x < this.x + this.width && v.x > this.x - r - 5;
+      });
 
     if (blocker) {
       this.attacking = true;

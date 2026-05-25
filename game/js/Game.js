@@ -189,7 +189,8 @@ export class BattleManager {
               if (skinId === 'wishadel') baseRenderSize = 96;
             }
             const sz = baseRenderSize * scale;
-            const cx = tile.center[0], cy = tile.center[1];
+            const tileH = this.lawn.getTileSize(hoverRow, hoverCol).h;
+            const cx = tile.center[0], cy = tile.center[1] - tileH / 2 * 0.1;
 
             this.ctx.save();
             this.ctx.globalAlpha = 0.45;
@@ -514,7 +515,7 @@ export class BattleManager {
       this.lawn.plant(row, col, visitor);
       if (visitor.getBodyType() === 'humanoid') {
         const rowCenter = this.lawn.getRowY(row);
-        const offset = this.lawn.standardCell.h / 2 * 0.15;
+        const offset = this.lawn.standardCell.h / 2 * 0.1;
         visitor.y = rowCenter + offset - visitor.getRenderSize() * (visitor.scale || 1);
       }
       this._deployedVisitorIds.add(plantType);
@@ -565,7 +566,7 @@ export class BattleManager {
       // Humanoid: feet on line 15% below row center
       if (plant.getBodyType() === 'humanoid') {
         const rowCenter = this.lawn.getRowY(row);
-        const offset = this.lawn.standardCell.h / 2 * 0.15;
+        const offset = this.lawn.standardCell.h / 2 * 0.1;
         plant.y = rowCenter + offset - plant.getRenderSize() * plant.scale;
       }
       if (this.onCooldownUpdate) this.onCooldownUpdate(this.getCooldowns());
@@ -597,7 +598,7 @@ export class BattleManager {
   spawnZombie(type = 'normal') {
     const row = Math.floor(Math.random() * this.lawn.rows);
     const x = GAME_CONFIG.CANVAS_WIDTH;
-    const offset = this.lawn.standardCell.h / 2 * 0.15;
+    const offset = this.lawn.standardCell.h / 2 * 0.1;
     const y = this.lawn.getRowY(row) + offset - 115;  // humanoid feet 15% below center
     let zombie;
     switch (type) {

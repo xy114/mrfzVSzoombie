@@ -1,0 +1,112 @@
+<h2>血条/技力条当前位置示意</h2>
+<p class="subtitle">植物上移(tileH/2×0.1)后，血条随 this.y 跟随上移。每个框代表一个80×80的植物渲染区</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">PeaShooter（Plant 基类 + 技能条）</div>
+    <div class="mockup-body">
+      <canvas id="c1" width="300" height="200" style="background:#1a1a2e;border-radius:4px;"></canvas>
+      <p style="margin-top:8px;font-size:13px;color:#ccc;">
+        青蓝条 = 血量条 (this.y - 8)<br>
+        琥珀条 = 技力条 (this.y - 14)<br>
+        白色 = 底条
+      </p>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">Sunflower / Nut（y + 5 内置血条）</div>
+    <div class="mockup-body">
+      <canvas id="c2" width="300" height="200" style="background:#1a1a2e;border-radius:4px;"></canvas>
+      <p style="margin-top:8px;font-size:13px;color:#ccc;">
+        青蓝条 = 血量条 (this.y + 5)<br>
+        位于植物渲染区内
+      </p>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:16px;color:#aaa;">请在浏览器中查看，然后在终端描述你期望的血条位置应该如何调整。</p>
+
+<script>
+function drawCell(ctx, label) {
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.strokeRect(10, 10, 100, 108);
+  ctx.setLineDash([]);
+  // cell center line
+  ctx.strokeStyle = 'rgba(255,255,0,0.2)';
+  ctx.beginPath();
+  ctx.moveTo(0, 64); ctx.lineTo(300, 64);
+  ctx.stroke();
+  ctx.fillStyle = '#888';
+  ctx.font = '10px sans-serif';
+  ctx.fillText(label || 'cell center', 120, 68);
+}
+
+function drawPlant(ctx, x, y, w, h, label, color) {
+  // plant render area
+  ctx.fillStyle = color || 'rgba(34,197,94,0.3)';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = '#fff';
+  ctx.font = '9px sans-serif';
+  ctx.fillText(label, x + 4, y + 14);
+}
+
+function drawBar(ctx, x, y, w, h, color, label) {
+  // white background
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x, y, w, h);
+  // colored bar (75% fill to show white bg)
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w * 0.75, h);
+  ctx.fillStyle = '#fff';
+  ctx.font = '8px sans-serif';
+  ctx.fillText(label, x + 2, y - 3);
+}
+
+// PeaShooter
+{
+  const c = document.getElementById('c1');
+  const ctx = c.getContext('2d');
+  const plantX = 110, plantY = 30, plantW = 80, plantH = 80;
+
+  drawCell(ctx);
+  drawPlant(ctx, plantX, plantY, plantW, plantH, 'renderSz=80', 'rgba(34,197,94,0.3)');
+
+  const barW = 70;
+  const barX = plantX + (plantW - barW) / 2;
+
+  // Skill bar (y - 14)
+  drawBar(ctx, barX, plantY - 14, barW, 5, '#f59e0b', 'skill y-14');
+  // Health bar (y - 8)
+  drawBar(ctx, barX, plantY - 8, barW, 5, '#0dc5d0', 'hp y-8');
+
+  // Arrow showing shift
+  ctx.fillStyle = '#ff0';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillText('↑ plant shifted up by tileH/2×0.1', 10, 150);
+  ctx.fillText('from cell center', 10, 164);
+}
+
+// Sunflower / Nut
+{
+  const c = document.getElementById('c2');
+  const ctx = c.getContext('2d');
+  const plantX = 110, plantY = 30, plantW = 80, plantH = 80;
+
+  drawCell(ctx);
+  drawPlant(ctx, plantX, plantY, plantW, plantH, 'renderSz=80', 'rgba(34,197,94,0.3)');
+
+  const barW = 70;
+  // Health bar inside plant area (y + 5)
+  drawBar(ctx, plantX + 10, plantY + 5, barW, 5, '#0dc5d0', 'hp y+5');
+
+  ctx.fillStyle = '#ff0';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillText('bar inside plant render area', 10, 150);
+}
+</script>
