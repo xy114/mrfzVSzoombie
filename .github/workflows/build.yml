@@ -45,7 +45,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --mac --arm64 2>&1
 
+      - name: List dist
+        run: ls -la dist/
+
       - uses: actions/upload-artifact@v4
         with:
           name: 植物大战僵尸-${{ github.ref_name }}-mac
-          path: dist/植物大战僵尸-*.dmg
+          path: |
+            dist/植物大战僵尸-*.dmg
+            dist/植物大战僵尸-*.zip

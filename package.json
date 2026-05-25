@@ -49,6 +49,7 @@
     },
     "mac": {
       "category": "public.app-category.games",
+      "artifactName": "${productName}-${version}-${os}.${ext}",
       "target": [
         {
           "target": "dmg",
@@ -57,7 +58,10 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "dmg": {
+        "title": "Plants vs Zombie ${version}"
+      }
     }
   }
 }
