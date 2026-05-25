@@ -1080,7 +1080,7 @@ export class UIManager {
     statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">被动技能</span><span class="hb-stat-value">受击时停0.3s · 同行斩 · 每刀100+70%最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's</span></div>';
 
     this.$hbDetailStats.innerHTML = statsHTML;
-    this.$hbDetailOverlay.style.display = 'flex';
+    this.$hbDetailOverlay.classList.add('active');
 
     const actionSec = this.$hbDetailOverlay.querySelector('.hb-detail-action-section');
     if (actionSec) actionSec.style.display = 'none';
