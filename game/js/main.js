@@ -113,8 +113,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           updateDrag();
           return;
         }
-        const placed = bm.handlePlantClick(x, y, ui.dragState.plantType);
-        // Always cancel drag on drop — valid placement succeeded, invalid = cancel without cooldown
+        const placed = bm.handleDrop(x, y, ui.dragState.plantType);
+        if (!placed) {
+          // Flash red on invalid drop
+          const cell = bm.lawn.getCellFromPosition(x, y);
+          if (cell.row >= 0 && cell.col >= 0) {
+            bm._flashCell = { row: cell.row, col: cell.col, timer: 300 };
+          }
+        }
         ui.deselectPlant();
         updateDrag();
         return;

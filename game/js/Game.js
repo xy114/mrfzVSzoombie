@@ -13,6 +13,8 @@ import { WaveManager } from './WaveManager.js';
 import { Sun } from './Sun.js';
 import { StorageManager } from './StorageManager.js';
 import { getZombieDef } from './ZombieConfig.js';
+import { KatanaZero } from './Visitor.js';
+import { getVisitorDef } from './VisitorConfig.js';
 import { drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
 import { assetManager } from './AssetManager.js';
 
@@ -262,6 +264,20 @@ export class BattleManager {
       this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       this.ctx.restore();
     }
+
+    // Flash red on invalid placement
+    if (this._flashCell && this._flashCell.timer > 0) {
+      this._flashCell.timer -= 16;
+      const alpha = this._flashCell.timer / 300 * 0.5;
+      const tile = this.lawn.sceneGrid.tiles[`${this._flashCell.row},${this._flashCell.col}`];
+      if (tile) {
+        this.ctx.save();
+        this.ctx.globalAlpha = alpha;
+        this.ctx.fillStyle = '#ff0000';
+        this.ctx.fillRect(tile.center[0] - 25, tile.center[1] - 25, 50, 50);
+        this.ctx.restore();
+      }
+    }
   }
 
   _getPlantCost(plantType) {
@@ -401,7 +417,20 @@ export class BattleManager {
     return result;
   }
 
-  handlePlantClick(x, y, plantType) {
+  handleDrop(x, y, plantType) {
+    // Check if visitor
+    const visitorDef = getVisitorDef(plantType);
+    if (visitorDef) {
+      const { row, col } = this.lawn.getCellFromPosition(x, y);
+      if (!this.lawn.canPlant(row, col)) return false;
+      const plantX = col * GAME_CONFIG.CELL_WIDTH;
+      const plantY = row * GAME_CONFIG.CELL_HEIGHT;
+      const visitor = new KatanaZero(plantX, plantY, row);
+      this.addVisitor(visitor);
+      this.lawn.plant(row, col, visitor);
+      return true;
+    }
+
     if (this.isPlantOnCooldown(plantType)) return false;
 
     const { row, col } = this.lawn.getCellFromPosition(x, y);

@@ -1452,6 +1452,10 @@ export class UIManager {
     }
   }
 
+  startDrag(plantType) {
+    this.dragState = { plantType, mouseX: 0, mouseY: 0, hoverRow: -1, hoverCol: -1 };
+  }
+
   deselectPlant() {
     this.dragState = null;
     if (this.$combatFooter) {
