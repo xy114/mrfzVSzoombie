@@ -51,6 +51,31 @@
       <span class="crystal-display">💎 <span id="combat-crystal">0</span></span>
     </div>
     <canvas id="game-canvas"></canvas>
+    <div id="visitor-cards" style="display:none; position:absolute; top:60px; right:12px; gap:8px; z-index:50;"></div>
+    <div id="visitor-panel" class="visitor-panel" style="display:none;">
+      <div class="vp-bg"></div>
+      <div class="vp-content">
+        <div class="vp-portrait">
+          <canvas id="vp-canvas" width="200" height="280"></canvas>
+        </div>
+        <div class="vp-info">
+          <div class="vp-name" id="vp-name">???</div>
+          <div class="vp-hp" id="vp-hp">HP: ---</div>
+          <div class="vp-atk" id="vp-atk">ATK: ---</div>
+          <div class="vp-skills">
+            <div class="vp-skill" id="vp-active-skill">
+              <div class="vp-skill-name">主动技能</div>
+              <div class="vp-skill-desc" id="vp-active-desc"></div>
+              <button class="vp-skill-btn" id="vp-active-btn">释 放</button>
+            </div>
+            <div class="vp-skill" id="vp-passive-skill">
+              <div class="vp-skill-name">被动技能</div>
+              <div class="vp-skill-desc" id="vp-passive-desc"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div id="combat-footer"></div>
     <div id="battle-result">
       <div class="result-title" id="result-title"></div>
@@ -202,6 +227,13 @@
         <div class="squad-slot-info" id="squad-slot-info">0/6</div>
       </div>
       <div class="squad-grid" id="squad-grid"></div>
+      <div class="visitor-squad-section">
+        <div class="visitor-squad-header">
+          <span class="visitor-squad-title">???</span>
+          <span class="visitor-squad-subtitle">你准备好放弃大脑了吗</span>
+        </div>
+        <div class="visitor-squad-grid" id="visitor-squad-grid"></div>
+      </div>
       <div class="squad-footer">
         <button class="btn-ark squad-start-btn" id="squad-start-btn" disabled>开 始 作 战</button>
       </div>

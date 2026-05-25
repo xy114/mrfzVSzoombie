@@ -5,6 +5,8 @@ import { getZombieDef, getAllZombieDefs, getThreatLabel } from './ZombieConfig.j
 import { drawNormalZombiePortrait, drawConeZombiePortrait, drawShieldZombiePortrait, drawImpZombiePortrait } from './ZombieRenderer.js';
 import { drawSunflowerPortrait, drawPeashooterPortrait, drawNutPortrait, drawCherryBombPortrait, drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
 import { assetManager } from './AssetManager.js';
+import { getVisitorDef, getAllVisitorDefs, getVisitorDisplayName } from './VisitorConfig.js';
+import { GAME_CONFIG } from './constants.js';
 
 export class UIManager {
   constructor() {
@@ -392,6 +394,7 @@ export class UIManager {
 
     this._wireSquadButtons();
     this.renderSquadGrid();
+    this.renderVisitorSquad();
     this.showModal('squad');
   }
 
@@ -475,6 +478,79 @@ export class UIManager {
     }
   }
 
+  // === Visitor Squad Methods ===
+  renderVisitorSquad() {
+    const grid = document.getElementById('visitor-squad-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const maxSlots = 3;
+    const currentSquad = StorageManager.getVisitorSquad();
+    const padded = [...currentSquad];
+    while (padded.length < maxSlots) padded.push(null);
+
+    for (let i = 0; i < maxSlots; i++) {
+      const vid = padded[i];
+      const slot = document.createElement('div');
+      slot.className = 'visitor-squad-slot';
+      slot.dataset.slotIndex = i;
+
+      if (vid) {
+        slot.classList.add('filled');
+        const def = getVisitorDef(vid);
+        const canvas = document.createElement('canvas');
+        canvas.width = 56; canvas.height = 70;
+        const cctx = canvas.getContext('2d');
+        const img = assetManager.getImage('visitor_katana_zero');
+        if (img) {
+          cctx.drawImage(img, 0, 0, 56, 70);
+        } else {
+          cctx.fillStyle = '#333';
+          cctx.fillRect(0, 0, 56, 70);
+          cctx.fillStyle = '#c040ff';
+          cctx.font = '14px sans-serif';
+          cctx.textAlign = 'center';
+          cctx.fillText('???', 28, 38);
+        }
+        slot.appendChild(canvas);
+        if (def) {
+          const nameEl = document.createElement('span');
+          nameEl.className = 'slot-visitor-name';
+          nameEl.textContent = def.displayName;
+          slot.appendChild(nameEl);
+        }
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'slot-remove-btn';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const sq = StorageManager.getVisitorSquad();
+          sq[i] = null;
+          StorageManager.saveVisitorSquad(sq.filter(Boolean));
+          this.renderVisitorSquad();
+        });
+        slot.appendChild(removeBtn);
+      } else {
+        const emptyIcon = document.createElement('span');
+        emptyIcon.className = 'slot-empty-text';
+        emptyIcon.textContent = '+';
+        slot.appendChild(emptyIcon);
+        slot.addEventListener('click', () => this.showVisitorPicker(i));
+      }
+      grid.appendChild(slot);
+    }
+  }
+
+  showVisitorPicker(slotIndex) {
+    this._visitorSlotIndex = slotIndex;
+    const currentSquad = StorageManager.getVisitorSquad();
+    if (!currentSquad.includes('katana_zero')) {
+      currentSquad[slotIndex] = 'katana_zero';
+      StorageManager.saveVisitorSquad(currentSquad.filter(Boolean));
+    }
+    this.renderVisitorSquad();
+  }
+
   _onFilledSlotClick(index) {
     const plantId = this._squad[index];
     if (!plantId) return;
@@ -534,7 +610,8 @@ export class UIManager {
         const squad = this._squad.filter(Boolean);
         StorageManager.saveSquad(squad);
         this.hideModal();
-        this.startCombat(this._pendingLevelId, squad);
+        const visitorSquad = StorageManager.getVisitorSquad();
+        this.startCombat(this._pendingLevelId, squad, visitorSquad);
       });
     }
   }
@@ -876,7 +953,137 @@ export class UIManager {
       this.$hbPlantGrid.appendChild(card);
     }
 
+    this._renderVisitorHandbook();
     this._setupDragScroll(this.$hbPlantScroll);
+  }
+
+  _renderVisitorHandbook() {
+    const allVisitors = getAllVisitorDefs();
+    const placeholderCount = 3;
+
+    const sep = document.createElement('div');
+    sep.className = 'hb-visitor-separator';
+    sep.innerHTML = '<div class="hb-visitor-title">???</div><div class="hb-visitor-subtitle">似乎是来自世界之外的力量</div>';
+    this.$hbPlantGrid.appendChild(sep);
+
+    const cardW = 168;
+    const srcW = 316, srcH = 473;
+    const cardH = Math.round(cardW * srcH / srcW);
+
+    for (const v of allVisitors) {
+      const isUnlocked = StorageManager.isVisitorUnlocked(v.id);
+      const card = document.createElement('canvas');
+      card.className = 'hb-card visitor-card';
+      card.width = cardW;
+      card.height = cardH;
+      const ctx = card.getContext('2d');
+
+      if (isUnlocked) {
+        const img = assetManager.getImage('visitor_katana_zero');
+        if (img) {
+          const scale = Math.min(cardW / img.naturalWidth, (cardH * 0.55) / img.naturalHeight);
+          const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+          ctx.drawImage(img, (cardW - dw) / 2, 20, dw, dh);
+        }
+      } else {
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(cardW * 0.25, 20, cardW * 0.5, cardH * 0.55);
+        ctx.fillStyle = '#333';
+        ctx.font = '48px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('?', cardW / 2, cardH * 0.45);
+      }
+
+      const cardBg = assetManager.getImage('plant_card_bg');
+      if (cardBg) {
+        ctx.drawImage(cardBg, 0, 0, cardW, cardH);
+      }
+
+      if (!isUnlocked) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, 0, cardW, cardH);
+        card.classList.add('locked');
+      }
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = isUnlocked ? 'rgb(89,32,8)' : '#484440';
+      ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+      ctx.fillText(isUnlocked ? v.name : '???', cardW / 2, cardH * 0.72);
+
+      ctx.fillStyle = isUnlocked ? 'rgb(89,32,8)' : '#484440';
+      ctx.font = '11px "Microsoft YaHei", sans-serif';
+      ctx.fillText(isUnlocked ? v.description : '未解锁', cardW / 2, cardH * 0.78);
+
+      if (isUnlocked) {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', () => this.showVisitorDetail(v.id));
+      }
+
+      this.$hbPlantGrid.appendChild(card);
+    }
+
+    for (let i = 0; i < placeholderCount; i++) {
+      const card = document.createElement('canvas');
+      card.className = 'hb-card visitor-card locked';
+      card.width = cardW;
+      card.height = cardH;
+      const ctx = card.getContext('2d');
+
+      ctx.fillStyle = '#111';
+      ctx.fillRect(cardW * 0.3, 20, cardW * 0.4, cardH * 0.5);
+      ctx.fillStyle = '#222';
+      ctx.font = '40px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('?', cardW / 2, cardH * 0.4);
+
+      const cardBg = assetManager.getImage('plant_card_bg');
+      if (cardBg) ctx.drawImage(cardBg, 0, 0, cardW, cardH);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, 0, cardW, cardH);
+
+      ctx.fillStyle = '#484440';
+      ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('???', cardW / 2, cardH * 0.72);
+
+      this.$hbPlantGrid.appendChild(card);
+    }
+  }
+
+  showVisitorDetail(visitorId) {
+    const def = getVisitorDef(visitorId);
+    if (!def) return;
+    this._detailType = 'visitor';
+    this._detailId = visitorId;
+
+    this.$hbDetailName.textContent = def.name;
+    this.$hbDetailThreat.style.display = 'none';
+
+    const canvas = this.$hbDetailCanvas;
+    if (canvas) {
+      canvas.width = 200; canvas.height = 260;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const img = assetManager.getImage('visitor_katana_zero');
+      if (img) {
+        const s = Math.min(200 / img.naturalWidth, 260 / img.naturalHeight);
+        ctx.drawImage(img, (200 - img.naturalWidth * s) / 2, (260 - img.naturalHeight * s) / 2,
+          img.naturalWidth * s, img.naturalHeight * s);
+      }
+    }
+
+    let statsHTML = '';
+    statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">生命值</span><span class="hb-stat-value">' + def.combat.health + '</span></div>';
+    statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">攻击</span><span class="hb-stat-value">无（纯技能型）</span></div>';
+    statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">主动技能</span><span class="hb-stat-value">时停0.5s · 10连斩 · 每刀50+10%最大HP · 冷却' + (def.combat.activeSkillCooldown / 1000) + 's</span></div>';
+    statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">被动技能</span><span class="hb-stat-value">受击时停0.3s · 同行斩 · 每刀100+70%最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's</span></div>';
+
+    this.$hbDetailStats.innerHTML = statsHTML;
+    this.$hbDetailOverlay.style.display = 'flex';
+
+    const actionSec = this.$hbDetailOverlay.querySelector('.hb-detail-action-section');
+    if (actionSec) actionSec.style.display = 'none';
   }
 
   renderEnemyHandbook() {
@@ -1434,12 +1641,12 @@ export class UIManager {
   }
 
   // === Combat ===
-  startCombat(levelId, squad) {
+  startCombat(levelId, squad, visitorSquad = []) {
     this.currentLevelId = levelId;
     this.showPage('combat');
     this._startCombatRequested = levelId;
     this._pendingSquad = squad || null;
-    window.dispatchEvent(new CustomEvent('startCombat', { detail: { levelId, squad: squad || null } }));
+    window.dispatchEvent(new CustomEvent('startCombat', { detail: { levelId, squad: squad || null, visitorSquad } }));
   }
 
   endCombat() {
@@ -1806,6 +2013,132 @@ export class UIManager {
         }
       });
       this.$combatFooter.appendChild(card);
+    }
+  }
+
+  // === Visitor Combat Cards ===
+  renderVisitorCards(visitorSquad) {
+    const container = document.getElementById('visitor-cards');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!visitorSquad || visitorSquad.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+    container.style.display = 'flex';
+
+    const placedVisitors = this.battleManager
+      ? this.battleManager.visitors.map(v => v.id)
+      : [];
+
+    for (const vid of visitorSquad) {
+      const def = getVisitorDef(vid);
+      if (!def) continue;
+      const placed = placedVisitors.includes(vid);
+      const card = document.createElement('div');
+      card.className = 'visitor-combat-card' + (placed ? ' placed' : '');
+      card.style.cssText = 'width:72px;height:96px;border:2px solid #7d3eb0;border-radius:6px;overflow:hidden;cursor:pointer;position:relative;';
+
+      if (placed) {
+        card.style.opacity = '0.4';
+        card.style.cursor = 'default';
+      } else {
+        card.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          this.startDrag(vid);
+        });
+        card.addEventListener('click', (e) => {
+          const visitor = this.battleManager && this.battleManager.visitors.find(v => v.id === vid);
+          if (visitor) {
+            this.showVisitorPanel(visitor);
+          }
+        });
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 72; canvas.height = 96;
+      const cctx = canvas.getContext('2d');
+      const img = assetManager.getImage('visitor_katana_zero');
+      if (img) {
+        cctx.drawImage(img, 0, 0, 72, 96);
+      } else {
+        cctx.fillStyle = '#333';
+        cctx.fillRect(0, 0, 72, 96);
+        cctx.fillStyle = '#c040ff';
+        cctx.font = 'bold 18px sans-serif';
+        cctx.textAlign = 'center';
+        cctx.fillText('???', 36, 52);
+      }
+      card.appendChild(canvas);
+      container.appendChild(card);
+    }
+  }
+
+  // === Visitor Battle Panel ===
+  showVisitorPanel(visitor) {
+    if (!this.battleManager) return;
+    this.battleManager.setTimeScale(GAME_CONFIG.TIME_PANEL);
+
+    const panel = document.getElementById('visitor-panel');
+    if (!panel) return;
+    panel.style.display = 'flex';
+
+    const def = getVisitorDef(visitor.id);
+    document.getElementById('vp-name').textContent = def ? def.name : '???';
+    document.getElementById('vp-hp').textContent = `HP: ${Math.round(visitor.health)} / ${visitor.maxHealth}`;
+    document.getElementById('vp-atk').textContent = 'ATK: 技能型';
+
+    const dmgPerSlash = def.combat.activeSkillDamage + ' + ' + (def.combat.activeSkillHpRatio * 100) + '% 敌人最大HP';
+    document.getElementById('vp-active-desc').textContent =
+      '时停0.5s，10连斩 · 每刀: ' + dmgPerSlash + ' · 冷却' + (def.combat.activeSkillCooldown / 1000) + 's';
+    document.getElementById('vp-passive-desc').textContent =
+      '受击时停0.3s · 同行斩击 · 每刀100+70%敌人最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's';
+
+    const canvas = document.getElementById('vp-canvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, 200, 280);
+      const img = assetManager.getImage('visitor_katana_zero');
+      if (img) {
+        ctx.drawImage(img, 0, 0, 200, 280);
+      } else {
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, 200, 280);
+        ctx.fillStyle = '#c040ff';
+        ctx.font = '36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('???', 100, 150);
+      }
+    }
+
+    const skillBtn = document.getElementById('vp-active-btn');
+    if (skillBtn) {
+      const newBtn = skillBtn.cloneNode(true);
+      skillBtn.parentNode.replaceChild(newBtn, skillBtn);
+      if (visitor._activeCooldownRemaining > 0) {
+        newBtn.disabled = true;
+        newBtn.textContent = '冷却中...';
+      }
+      newBtn.addEventListener('click', () => {
+        this.hideVisitorPanel();
+        visitor.executeActive(this.battleManager);
+      });
+    }
+
+    const closeHandler = (e) => {
+      if (!panel.contains(e.target) && e.target !== panel) {
+        this.hideVisitorPanel();
+        document.removeEventListener('click', closeHandler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 50);
+  }
+
+  hideVisitorPanel() {
+    const panel = document.getElementById('visitor-panel');
+    if (panel) panel.style.display = 'none';
+    if (this.battleManager) {
+      this.battleManager.setTimeScale(1.0);
     }
   }
 }

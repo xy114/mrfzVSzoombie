@@ -68,6 +68,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     ui.setupCombatFooter(availablePlants);
 
+    const visitorSquad = e.detail.visitorSquad || StorageManager.getVisitorSquad();
+    ui.renderVisitorCards(visitorSquad);
+
     // Wire canvas interactions — PvZ-style drag-and-drop
     const updateDrag = () => {
       if (ui.dragState) {
@@ -148,6 +151,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             plant.useSkill(bm);
             return;
           }
+        }
+      }
+
+      // Click visitor — open panel
+      for (const visitor of bm.visitors) {
+        const dx = x - visitor.x;
+        const dy = y - visitor.y;
+        if (dx > -10 && dx < visitor.width + 10 && dy > -10 && dy < visitor.height + 10) {
+          ui.showVisitorPanel(visitor);
+          return;
         }
       }
     };
