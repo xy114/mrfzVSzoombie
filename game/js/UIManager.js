@@ -59,6 +59,7 @@ export class UIManager {
     // Handbook
     this.$hbPlantGrid = document.getElementById('hb-plant-grid');
     this.$hbPlantScroll = document.getElementById('hb-plant-scroll');
+    this.$hbVisitorGrid = document.getElementById('hb-visitor-grid');
     this.$ehbEnemyGrid = document.getElementById('ehb-enemy-grid');
     this.$ehbEnemyScroll = document.getElementById('ehb-enemy-scroll');
     this.$hbDetailOverlay = document.getElementById('hb-detail-overlay');
@@ -958,13 +959,12 @@ export class UIManager {
   }
 
   _renderVisitorHandbook() {
+    const grid = this.$hbVisitorGrid;
+    if (!grid) return;
+    grid.innerHTML = '';
+
     const allVisitors = getAllVisitorDefs();
     const placeholderCount = 3;
-
-    const sep = document.createElement('div');
-    sep.className = 'hb-visitor-separator';
-    sep.innerHTML = '<div class="hb-visitor-title">???</div><div class="hb-visitor-subtitle">似乎是来自世界之外的力量</div>';
-    this.$hbPlantGrid.appendChild(sep);
 
     const cardW = 168;
     const srcW = 316, srcH = 473;
@@ -1019,7 +1019,7 @@ export class UIManager {
         card.addEventListener('click', () => this.showVisitorDetail(v.id));
       }
 
-      this.$hbPlantGrid.appendChild(card);
+      grid.appendChild(card);
     }
 
     for (let i = 0; i < placeholderCount; i++) {
@@ -1047,7 +1047,7 @@ export class UIManager {
       ctx.textAlign = 'center';
       ctx.fillText('???', cardW / 2, cardH * 0.72);
 
-      this.$hbPlantGrid.appendChild(card);
+      grid.appendChild(card);
     }
   }
 

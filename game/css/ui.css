@@ -1183,28 +1183,20 @@ body {
 }
 
 /* Visitor Handbook Section */
-.hb-visitor-separator {
-  grid-column: 1 / -1;
-  padding: 20px 0 8px;
-  margin-top: 12px;
-  border-top: 1px solid rgba(160,60,220,0.2);
-}
-
-.hb-visitor-title {
-  font-size: 22px;
-  font-weight: bold;
+#hb-visitor-section .hb-section-title {
   color: #c070ff;
-  letter-spacing: 6px;
-  padding-left: 4px;
-  border-left: 3px solid #c070ff;
+}
+#hb-visitor-section .hb-section-title::before {
+  background: #c070ff;
 }
 
 .hb-visitor-subtitle {
   font-size: 13px;
   color: #7060a0;
   font-style: italic;
-  margin-top: 6px;
-  padding-left: 10px;
+  margin-top: -10px;
+  margin-bottom: 16px;
+  padding-left: 14px;
 }
 
 .visitor-card {
