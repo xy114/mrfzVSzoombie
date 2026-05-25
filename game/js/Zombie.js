@@ -23,9 +23,16 @@ export class Zombie {
     this.type = 'normal';
     this.rewardType = 'normal';
     this.rewardValue = 1;
+    this._pauseTimer = 0;
   }
 
   update(deltaTime, game) {
+    // Pause during slash effect
+    if (this._pauseTimer > 0) {
+      this._pauseTimer -= deltaTime;
+      return;
+    }
+
     const plantInFront = game.plants.find(p =>
       p.row === this.row &&
       p.x < this.x + 120 &&
