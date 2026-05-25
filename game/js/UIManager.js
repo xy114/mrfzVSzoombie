@@ -60,6 +60,8 @@ export class UIManager {
     this.$hbPlantGrid = document.getElementById('hb-plant-grid');
     this.$hbPlantScroll = document.getElementById('hb-plant-scroll');
     this.$hbVisitorGrid = document.getElementById('hb-visitor-grid');
+    this.$visitorPickerOverlay = document.getElementById('modal-visitor-picker');
+    this.$visitorPickerGrid = document.getElementById('visitor-picker-grid');
     this.$ehbEnemyGrid = document.getElementById('ehb-enemy-grid');
     this.$ehbEnemyScroll = document.getElementById('ehb-enemy-scroll');
     this.$hbDetailOverlay = document.getElementById('hb-detail-overlay');
@@ -544,12 +546,108 @@ export class UIManager {
 
   showVisitorPicker(slotIndex) {
     this._visitorSlotIndex = slotIndex;
-    const currentSquad = StorageManager.getVisitorSquad();
-    if (!currentSquad.includes('katana_zero')) {
-      currentSquad[slotIndex] = 'katana_zero';
-      StorageManager.saveVisitorSquad(currentSquad.filter(Boolean));
+    this._selectedVisitorId = null;
+    this.hideModal(); // hide squad modal behind picker
+
+    // Wire events
+    const backBtn = document.getElementById('visitor-picker-back');
+    if (backBtn) {
+      const newBack = backBtn.cloneNode(true);
+      backBtn.parentNode.replaceChild(newBack, backBtn);
+      newBack.addEventListener('click', () => this.hideVisitorPicker());
     }
+
+    const confirmBtn = document.getElementById('visitor-picker-confirm');
+    if (confirmBtn) {
+      const newConfirm = confirmBtn.cloneNode(true);
+      confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+      newConfirm.disabled = true;
+      newConfirm.addEventListener('click', () => this._confirmVisitorPick());
+    }
+
+    // Close on overlay click
+    if (this.$visitorPickerOverlay) {
+      const newOverlay = this.$visitorPickerOverlay.cloneNode(true);
+      this.$visitorPickerOverlay.parentNode.replaceChild(newOverlay, this.$visitorPickerOverlay);
+      this.$visitorPickerOverlay = newOverlay;
+      this.$visitorPickerGrid = document.getElementById('visitor-picker-grid');
+      newOverlay.addEventListener('click', (e) => {
+        if (e.target === newOverlay) this.hideVisitorPicker();
+      });
+    }
+
+    this.renderVisitorPicker();
+    this.showModal('visitor-picker');
+  }
+
+  renderVisitorPicker() {
+    const grid = this.$visitorPickerGrid;
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const allVisitors = getAllVisitorDefs();
+    const unlocked = allVisitors.filter(v => StorageManager.isVisitorUnlocked(v.id));
+    const inSquad = new Set(StorageManager.getVisitorSquad().filter(Boolean));
+
+    for (const v of unlocked) {
+      const card = document.createElement('div');
+      card.className = 'squad-picker-card';
+      card.dataset.visitorId = v.id;
+
+      if (inSquad.has(v.id)) {
+        card.classList.add('disabled');
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 64; canvas.height = 84;
+      const cctx = canvas.getContext('2d');
+      const img = assetManager.getImage('visitor_katana_zero');
+      if (img) {
+        cctx.drawImage(img, 0, 0, 64, 84);
+      } else {
+        cctx.fillStyle = '#1a1a2e';
+        cctx.fillRect(0, 0, 64, 84);
+        cctx.fillStyle = '#c040ff';
+        cctx.font = '16px sans-serif';
+        cctx.textAlign = 'center';
+        cctx.fillText('???', 32, 46);
+      }
+      card.appendChild(canvas);
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'squad-picker-name';
+      nameEl.textContent = v.name;
+      card.appendChild(nameEl);
+
+      if (!inSquad.has(v.id)) {
+        card.addEventListener('click', () => {
+          grid.querySelectorAll('.squad-picker-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          this._selectedVisitorId = v.id;
+          const confirmBtn = document.getElementById('visitor-picker-confirm');
+          if (confirmBtn) confirmBtn.disabled = false;
+        });
+      }
+
+      grid.appendChild(card);
+    }
+  }
+
+  hideVisitorPicker() {
+    this.hideModal();
+    this._visitorSlotIndex = -1;
+    this._selectedVisitorId = null;
+    this.showModal('squad');
     this.renderVisitorSquad();
+  }
+
+  _confirmVisitorPick() {
+    if (!this._selectedVisitorId) return;
+    const squad = StorageManager.getVisitorSquad();
+    while (squad.length <= this._visitorSlotIndex) squad.push(null);
+    squad[this._visitorSlotIndex] = this._selectedVisitorId;
+    StorageManager.saveVisitorSquad(squad.filter(Boolean));
+    this.hideVisitorPicker();
   }
 
   _onFilledSlotClick(index) {
