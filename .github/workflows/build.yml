@@ -42,7 +42,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
           CSC_FOR_PULL_REQUEST: "true"
-          DEBUG: "electron-builder"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --mac --arm64 2>&1
 
       - uses: actions/upload-artifact@v4
