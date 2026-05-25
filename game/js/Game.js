@@ -121,6 +121,7 @@ export class BattleManager {
 
     // Visitors always operate at real time (unaffected by timeScale)
     this.visitors.forEach(v => v.update(deltaTime, this));
+    this.visitors = this.visitors.filter(v => v.alive);
 
     // Visual effects always animate at real time
     this.damageNumbers = this.damageNumbers.filter(dn => {
@@ -311,6 +312,7 @@ export class BattleManager {
     this.bullets = this.bullets.filter(b => b.active);
     this.zombies = this.zombies.filter(z => z.alive);
     this.plants = this.plants.filter(p => p.alive);
+    this.visitors = this.visitors.filter(v => v.alive);
   }
 
   checkVictory() {
