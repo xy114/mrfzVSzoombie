@@ -1,8 +1,6 @@
 name: Build Installers
 
 on:
-  push:
-    branches: [main, 3Dpossibility]
   workflow_dispatch:
 
 jobs:
