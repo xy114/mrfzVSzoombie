@@ -20,7 +20,8 @@ export class Visitor {
     this.category = 'visitor';
 
     this.getBodyType = () => 'humanoid';
-    this.getRenderSize = () => 96;
+    this.getRenderSize = () => 80;
+    this.getAspectRatio = () => 0.98;
     this.scale = 1;
     this.rotation = 0;
     this._timeStopForm = false;
@@ -107,13 +108,17 @@ export class Visitor {
     ctx.fillStyle = '#0dc5d0';
     ctx.fillRect(barX, this.y - 8, barW * healthPercent, 5);
 
-    // Active skill cooldown bar (above character, same position as plants)
-    if (this._activeCooldownRemaining > 0) {
+    // Active skill cooldown bar — always visible
+    const activeRemaining = this._activeCooldownRemaining || 0;
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(barX, this.y - 14, barW, 4);
+    if (activeRemaining > 0) {
       const ratio = this.getCooldownRatio('active');
-      ctx.fillStyle = '#333';
-      ctx.fillRect(barX, this.y - 14, barW, 4);
       ctx.fillStyle = '#c040ff';
       ctx.fillRect(barX, this.y - 14, barW * ratio, 4);
+    } else {
+      ctx.fillStyle = '#c040ff';
+      ctx.fillRect(barX, this.y - 14, barW, 4);
     }
   }
 }
@@ -128,7 +133,6 @@ export class KatanaZero extends Visitor {
     const def = getVisitorDef('katana_zero');
     game.setTimeScale(GAME_CONFIG.TIME_STOP);
     this._timeStopForm = true;
-    this._passiveCooldownRemaining = def.combat.passiveSkillCooldown;
 
     const targets = game.zombies.filter(z => z.alive && z.row === this.row);
     const effects = [];
@@ -150,6 +154,7 @@ export class KatanaZero extends Visitor {
     setTimeout(() => {
       game.setTimeScale(1.0);
       this._timeStopForm = false;
+      this._passiveCooldownRemaining = def.combat.passiveSkillCooldown;
       for (const ef of effects) {
         ef.zombie._timeStopFrozen = false;
       }
@@ -168,7 +173,6 @@ export class KatanaZero extends Visitor {
 
     game.setTimeScale(GAME_CONFIG.TIME_STOP);
     this._timeStopForm = true;
-    this._activeCooldownRemaining = def.combat.activeSkillCooldown;
 
     const targets = game.zombies.filter(z => z.alive);
     const dmgMap = new Map();
@@ -196,6 +200,7 @@ export class KatanaZero extends Visitor {
     setTimeout(() => {
       game.setTimeScale(1.0);
       this._timeStopForm = false;
+      this._activeCooldownRemaining = def.combat.activeSkillCooldown;
       for (const z of targets) {
         z._pauseTimer = 0;
         z._timeStopFrozen = false;

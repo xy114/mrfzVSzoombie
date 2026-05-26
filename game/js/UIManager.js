@@ -968,17 +968,9 @@ export class UIManager {
 
     skinsRow.querySelectorAll('.spd-skin-item.locked').forEach(item => {
       item.addEventListener('click', () => {
-        const cost = parseInt(item.dataset.skinCost) || 0;
         const skinId = item.dataset.skinId;
-        if (!StorageManager.spendCrystals(cost)) {
-          this.showToast('晶核不足！');
-          return;
-        }
-        StorageManager.addSkin(plantId, skinId);
-        StorageManager.equipSkin(plantId, skinId);
-        this.showToast('皮肤已解锁并装备！');
-        this.refreshCrystalDisplay();
-        this._updatePickerDetail();
+        const skin = skins.find(s => s.id === skinId);
+        if (skin) this._showSkinPreview(plantId, skin, false);
       });
     });
 
@@ -1273,8 +1265,8 @@ export class UIManager {
     let statsHTML = '';
     statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">生命值</span><span class="hb-stat-value">' + def.combat.health + '</span></div>';
     statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">攻击</span><span class="hb-stat-value">无（纯技能型）</span></div>';
-    statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">主动技能</span><span class="hb-stat-value">时停0.5s · 10连斩 · 每刀50+10%最大HP · 冷却' + (def.combat.activeSkillCooldown / 1000) + 's</span></div>';
-    statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">被动技能</span><span class="hb-stat-value">受击时停0.3s · 同行斩 · 每刀100+70%最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's</span></div>';
+    statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">主动技能</span><span class="hb-stat-value">时停' + (def.combat.activeSkillDuration / 1000) + 's · ' + def.combat.activeSkillSlashes + '连斩 · 每刀' + def.combat.activeSkillDamage + '+' + (def.combat.activeSkillHpRatio * 100) + '%最大HP · 冷却' + (def.combat.activeSkillCooldown / 1000) + 's</span></div>';
+    statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">被动技能</span><span class="hb-stat-value">受击时停' + (def.combat.passiveSkillDuration / 1000) + 's · 同行斩 · 每击' + def.combat.passiveSkillDamage + '+' + (def.combat.passiveSkillHpRatio * 100) + '%最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's</span></div>';
     statsHTML += '<div class="hb-stat-desc" style="margin-top:12px;line-height:1.6;">' + def.description.replace(/<br>/g, '<br>') + '</div>';
 
     this.$hbDetailStats.innerHTML = statsHTML;
@@ -1826,6 +1818,9 @@ export class UIManager {
   _showSkinPreview(plantId, skin, owned) {
     this._previewSkinData = { plantId, skin, owned };
 
+    this.showModal('skin-preview');
+    this._wireSkinPreviewClose();
+
     const plant = getPlantDef(plantId);
     document.getElementById('sp-name').textContent = plant.name + ' - ' + skin.name;
 
@@ -1878,8 +1873,9 @@ export class UIManager {
         equipBtn.addEventListener('click', () => {
           StorageManager.equipSkin(plantId, skin.id);
           this.showToast('已装备皮肤: ' + skin.name);
-          this.hideModal();
+          this._hideSkinPreview();
           if (this._detailType === 'plant' && this._detailId) this.showPlantDetail(this._detailId);
+          if (this._selectedPickerPlant) this._updatePickerDetail();
           this.renderHandbook();
           this.refreshDisplayPlant();
         });
@@ -1890,13 +1886,32 @@ export class UIManager {
         buyBtn.textContent = '购买 ' + skin.cost + ' 晶核';
         buyBtn.addEventListener('click', () => {
           this._buySkin(plantId, skin.id, skin.cost);
-          this.hideModal();
+          this._hideSkinPreview();
+          if (this._selectedPickerPlant) this._updatePickerDetail();
         });
         actionsEl.appendChild(buyBtn);
       }
     }
+  }
 
-    this.showModal('skin-preview');
+  _hideSkinPreview() {
+    const el = document.getElementById('modal-skin-preview');
+    if (el) el.classList.remove('active');
+  }
+
+  _wireSkinPreviewClose() {
+    const overlay = document.getElementById('modal-skin-preview');
+    if (!overlay) return;
+    // Replace overlay to strip old listeners, then wire close-only-self behavior
+    const newOverlay = overlay.cloneNode(true);
+    overlay.parentNode.replaceChild(newOverlay, overlay);
+    newOverlay.addEventListener('click', (e) => {
+      if (e.target === newOverlay) this._hideSkinPreview();
+    });
+    const closeBtn = newOverlay.querySelector('.modal-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => this._hideSkinPreview());
+    }
   }
 
   _buySkin(plantId, skinId, cost) {
@@ -2151,6 +2166,7 @@ export class UIManager {
 
     // Available skins
     for (const skin of skins) {
+      const skinOwned = StorageManager.ownsSkin(plantId, skin.id);
       const opt = document.createElement('div');
       opt.className = 'ds-skin-option';
       if (skin.id === currentSkin) opt.classList.add('selected');
@@ -2173,11 +2189,23 @@ export class UIManager {
       label.textContent = skin.name;
       opt.appendChild(label);
 
+      if (!skinOwned) {
+        const costDiv = document.createElement('div');
+        costDiv.className = 'ds-skin-cost';
+        costDiv.textContent = '💎 ' + skin.cost;
+        opt.appendChild(costDiv);
+      }
+
       opt.addEventListener('click', () => {
-        StorageManager.setDisplayPlant(plantId);
-        StorageManager.setDisplayPlantSkin(skin.id);
-        this.refreshDisplayPlant();
-        this.hideModal();
+        if (skinOwned) {
+          StorageManager.setDisplayPlant(plantId);
+          StorageManager.setDisplayPlantSkin(skin.id);
+          this.refreshDisplayPlant();
+          this.hideModal();
+        } else {
+          this.hideModal();
+          this._showSkinPreview(plantId, skin, false);
+        }
       });
       this.$dsGrid.appendChild(opt);
     }
@@ -2493,7 +2521,7 @@ export class UIManager {
       const def = getVisitorDef(vid);
       if (!def) continue;
       const deployCount = this.battleManager ? this.battleManager.getDeployCount(vid) : 0;
-      const exhausted = deployCount >= 3;
+      const exhausted = deployCount >= 1;
       const card = document.createElement('div');
       card.className = 'visitor-combat-card' + (exhausted ? ' placed' : '');
       card.style.cssText = 'width:72px;height:96px;border:2px solid #7d3eb0;border-radius:6px;overflow:hidden;cursor:pointer;position:relative;';
@@ -2575,7 +2603,7 @@ export class UIManager {
       atkHTML = '技能型';
       defHTML = '0';
       activeDesc = '时停' + (def.combat.activeSkillDuration / 1000) + 's，' + def.combat.activeSkillSlashes + '连斩 · 每刀: ' + def.combat.activeSkillDamage + ' + ' + (def.combat.activeSkillHpRatio * 100) + '% 敌人最大HP · 冷却' + (def.combat.activeSkillCooldown / 1000) + 's';
-      passiveDesc = '受击时停1.3s · 同行斩击 · 每刀100+70%敌人最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's';
+      passiveDesc = '受击时停' + (def.combat.passiveSkillDuration / 1000) + 's · 同行斩击 · 每击' + def.combat.passiveSkillDamage + '+' + (def.combat.passiveSkillHpRatio * 100) + '%敌人最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's';
       portraitKey = 'visitor_katana_zero';
       hasSkill = true;
     } else {
@@ -2611,10 +2639,7 @@ export class UIManager {
       defHTML = defStr;
 
       if (def) {
-        if (plantType === 'cherrybomb') {
-          activeDesc = '放置后自动倒计时爆炸，造成攻击力400%的伤害';
-          hasSkill = true;
-        } else if (def.skillDescription) {
+        if (def.skillDescription) {
           activeDesc = def.skillDescription;
           hasSkill = true;
         } else {
@@ -2700,7 +2725,14 @@ export class UIManager {
       newRetreatBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.hideVisitorPanel();
-        bm.retreatUnit(unit, true);
+        const sunEl = document.getElementById('combat-sun');
+        let sunTarget = null;
+        if (sunEl) {
+          const sr = sunEl.getBoundingClientRect();
+          const cr = bm.canvas.getBoundingClientRect();
+          sunTarget = { x: sr.left + sr.width / 2 - cr.left, y: sr.top + sr.height / 2 - cr.top };
+        }
+        bm.retreatUnit(unit, true, sunTarget);
       });
     }
 

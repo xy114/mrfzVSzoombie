@@ -31,6 +31,7 @@ export class Plant {
 
   getBodyType() { return 'plant'; }
   getRenderSize() { return 80; }
+  getAspectRatio() { return 1.0; }
 
   renderBars(ctx) {
     const sz = this.getRenderSize();

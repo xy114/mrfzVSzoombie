@@ -56,21 +56,25 @@ export class CherryBomb extends Plant {
     if (this.exploded) return;
     const img = assetManager.getImage('cherrybomb');
     if (img) {
-      const s = Math.min(80 / img.naturalWidth, 80 / img.naturalHeight);
+      const s = Math.min(this.width / img.naturalWidth, this.height / img.naturalHeight);
       const dw = img.naturalWidth * s;
       const dh = img.naturalHeight * s;
-      ctx.drawImage(img, this.x + (80 - dw) / 2, this.y + (80 - dh) / 2, dw, dh);
+      ctx.drawImage(img, this.x + (this.width - dw) / 2, this.y + (this.height - dh) / 2, dw, dh);
     } else {
-      drawCherryBomb(ctx, this.x, this.y, 80, 80, this.armed);
+      drawCherryBomb(ctx, this.x, this.y, this.width, this.height, this.armed);
     }
   }
+
+  getAspectRatio() { return 0.72; }
 
   renderBars(ctx) {
     if (this.exploded) return;
     if (!this.armed) {
       const pct = this.armTimer / this.armingTime;
+      const barW = this.width * 0.875;
+      const barX = this.x + (this.width - barW) / 2;
       ctx.fillStyle = 'rgba(255,0,0,0.6)';
-      ctx.fillRect(this.x + 10, this.y - 8, 70 * pct, 5);
+      ctx.fillRect(barX, this.y - 8, barW * pct, 5);
     }
   }
 }

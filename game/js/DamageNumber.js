@@ -2,6 +2,8 @@ export class DamageNumber {
   constructor(x, y, value, isCrit = false, color = null) {
     this.x = x;
     this.y = y;
+    this.startX = x;
+    this.startY = y;
     this.value = Math.round(value);
     this.isCrit = isCrit;
     this.color = color;
@@ -10,11 +12,27 @@ export class DamageNumber {
     this.maxLife = isCrit ? 5000 : color ? 800 : 600;
     this.scale = isCrit ? 2.0 : 1.0;
     this.vy = isCrit ? -0.025 : -1.2;
+    this.targetX = null;
+    this.targetY = null;
+    this.speed = 0.15; // fraction of distance per ms toward target
+  }
+
+  setTarget(tx, ty, spd) {
+    this.targetX = tx;
+    this.targetY = ty;
+    if (spd !== undefined) this.speed = spd;
   }
 
   update(deltaTime) {
     this.life += deltaTime;
-    this.y += this.vy * deltaTime;
+    if (this.targetX !== null && this.targetY !== null) {
+      const dx = this.targetX - this.x;
+      const dy = this.targetY - this.y;
+      this.x += dx * Math.min(1, this.speed * deltaTime / 16);
+      this.y += dy * Math.min(1, this.speed * deltaTime / 16);
+    } else {
+      this.y += this.vy * deltaTime;
+    }
     if (this.isCrit && this.life < 150) {
       this.scale = 2.0 + (this.life / 150) * 0.5;
     } else if (this.isCrit) {

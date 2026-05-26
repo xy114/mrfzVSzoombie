@@ -62,6 +62,7 @@ export class PeaShooter extends Plant {
             cfg ? cfg.shellSpeed : 22
           );
           game.addBullet(shell);
+          this.skillCooldown = cfg ? cfg.skillCooldown : this.skillMaxCooldown;
           this._aimTarget = null;
           this._aimTimer = 0;
         } else if (this._aimTimer <= 0) {
@@ -74,6 +75,7 @@ export class PeaShooter extends Plant {
             cfg ? cfg.shellSpeed : 22
           );
           game.addBullet(shell);
+          this.skillCooldown = cfg ? cfg.skillCooldown : this.skillMaxCooldown;
           this._aimTarget = null;
         }
       }
@@ -139,7 +141,6 @@ export class PeaShooter extends Plant {
       if (!target) return false;
 
       const cfg = this._getSkinCfg();
-      this.skillCooldown = cfg ? cfg.skillCooldown : this.skillMaxCooldown;
       this.isSkillActive = true;
       this.skillTimer = cfg ? cfg.aimDuration : 600;
       this._aimTarget = target;
@@ -169,7 +170,11 @@ export class PeaShooter extends Plant {
   }
 
   getRenderSize() {
-    return this.skinId === 'wishadel' ? 96 : 80;
+    return 80;
+  }
+
+  getAspectRatio() {
+    return this.skinId === 'wishadel' ? 1.21 : 1.0;
   }
 
   renderBars(ctx) {
@@ -191,7 +196,8 @@ export class PeaShooter extends Plant {
 
   render(ctx) {
     const isWishadel = this.skinId === 'wishadel';
-    const renderSz = isWishadel ? 96 : 80;
+    const rw = this.width;
+    const rh = this.height;
     let img = null;
 
     if (isWishadel) {
@@ -205,12 +211,12 @@ export class PeaShooter extends Plant {
     }
 
     if (img) {
-      const s = Math.min(renderSz / img.naturalWidth, renderSz / img.naturalHeight);
+      const s = Math.min(rw / img.naturalWidth, rh / img.naturalHeight);
       const dw = img.naturalWidth * s;
       const dh = img.naturalHeight * s;
-      ctx.drawImage(img, this.x + (renderSz - dw) / 2, this.y + (renderSz - dh) / 2, dw, dh);
+      ctx.drawImage(img, this.x + (rw - dw) / 2, this.y + (rh - dh) / 2, dw, dh);
     } else {
-      drawPeashooter(ctx, this.x, this.y, renderSz, renderSz, this.shooting);
+      drawPeashooter(ctx, this.x, this.y, rw, rh, this.shooting);
     }
 
     // Wishadel crosshair on target during aim

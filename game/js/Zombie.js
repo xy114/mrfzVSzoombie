@@ -27,7 +27,9 @@ export class Zombie {
     this._timeStopFrozen = false;
   }
 
-  getRenderSize() { return this.height; }
+  getRenderSize() { return this.width; }
+  getAspectRatio() { return this.height / this.width; }
+  getBodyType() { return 'humanoid'; }
 
   update(deltaTime, game) {
     // Pause during slash effect

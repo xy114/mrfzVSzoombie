@@ -27,9 +27,9 @@ export class Sunflower extends Plant {
   render(ctx) {
     const img = assetManager.getImage('sunflower');
     if (img) {
-      ctx.drawImage(img, this.x, this.y, 80, 80);
+      ctx.drawImage(img, this.x, this.y, this.width, this.height);
     } else {
-      drawSunflower(ctx, this.x, this.y, 80, 80);
+      drawSunflower(ctx, this.x, this.y, this.width, this.height);
     }
   }
 
