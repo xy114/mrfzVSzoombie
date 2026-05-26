@@ -34,6 +34,7 @@ export class AssetManager {
       sun: 'resources/tools/太阳.gif',
       // Lawn backgrounds — scenes
       lawn_bg: 'resources/scene/主页.png',
+      level_select_bg: 'resources/scene/作战页面背景.png',
       lawn_bg_day: 'resources/scene/白天.jpg',
       lawn_bg_night: 'resources/scene/晚上.jpg',
       lawn_bg_pool: 'resources/scene/泳池.jpg',
@@ -58,7 +59,10 @@ export class AssetManager {
       wishadel_portrait: 'resources/special/立绘_维什戴尔.png',
       peashooter_skin_wishadel_portrait: 'resources/special/立绘_维什戴尔.png',
       peashooter_skin_wishadel_headshot: 'resources/special/维什戴尔大头像.png',
-      peashooter_skin_wishadel_combat: 'resources/special/维什戴尔战斗形象.png'
+      peashooter_skin_wishadel_combat: 'resources/special/维什戴尔战斗形象.png',
+      // Retreat buttons
+      retreat_plant: 'resources/tools/plant撤退.png',
+      retreat_humanoid: 'resources/tools/human撤退.png'
     };
   }
 

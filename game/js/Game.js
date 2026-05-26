@@ -15,6 +15,7 @@ import { StorageManager } from './StorageManager.js';
 import { getZombieDef } from './ZombieConfig.js';
 import { KatanaZero } from './Visitor.js';
 import { getVisitorDef } from './VisitorConfig.js';
+import { DamageNumber } from './DamageNumber.js';
 import { drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
 import { assetManager } from './AssetManager.js';
 
@@ -46,7 +47,7 @@ export class BattleManager {
     this.dragState = null; // set by main.js for ghost rendering
     this.timeScale = 1.0;
     this.visitors = [];
-    this._deployedVisitorIds = new Set();
+    this._deployCount = new Map();
     this.damageNumbers = [];
     this.slashEffects = [];
 
@@ -145,7 +146,7 @@ export class BattleManager {
 
     this.checkCollisions();
     this.trackDeadZombies();
-    this.zombies = this.zombies.filter(z => z.alive);
+    this.zombies = this.zombies.filter(z => z.alive || z._timeStopFrozen);
     this.checkVictory();
     this.checkGameOver();
   }
@@ -154,9 +155,12 @@ export class BattleManager {
     const row = Math.floor(Math.random() * this.lawn.rows);
     const col = Math.floor(Math.random() * this.lawn.cols);
     const center = this.lawn.getTileCenter(row, col);
-    const x = center.x - GAME_CONFIG.CELL_WIDTH / 2 + Math.random() * 30;
-    const targetY = this.lawn.getRowY(row) + Math.random() * 50;
-    const sun = new Sun(x, 0, targetY);
+    const cellW = GAME_CONFIG.CELL_WIDTH;
+    const cellH = GAME_CONFIG.CELL_HEIGHT;
+    // Random position within the cell (not crossing cell top/bottom bounds)
+    const sunX = center.x - cellW / 4 + Math.random() * cellW / 2;
+    const sunY = center.y - cellH / 4 + Math.random() * cellH / 2;
+    const sun = new Sun(sunX, 0, sunY);
     this.addSun(sun);
   }
 
@@ -176,56 +180,70 @@ export class BattleManager {
         const isVisitor = !!getVisitorDef(plantType);
         const cost = isVisitor ? 0 : this._getPlantCost(plantType);
         const canAfford = isVisitor || this.sun >= cost;
-        const canPlace = this.lawn.canPlant(hoverRow, hoverCol) && canAfford && !this.isPlantOnCooldown(plantType);
+        const deployOk = isVisitor ? (this._deployCount.get(plantType) || 0) < 3 : true;
+        const canPlace = this.lawn.canPlant(hoverRow, hoverCol) && canAfford && !this.isPlantOnCooldown(plantType) && deployOk;
 
-        if (canPlace) {
-          const tile = this.lawn.sceneGrid.tiles[`${hoverRow},${hoverCol}`];
-          if (tile) {
-            const sc = this.lawn.standardCell;
-            const scale = sc.w / this.lawn.cellWidth;
-            let baseRenderSize = 80;
-            if (plantType === 'peashooter') {
-              const skinId = (this.playerData.plantSkins || {})[plantType];
-              if (skinId === 'wishadel') baseRenderSize = 96;
+        const tile = this.lawn.sceneGrid.tiles[`${hoverRow},${hoverCol}`];
+        if (tile) {
+          let bodyType = 'plant';
+          let renderSize = 80;
+          if (isVisitor) {
+            bodyType = 'humanoid';
+            renderSize = 96;
+          } else if (plantType === 'peashooter') {
+            const skinId = (this.playerData.plantSkins || {})[plantType];
+            if (skinId === 'wishadel') {
+              bodyType = 'humanoid';
+              renderSize = 96;
             }
-            const sz = baseRenderSize * scale;
-            const tileH = this.lawn.getTileSize(hoverRow, hoverCol).h;
-            const cx = tile.center[0], cy = tile.center[1] - tileH / 2 * 0.1;
-
-            this.ctx.save();
-            this.ctx.globalAlpha = 0.45;
-            if (this.lawn.isSlanted(hoverCol)) {
-              this.ctx.translate(cx, cy);
-              this.ctx.rotate(-Math.PI / 4);
-              this.ctx.translate(-cx, -cy);
-            }
-
-            let img = null;
-            if (isVisitor) {
-              img = assetManager.getImageNoBg('visitor_katana_zero');
-              if (img) {
-                const imgScale = Math.min(sz / img.naturalWidth, sz / img.naturalHeight);
-                const dw = img.naturalWidth * imgScale;
-                const dh = img.naturalHeight * imgScale;
-                this.ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
-              }
-            } else {
-              img = this._getSkinGhostImage(plantType);
-              if (img) {
-                const imgScale = Math.min(sz / img.naturalWidth, sz / img.naturalHeight);
-                const dw = img.naturalWidth * imgScale;
-                const dh = img.naturalHeight * imgScale;
-                this.ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
-              }
-            }
-            if (!img) {
-              if (plantType === 'sunflower') drawSunflower(this.ctx, cx - sz / 2, cy - sz / 2, sz, sz);
-              else if (plantType === 'peashooter') drawPeashooter(this.ctx, cx - sz / 2, cy - sz / 2, sz, sz, false);
-              else if (plantType === 'nut') drawNut(this.ctx, cx - sz / 2, cy - sz / 2, sz, sz, false);
-              else if (plantType === 'cherrybomb') drawCherryBomb(this.ctx, cx - sz / 2, cy - sz / 2, sz, sz, false);
-            }
-            this.ctx.restore();
           }
+
+          const rect = this.lawn.getPlacementRect(bodyType, renderSize, hoverRow, hoverCol);
+          const cx = rect.x + rect.w / 2;
+          const cy = rect.y + rect.h / 2;
+          const sz = rect.w;
+
+          this.ctx.save();
+          this.ctx.globalAlpha = canPlace ? 0.45 : 0.2;
+          if (rect.rotation !== 0) {
+            this.ctx.translate(cx, cy);
+            this.ctx.rotate(rect.rotation);
+            this.ctx.translate(-cx, -cy);
+          }
+
+          let img = null;
+          if (isVisitor) {
+            img = assetManager.getImageNoBg('visitor_katana_zero');
+            if (img) {
+              const imgScale = Math.min(sz / img.naturalWidth, sz / img.naturalHeight);
+              const dw = img.naturalWidth * imgScale;
+              const dh = img.naturalHeight * imgScale;
+              this.ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
+            }
+          } else {
+            img = this._getSkinGhostImage(plantType);
+            if (img) {
+              const imgScale = Math.min(sz / img.naturalWidth, sz / img.naturalHeight);
+              const dw = img.naturalWidth * imgScale;
+              const dh = img.naturalHeight * imgScale;
+              this.ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
+            }
+          }
+          if (!img) {
+            const gx = rect.x, gy = rect.y;
+            if (plantType === 'sunflower') drawSunflower(this.ctx, gx, gy, rect.w, rect.h);
+            else if (plantType === 'peashooter') drawPeashooter(this.ctx, gx, gy, rect.w, rect.h, false);
+            else if (plantType === 'nut') drawNut(this.ctx, gx, gy, rect.w, rect.h, false);
+            else if (plantType === 'cherrybomb') drawCherryBomb(this.ctx, gx, gy, rect.w, rect.h, false);
+          }
+
+          // Red flash overlay when placement is invalid
+          if (!canPlace) {
+            this.ctx.fillStyle = 'rgba(255, 0, 0, 0.15)';
+            this.ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+          }
+
+          this.ctx.restore();
         }
       }
     }
@@ -263,6 +281,18 @@ export class BattleManager {
     });
 
     for (const { type, entity } of chars) {
+      // Retreat animation: shrink + fade
+      const ret = entity._retreating || 0;
+      if (ret > 0) {
+        const progress = 1 - ret / 300;
+        const cx = entity.x + entity.width / 2;
+        const cy = entity.y + entity.height / 2;
+        this.ctx.save();
+        this.ctx.globalAlpha = 1 - progress;
+        this.ctx.translate(cx, cy);
+        this.ctx.scale(1 - progress * 0.5, 1 - progress * 0.5);
+        this.ctx.translate(-cx, -cy);
+      }
       if (type === 'zombie') {
         entity.render(this.ctx);
       } else {
@@ -282,6 +312,9 @@ export class BattleManager {
           entity.render(this.ctx);
         }
       }
+      if (ret > 0) {
+        this.ctx.restore();
+      }
     }
 
     // Suns — above all characters, never blocked
@@ -297,12 +330,14 @@ export class BattleManager {
 
       const sc = this.lawn.standardCell;
       const scale = sc.w / this.lawn.cellWidth;
-      let baseRenderSize = 80;
-      if (plantType === 'peashooter') {
+      let renderSize = 80;
+      if (isVisitor) {
+        renderSize = 96;
+      } else if (plantType === 'peashooter') {
         const skinId = (this.playerData.plantSkins || {})[plantType];
-        if (skinId === 'wishadel') baseRenderSize = 96;
+        renderSize = skinId === 'wishadel' ? 96 : 80;
       }
-      const sz = baseRenderSize * scale;
+      const sz = renderSize * scale;
 
       let img = null;
       if (isVisitor) {
@@ -412,6 +447,25 @@ export class BattleManager {
     });
 
     this.bullets = this.bullets.filter(b => b.active);
+    // Tick retreat timers
+    for (const p of this.plants) {
+      if (p._retreating > 0) {
+        p._retreating -= deltaTime;
+        if (p._retreating <= 0) p.alive = false;
+      }
+    }
+    for (const v of this.visitors) {
+      if (v._retreating > 0) {
+        v._retreating -= deltaTime;
+        if (v._retreating <= 0) v.alive = false;
+      }
+    }
+    // Clean dead plants from grid before removing from array
+    for (const p of this.plants) {
+      if (!p.alive && p.row !== undefined && p.col !== undefined) {
+        this.lawn.removePlant(p.row, p.col);
+      }
+    }
     this.plants = this.plants.filter(p => p.alive);
     this.visitors = this.visitors.filter(v => v.alive);
   }
@@ -484,6 +538,26 @@ export class BattleManager {
     return false;
   }
 
+  retreatUnit(unit, isActive = false) {
+    if (isActive && unit.actualCost !== undefined) {
+      const refund = Math.floor(unit.actualCost * 0.5);
+      this.sun += refund;
+      if (this.onSunChange) this.onSunChange(this.sun);
+      this.addDamageNumber(new DamageNumber(
+        unit.x + unit.width / 2, unit.y, refund, false, '#00e070'
+      ));
+    }
+    if (unit.row !== undefined && unit.col !== undefined) {
+      this.lawn.removePlant(unit.row, unit.col);
+    }
+    unit._retreating = 300;
+    return true;
+  }
+
+  getDeployCount(visitorId) {
+    return this._deployCount.get(visitorId) || 0;
+  }
+
   updateWaveDisplay() {
     this.wave = this.waveManager.wave;
     if (this.onWaveChange) this.onWaveChange(this.wave);
@@ -506,19 +580,16 @@ export class BattleManager {
     // Check if visitor
     const visitorDef = getVisitorDef(plantType);
     if (visitorDef) {
-      if (this._deployedVisitorIds.has(plantType)) return false;
+      const deployCount = this._deployCount.get(plantType) || 0;
+      if (deployCount >= 3) return false;
       const { row, col } = this.lawn.getCellFromPosition(x, y);
       if (!this.lawn.canPlant(row, col)) return false;
       const center = this.lawn.getTileCenter(row, col);
       const visitor = new KatanaZero(center.x - 30, center.y - 40, row);
+      visitor.col = col;
       this.addVisitor(visitor);
       this.lawn.plant(row, col, visitor);
-      if (visitor.getBodyType() === 'humanoid') {
-        const rowCenter = this.lawn.getRowY(row);
-        const offset = this.lawn.standardCell.h / 2 * 0.1;
-        visitor.y = rowCenter + offset - visitor.getRenderSize() * (visitor.scale || 1);
-      }
-      this._deployedVisitorIds.add(plantType);
+      this._deployCount.set(plantType, deployCount + 1);
       return true;
     }
 
@@ -562,13 +633,8 @@ export class BattleManager {
     }
     if (placed) {
       const plant = this.plants[this.plants.length - 1];
+      plant.actualCost = this._getPlantCost(plantType);
       this.lawn.plant(row, col, plant);
-      // Humanoid: feet on line 15% below row center
-      if (plant.getBodyType() === 'humanoid') {
-        const rowCenter = this.lawn.getRowY(row);
-        const offset = this.lawn.standardCell.h / 2 * 0.1;
-        plant.y = rowCenter + offset - plant.getRenderSize() * plant.scale;
-      }
       if (this.onCooldownUpdate) this.onCooldownUpdate(this.getCooldowns());
     }
     return placed;
@@ -598,8 +664,8 @@ export class BattleManager {
   spawnZombie(type = 'normal') {
     const row = Math.floor(Math.random() * this.lawn.rows);
     const x = GAME_CONFIG.CANVAS_WIDTH;
-    const offset = this.lawn.standardCell.h / 2 * 0.1;
-    const y = this.lawn.getRowY(row) + offset - 115;  // humanoid feet 15% below center
+    const rect = this.lawn.getPlacementRect('humanoid', 115, row, 0, 10);
+    const y = rect.y;
     let zombie;
     switch (type) {
       case 'cone': zombie = new ConeZombie(x, y, row); break;

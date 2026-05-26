@@ -6,11 +6,11 @@ import { drawCherryBomb } from './PlantRenderer.js';
 export class CherryBomb extends Plant {
   constructor(x, y, starLevel = 1) {
     super(x, y, starLevel);
-    // Cherry Bomb doesn't need HP — it explodes on arm. Scale damage instead.
+    // Explosion is the skill: deals 400% of attack power
     this.maxHealth = 100;
     this.health = 100;
-    const damageMult = (STAR_CONFIG[starLevel] || STAR_CONFIG[1]).damageMult;
-    this.explosionDamage = Math.floor(200 * damageMult);
+    const m = STAR_CONFIG[starLevel] || STAR_CONFIG[1];
+    this.damage = Math.floor(50 * m.damageMult);
     this.explosionRadius = 3;
     this.armingTime = 1500;
     this.armTimer = 0;
@@ -39,7 +39,7 @@ export class CherryBomb extends Plant {
       const dy = Math.abs(zombie.y + 40 - this.y);
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < this.explosionRadius * cellW * 0.6) {
-        zombie.takeDamage(this.explosionDamage, 'physical');
+        zombie.takeDamage(Math.floor(this.damage * 4), 'physical');
         if (!zombie.alive) {
           game.enemiesKilled[zombie.rewardType] = (game.enemiesKilled[zombie.rewardType] || 0) + 1;
           zombie._killTracked = true;
@@ -56,7 +56,10 @@ export class CherryBomb extends Plant {
     if (this.exploded) return;
     const img = assetManager.getImage('cherrybomb');
     if (img) {
-      ctx.drawImage(img, this.x, this.y, 80, 80);
+      const s = Math.min(80 / img.naturalWidth, 80 / img.naturalHeight);
+      const dw = img.naturalWidth * s;
+      const dh = img.naturalHeight * s;
+      ctx.drawImage(img, this.x + (80 - dw) / 2, this.y + (80 - dh) / 2, dw, dh);
     } else {
       drawCherryBomb(ctx, this.x, this.y, 80, 80, this.armed);
     }

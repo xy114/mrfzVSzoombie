@@ -6,7 +6,7 @@ import { drawNormalZombiePortrait, drawConeZombiePortrait, drawShieldZombiePortr
 import { drawSunflowerPortrait, drawPeashooterPortrait, drawNutPortrait, drawCherryBombPortrait, drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
 import { assetManager } from './AssetManager.js';
 import { getVisitorDef, getAllVisitorDefs, getVisitorDisplayName, getVisitorCardOffset } from './VisitorConfig.js';
-import { GAME_CONFIG } from './constants.js';
+import { GAME_CONFIG, SKIN_CONFIG, STAR_CONFIG } from './constants.js';
 
 export class UIManager {
   constructor() {
@@ -194,7 +194,7 @@ export class UIManager {
     const frame = document.getElementById('standee-frame');
     if (!frame) return;
 
-    const displaySkinId = visitorDef ? null : StorageManager.getEquippedSkin(displayId);
+    const displaySkinId = visitorDef ? null : StorageManager.getDisplayPlantSkin();
     let img = visitorDef
       ? assetManager.getImageNoBg('visitor_katana_zero')
       : null;
@@ -273,6 +273,21 @@ export class UIManager {
 
   // === Level Select ===
   renderLevelSelect() {
+    // Draw background image on full-screen canvas
+    const bgCanvas = document.getElementById('ls-bg-canvas');
+    if (bgCanvas) {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+      const ctx = bgCanvas.getContext('2d');
+      const bgImg = assetManager.getImage('level_select_bg') || assetManager.getImage('lawn_bg');
+      if (bgImg) {
+        ctx.drawImage(bgImg, 0, 0, bgCanvas.width, bgCanvas.height);
+      } else {
+        ctx.fillStyle = '#0a0a14';
+        ctx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+      }
+    }
+
     const container = document.getElementById('ls-content');
     container.innerHTML = '';
     for (const prelude of PRELUDES) {
@@ -287,9 +302,11 @@ export class UIManager {
         node.className = 'level-node';
         const unlocked = StorageManager.isLevelUnlocked(lvl.id);
         const completed = StorageManager.isLevelCompleted(lvl.id);
+        const hardCompleted = StorageManager.isLevelHardCompleted(lvl.id);
         if (!unlocked) node.classList.add('locked');
         if (completed) node.classList.add('completed');
-        node.innerHTML = `<span class="lv-num">${lvl.name}</span><span class="lv-sub">${lvl.waves}波</span>`;
+        if (hardCompleted) node.classList.add('hard-completed');
+        node.innerHTML = `<span class="lv-diamond"></span><span class="lv-num">${lvl.name}</span><span class="lv-sub">${lvl.waves}波</span>`;
         if (unlocked) {
           node.addEventListener('click', () => this.showLevelDetail(lvl.id));
         }
@@ -367,6 +384,8 @@ export class UIManager {
         threatEl.textContent = threat.text;
         threatEl.style.color = threat.class === 'threat-extreme' ? '#c04040' : threat.class === 'threat-elite' ? '#d09030' : '#3aaf5a';
         item.appendChild(threatEl);
+        item.style.cursor = 'pointer';
+        item.addEventListener('click', () => this.showEnemyDetail(type));
         enemyList.appendChild(item);
       }
     }
@@ -1184,21 +1203,6 @@ export class UIManager {
       ctx.fillText(isUnlocked ? v.name : '???', cardW / 2, cardH * 0.69);
 
       if (isUnlocked) {
-        ctx.fillStyle = 'rgb(89,32,8)';
-        ctx.font = '11px "Microsoft YaHei", sans-serif';
-        const lines = v.description.split('<br>');
-        const lineH = 14;
-        const startY = cardH * 0.84 - (lines.length - 1) * lineH / 2;
-        for (let li = 0; li < lines.length; li++) {
-          ctx.fillText(lines[li], cardW / 2, startY + li * lineH);
-        }
-      } else {
-        ctx.fillStyle = '#484440';
-        ctx.font = '11px "Microsoft YaHei", sans-serif';
-        ctx.fillText('未解锁', cardW / 2, cardH * 0.84);
-      }
-
-      if (isUnlocked) {
         card.style.cursor = 'pointer';
         card.addEventListener('click', () => this.showVisitorDetail(v.id));
       }
@@ -1341,8 +1345,6 @@ export class UIManager {
       ctx.textAlign = 'center';
       const nameY = tbY + 26 * scale; // ~170
       const threatY = nameY + 24 * scale; // ~183
-      const descY = threatY + 22 * scale; // ~195
-
       // Name
       ctx.fillStyle = isEncountered ? textColor : '#484440'; // text-dim
       ctx.font = `bold ${Math.round(28 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
@@ -1354,13 +1356,6 @@ export class UIManager {
         '#484440';
       ctx.font = `${Math.round(24 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       ctx.fillText(isEncountered ? threat.text : '???', cardW / 2, threatY);
-
-      // Description
-      ctx.fillStyle = isEncountered ? textColor : '#484440';
-      ctx.font = `${Math.round(22 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
-      const desc = isEncountered ? enemy.description : '尚未遭遇';
-      const maxCharsE = Math.floor(cardW / (22 * scale * 0.5));
-      ctx.fillText(desc.length > maxCharsE ? desc.slice(0, maxCharsE - 1) + '...' : desc, cardW / 2, descY);
 
       if (isEncountered) {
         card.style.cursor = 'pointer';
@@ -1418,10 +1413,13 @@ export class UIManager {
 
     // Damage
     if (def.combat.damage) {
-      const dmg = Math.round(def.combat.damage * mult.damageMult);
+      const baseDmg = Math.round(def.combat.damage * mult.damageMult);
+      const skinBonus = (skin && skin.attackBonus) ? skin.attackBonus : 0;
+      const dmg = baseDmg + skinBonus;
+      const bonusStr = skinBonus ? `（+${skinBonus}）` : '';
       statsHTML += `<div class="hb-stat-row">
         <span class="hb-stat-label">攻击力</span>
-        <span class="hb-stat-value">${dmg}</span>
+        <span class="hb-stat-value">${dmg}<span style="color:#ff8c42;font-size:13px;">${bonusStr}</span></span>
       </div>`;
     }
 
@@ -1479,12 +1477,6 @@ export class UIManager {
     }
 
     // Explosion stats (cherry bomb)
-    if (def.combat.explosionDamage) {
-      statsHTML += `<div class="hb-stat-row">
-        <span class="hb-stat-label">爆炸伤害</span>
-        <span class="hb-stat-value" style="color:#ff4444;">${def.combat.explosionDamage}</span>
-      </div>`;
-    }
     if (def.combat.explosionRadius) {
       statsHTML += `<div class="hb-stat-row">
         <span class="hb-stat-label">爆炸范围</span>
@@ -1501,6 +1493,13 @@ export class UIManager {
     // Description (use skin description if available)
     const skinDesc = (skin && skin.description) ? skin.description : def.description;
     statsHTML += `<div class="hb-stat-row"><span class="hb-stat-label">描述</span><span class="hb-stat-value">${skinDesc}</span></div>`;
+
+    // Skill description (use skin skill if available, otherwise plant skill)
+    const skillDesc = (skin && skin.skillDescription) ? skin.skillDescription : def.skillDescription;
+    statsHTML += `<div class="hb-stat-row" style="margin-top:4px;border-bottom-color:rgba(255,170,68,0.12);">
+      <span class="hb-stat-label" style="color:#ffaa44;">技能</span>
+    </div>
+    <div class="hb-stat-desc" style="color:${skillDesc ? '#ffcc88' : 'var(--text-dim)'};font-size:15px;">${skillDesc || '暂时还没有技能，敬请开发'}</div>`;
 
     // Skin info
     if (skin) {
@@ -1984,6 +1983,22 @@ export class UIManager {
   updateCombatUI(sun, wave) {
     if (this.$sun) this.$sun.textContent = sun;
     if (this.$wave) this.$wave.textContent = wave;
+    this.updateCardAffordability(sun);
+  }
+
+  updateCardAffordability(sun) {
+    if (!this.$combatFooter) return;
+    const cards = this.$combatFooter.querySelectorAll('.combat-plant-card');
+    for (const card of cards) {
+      const plantId = card.dataset.plant;
+      const def = getPlantDef(plantId);
+      if (!def) continue;
+      if (sun < def.combat.cost) {
+        card.classList.add('insufficient-sun');
+      } else {
+        card.classList.remove('insufficient-sun');
+      }
+    }
   }
 
   showBattleResult(won, data) {
@@ -2429,6 +2444,7 @@ export class UIManager {
       card.addEventListener('mousedown', (e) => {
         e.preventDefault();
         if (card.classList.contains('on-cooldown')) return;
+        if (card.classList.contains('insufficient-sun')) return;
         this.$combatFooter.querySelectorAll('.combat-plant-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
         this.startDrag(plantId);
@@ -2448,25 +2464,23 @@ export class UIManager {
     }
     container.style.display = 'flex';
 
-    const placedVisitors = this.battleManager && this.battleManager._deployedVisitorIds
-      ? [...this.battleManager._deployedVisitorIds]
-      : [];
-
     for (const vid of visitorSquad) {
       const def = getVisitorDef(vid);
       if (!def) continue;
-      const placed = placedVisitors.includes(vid);
+      const deployCount = this.battleManager ? this.battleManager.getDeployCount(vid) : 0;
+      const exhausted = deployCount >= 3;
       const card = document.createElement('div');
-      card.className = 'visitor-combat-card' + (placed ? ' placed' : '');
+      card.className = 'visitor-combat-card' + (exhausted ? ' placed' : '');
       card.style.cssText = 'width:72px;height:96px;border:2px solid #7d3eb0;border-radius:6px;overflow:hidden;cursor:pointer;position:relative;';
 
-      if (placed) {
-        card.style.opacity = '0.4';
+      if (exhausted) {
+        card.style.opacity = '0.3';
         card.style.cursor = 'default';
+        card.style.filter = 'grayscale(0.8)';
       }
 
       card.addEventListener('mousedown', (e) => {
-        if (placed) return;
+        if (exhausted) return;
         e.preventDefault();
         this.$combatFooter.querySelectorAll('.combat-plant-card').forEach(c => c.classList.remove('selected'));
         this.startDrag(vid);
@@ -2478,7 +2492,7 @@ export class UIManager {
         }
         const visitor = this.battleManager && this.battleManager.visitors.find(v => v.id === vid && v.alive);
         if (visitor) {
-          this.showVisitorPanel(visitor);
+          this.showUnitPanel(visitor);
         }
       });
 
@@ -2505,7 +2519,17 @@ export class UIManager {
   }
 
   // === Visitor Battle Panel ===
-  showVisitorPanel(visitor) {
+  _getPlantTypeFromUnit(unit) {
+    const map = {
+      'Sunflower': 'sunflower',
+      'PeaShooter': 'peashooter',
+      'Nut': 'nut',
+      'CherryBomb': 'cherrybomb'
+    };
+    return map[unit.constructor.name] || null;
+  }
+
+  showUnitPanel(unit) {
     if (!this.battleManager) return;
     this.battleManager.setTimeScale(GAME_CONFIG.TIME_PANEL);
 
@@ -2513,65 +2537,274 @@ export class UIManager {
     if (!panel) return;
     panel.style.display = 'flex';
 
-    const def = getVisitorDef(visitor.id);
-    document.getElementById('vp-name').textContent = def ? def.name : '???';
-    document.getElementById('vp-hp').textContent = `HP: ${Math.round(visitor.health)} / ${visitor.maxHealth}`;
-    document.getElementById('vp-atk').textContent = 'ATK: 技能型';
+    const isVisitor = unit.category === 'visitor';
+    const bm = this.battleManager;
 
-    const dmgPerSlash = def.combat.activeSkillDamage + ' + ' + (def.combat.activeSkillHpRatio * 100) + '% 敌人最大HP';
-    document.getElementById('vp-active-desc').textContent =
-      '时停0.5s，10连斩 · 每刀: ' + dmgPerSlash + ' · 冷却' + (def.combat.activeSkillCooldown / 1000) + 's';
-    document.getElementById('vp-passive-desc').textContent =
-      '受击时停0.3s · 同行斩击 · 每刀100+70%敌人最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's';
+    // Determine unit info
+    let unitName, atkHTML, defHTML, activeDesc, passiveDesc, portraitKey;
+    let hasSkill = false;
 
+    if (isVisitor) {
+      const def = getVisitorDef(unit.id);
+      unitName = def ? def.name : '???';
+      atkHTML = '技能型';
+      defHTML = '0';
+      activeDesc = '时停' + (def.combat.activeSkillDuration / 1000) + 's，' + def.combat.activeSkillSlashes + '连斩 · 每刀: ' + def.combat.activeSkillDamage + ' + ' + (def.combat.activeSkillHpRatio * 100) + '% 敌人最大HP · 冷却' + (def.combat.activeSkillCooldown / 1000) + 's';
+      passiveDesc = '受击时停1.3s · 同行斩击 · 每刀100+70%敌人最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's';
+      portraitKey = 'visitor_katana_zero';
+      hasSkill = true;
+    } else {
+      const plantType = this._getPlantTypeFromUnit(unit);
+      const def = plantType ? getPlantDef(plantType) : null;
+      unitName = def ? def.name : unit.constructor.name;
+
+      if (def && def.combat.damage !== undefined) {
+        let dmg = def.combat.damage;
+        const star = (bm.playerData.plantStars || {})[plantType] || 1;
+        const starCfg = STAR_CONFIG[star] || STAR_CONFIG[1];
+        dmg = Math.floor(dmg * (starCfg.damageMult || 1));
+        atkHTML = String(dmg);
+        if (plantType === 'peashooter') {
+          const skinId = (bm.playerData.plantSkins || {})['peashooter'];
+          if (skinId === 'wishadel') {
+            const skinCfg = SKIN_CONFIG.peashooter?.wishadel;
+            if (skinCfg && skinCfg.peaAttackBonus) {
+              atkHTML += '<span class="vp-bonus">+' + skinCfg.peaAttackBonus + '</span>';
+            }
+          }
+        }
+      } else {
+        atkHTML = '0';
+      }
+
+      // Defense — nut has baseSkillDefense, others are 0
+      const baseDef = unit.baseSkillDefense || 0;
+      let defStr = String(baseDef);
+      if (plantType === 'nut' && unit.isSkillActive) {
+        defStr += ' <small>激活</small>';
+      }
+      defHTML = defStr;
+
+      if (def) {
+        if (plantType === 'cherrybomb') {
+          activeDesc = '放置后自动倒计时爆炸，造成攻击力400%的伤害';
+          hasSkill = true;
+        } else if (def.skillDescription) {
+          activeDesc = def.skillDescription;
+          hasSkill = true;
+        } else {
+          activeDesc = '暂时还没有技能，敬请开发';
+        }
+      } else {
+        activeDesc = '暂时还没有技能，敬请开发';
+      }
+      passiveDesc = '';
+      portraitKey = plantType;
+    }
+
+    document.getElementById('vp-name').textContent = unitName;
+    document.getElementById('vp-hp').textContent = `${Math.round(unit.health)} / ${unit.maxHealth}`;
+    document.getElementById('vp-atk').innerHTML = atkHTML;
+    document.getElementById('vp-def').textContent = defHTML;
+    document.getElementById('vp-active-desc').textContent = activeDesc || '';
+    document.getElementById('vp-passive-desc').textContent = passiveDesc || '';
+
+    // Show/hide skill sections
+    const activeSkillEl = document.getElementById('vp-active-skill');
+    const passiveSkillEl = document.getElementById('vp-passive-skill');
+    if (activeSkillEl) activeSkillEl.style.display = (hasSkill || activeDesc) ? '' : 'none';
+    if (passiveSkillEl) passiveSkillEl.style.display = isVisitor ? '' : 'none';
+
+    // Portrait
     const canvas = document.getElementById('vp-canvas');
     if (canvas) {
       const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, 200, 280);
-      const img = assetManager.getImageNoBg('visitor_katana_zero');
-      ctx.save();
-      if (img) {
-        const s = Math.min(200 / img.naturalWidth, 280 / img.naturalHeight);
-        const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
-        const off = getVisitorCardOffset('katana_zero', 'handbookDetail');
-        const sx = (200 - dw) / 2 + off.x * s;
-        const sy = (280 - dh) / 2 + off.y * s;
-        ctx.drawImage(img, sx, sy, dw, dh);
-      } else {
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(0, 0, 200, 280);
-        ctx.fillStyle = '#c040ff';
-        ctx.font = '36px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('???', 100, 150);
+      const cw = canvas.width, ch = canvas.height;
+      ctx.clearRect(0, 0, cw, ch);
+      if (portraitKey) {
+        let img;
+        if (isVisitor) {
+          img = assetManager.getImageNoBg(portraitKey);
+        } else {
+          // Check for skin portrait first
+          const skinId = (bm.playerData.plantSkins || {})[portraitKey];
+          if (skinId) {
+            img = assetManager.getImage(portraitKey + '_skin_' + skinId + '_portrait') ||
+                  assetManager.getImage(portraitKey + '_skin_' + skinId + '_combat');
+          }
+          if (!img) {
+            img = assetManager.getImage(portraitKey);
+          }
+        }
+        ctx.save();
+        if (img) {
+          const s = Math.min(cw / img.naturalWidth, ch / img.naturalHeight);
+          const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+          if (isVisitor) {
+            const off = getVisitorCardOffset('katana_zero', 'handbookDetail');
+            const sx = (cw - dw) / 2 + off.x * s;
+            const sy = (ch - dh) / 2 + off.y * s;
+            ctx.drawImage(img, sx, sy, dw, dh);
+          } else {
+            ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+          }
+        } else {
+          ctx.fillStyle = '#1a1a2e';
+          ctx.fillRect(0, 0, cw, ch);
+          ctx.fillStyle = '#888';
+          ctx.font = '36px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('???', cw / 2, ch / 2);
+        }
+        ctx.restore();
       }
-      ctx.restore();
     }
 
-    const skillBtn = document.getElementById('vp-active-btn');
-    if (skillBtn) {
-      const newBtn = skillBtn.cloneNode(true);
-      skillBtn.parentNode.replaceChild(newBtn, skillBtn);
-      if (visitor._activeCooldownRemaining > 0) {
-        newBtn.disabled = true;
-        newBtn.textContent = '冷却中...';
-      }
-      newBtn.addEventListener('click', () => {
+    // Skill button — setup for visitor or plant
+    this._setupVpSkillButton(unit, isVisitor);
+
+    // Retreat button
+    const retreatBtn = document.getElementById('vp-retreat-btn');
+    if (retreatBtn) {
+      const bodyType = unit.getBodyType ? unit.getBodyType() : 'plant';
+      const retreatImg = assetManager.getImage('retreat_' + bodyType);
+      if (retreatImg) retreatBtn.src = retreatImg.src;
+      retreatBtn.style.display = '';
+      const newRetreatBtn = retreatBtn.cloneNode(true);
+      retreatBtn.parentNode.replaceChild(newRetreatBtn, retreatBtn);
+      newRetreatBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         this.hideVisitorPanel();
-        visitor.executeActive(this.battleManager);
+        bm.retreatUnit(unit, true);
       });
     }
 
-    const closeHandler = (e) => {
+    // Close handler
+    if (this._vpCloseHandler) {
+      document.removeEventListener('click', this._vpCloseHandler);
+      this._vpCloseHandler = null;
+    }
+    if (this._vpCloseTimeout) {
+      clearTimeout(this._vpCloseTimeout);
+      this._vpCloseTimeout = null;
+    }
+    this._vpCloseHandler = (e) => {
       if (!panel.contains(e.target) && e.target !== panel) {
         this.hideVisitorPanel();
-        document.removeEventListener('click', closeHandler);
       }
     };
-    setTimeout(() => document.addEventListener('click', closeHandler), 50);
+    this._vpCloseTimeout = setTimeout(() => {
+      this._vpCloseTimeout = null;
+      document.addEventListener('click', this._vpCloseHandler);
+    }, 50);
+  }
+
+  _setupVpSkillButton(unit, isVisitor) {
+    const btn = document.getElementById('vp-active-btn');
+    const fillEl = document.getElementById('vp-active-fill');
+    const labelEl = btn ? btn.querySelector('.vp-btn-label') : null;
+    const skillSection = document.getElementById('vp-active-skill');
+
+    // Clone to remove old listeners
+    if (btn) {
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+    }
+    const freshBtn = document.getElementById('vp-active-btn');
+    const freshFill = document.getElementById('vp-active-fill');
+    const freshLabel = freshBtn ? freshBtn.querySelector('.vp-btn-label') : null;
+
+    if (!freshBtn || !freshFill || !freshLabel || !skillSection) return;
+
+    if (isVisitor) {
+      // Visitor skill button with cooldown progress
+      const def = getVisitorDef(unit.id);
+      const totalCd = def.combat.activeSkillCooldown;
+      const ticksTotal = Math.ceil(totalCd / 1000);
+
+      const updateBtnDisplay = () => {
+        const remaining = unit._activeCooldownRemaining;
+        if (remaining <= 0) {
+          freshBtn.className = 'vp-skill-btn ready';
+          freshBtn.disabled = false;
+          freshLabel.textContent = '✦ 释 放';
+          freshFill.style.width = '100%';
+        } else {
+          freshBtn.className = 'vp-skill-btn recharging';
+          freshBtn.disabled = true;
+          const ticksElapsed = Math.min(ticksTotal, Math.ceil((totalCd - remaining) / 1000));
+          freshLabel.textContent = `◆ ${ticksElapsed}/${ticksTotal}`;
+          const tickFrac = ((totalCd - remaining) % 1000) / 1000;
+          const overall = (ticksElapsed - 1 + tickFrac) / ticksTotal;
+          freshFill.style.width = (overall * 100) + '%';
+        }
+      };
+      updateBtnDisplay();
+      const refreshInterval = setInterval(updateBtnDisplay, 250);
+      this._vpRefreshTimer = refreshInterval;
+
+      freshBtn.addEventListener('click', () => {
+        if (unit._activeCooldownRemaining > 0) return;
+        this.hideVisitorPanel();
+        unit.executeActive(this.battleManager);
+      });
+      skillSection.style.display = '';
+    } else {
+      // Plant: show skill button only if unit has useSkill and it's not cherrybomb (auto)
+      const plantType = this._getPlantTypeFromUnit(unit);
+      const hasManualSkill = typeof unit.useSkill === 'function' && plantType !== 'cherrybomb';
+      if (hasManualSkill) {
+        skillSection.style.display = '';
+        const totalCd = unit.skillMaxCooldown || 10000;
+        const ticksTotal = Math.ceil(totalCd / 1000);
+
+        const updateBtnDisplay = () => {
+          const remaining = unit.skillCooldown || 0;
+          if (remaining <= 0) {
+            freshBtn.className = 'vp-skill-btn ready';
+            freshBtn.disabled = false;
+            freshLabel.textContent = '✦ 激 活';
+            freshFill.style.width = '100%';
+          } else {
+            freshBtn.className = 'vp-skill-btn recharging';
+            freshBtn.disabled = true;
+            const ticksElapsed = Math.min(ticksTotal, Math.ceil((totalCd - remaining) / 1000));
+            freshLabel.textContent = `◆ ${ticksElapsed}/${ticksTotal}`;
+            const tickFrac = ((totalCd - remaining) % 1000) / 1000;
+            const overall = (ticksElapsed - 1 + tickFrac) / ticksTotal;
+            freshFill.style.width = (overall * 100) + '%';
+          }
+        };
+        updateBtnDisplay();
+        if (this._vpRefreshTimer) {
+          clearInterval(this._vpRefreshTimer);
+        }
+        this._vpRefreshTimer = setInterval(updateBtnDisplay, 250);
+
+        freshBtn.addEventListener('click', () => {
+          if (unit.skillCooldown > 0) return;
+          this.hideVisitorPanel();
+          unit.useSkill(this.battleManager);
+        });
+      } else {
+        skillSection.style.display = 'none';
+      }
+    }
   }
 
   hideVisitorPanel() {
+    if (this._vpRefreshTimer) {
+      clearInterval(this._vpRefreshTimer);
+      this._vpRefreshTimer = null;
+    }
+    if (this._vpCloseTimeout) {
+      clearTimeout(this._vpCloseTimeout);
+      this._vpCloseTimeout = null;
+    }
+    if (this._vpCloseHandler) {
+      document.removeEventListener('click', this._vpCloseHandler);
+      this._vpCloseHandler = null;
+    }
     const panel = document.getElementById('visitor-panel');
     if (panel) panel.style.display = 'none';
     if (this.battleManager) {

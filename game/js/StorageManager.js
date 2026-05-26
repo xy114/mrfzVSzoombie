@@ -8,6 +8,7 @@ const DEFAULT_SAVE = {
   plantSkins: { peashooter: null },
   ownedSkins: { peashooter: [] },
   completedLevels: {},
+  completedHardLevels: {},
   encounteredEnemies: [],
   devMode: false,
   displayPlant: 'sunflower',
@@ -83,6 +84,12 @@ export const StorageManager = {
   },
 
   isLevelCompleted(levelId) { return levelId in saveData.completedLevels; },
+  isLevelHardCompleted(levelId) { return levelId in (saveData.completedHardLevels || {}); },
+  completeLevelHard(levelId, data) {
+    if (!saveData.completedHardLevels) saveData.completedHardLevels = {};
+    saveData.completedHardLevels[levelId] = data || {};
+    this.save();
+  },
   isLevelUnlocked(levelId) {
     if (saveData.devMode) return true;
     const [prelude, level] = levelId.split('-').map(Number);
@@ -122,6 +129,7 @@ export const StorageManager = {
       saveData._preDevSnapshot = {
         crystals: saveData.crystals,
         completedLevels: { ...saveData.completedLevels },
+        completedHardLevels: { ...(saveData.completedHardLevels || {}) },
         encounteredEnemies: [...saveData.encounteredEnemies],
         plantStars: { ...saveData.plantStars },
         plantSkins: { ...saveData.plantSkins },
@@ -144,6 +152,7 @@ export const StorageManager = {
     const snap = saveData._preDevSnapshot;
     saveData.crystals = snap.crystals;
     saveData.completedLevels = snap.completedLevels;
+    saveData.completedHardLevels = snap.completedHardLevels || {};
     saveData.encounteredEnemies = snap.encounteredEnemies;
     saveData.plantStars = snap.plantStars;
     saveData.plantSkins = snap.plantSkins;
@@ -157,7 +166,7 @@ export const StorageManager = {
   },
 
   resetSave() {
-    saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {}, encounteredEnemies: [], unlockedSquadSlots: 6, savedSquads: {} };
+    saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, plantSkins: { ...DEFAULT_SAVE.plantSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {}, completedHardLevels: {}, encounteredEnemies: [], unlockedSquadSlots: 6, savedSquads: {}, visitorSquad: [] };
     this.save();
   },
 

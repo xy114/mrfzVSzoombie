@@ -51,6 +51,7 @@ export const SKIN_CONFIG = {
       explosionRadius: 2.5,
       peaDamage: 25,
       peaSpeed: 22,
+      peaAttackBonus: 20,
       bodyType: 'humanoid'
     }
   }

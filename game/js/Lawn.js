@@ -64,26 +64,15 @@ export class Lawn {
       this.grid[row][col] = plant;
       plant.row = row;
       plant.col = col;
-      const sc = this.standardCell;
-      if (this.usePolyGrid) {
-        const tile = this.sceneGrid.tiles[`${row},${col}`];
-        if (tile) {
-          const s = sc.w / this.cellWidth;
-          const tileH = this.getTileSize(row, col).h;
-          plant.x = tile.center[0] - plant.width / 2 * s;
-          plant.y = tile.center[1] - plant.height / 2 * s - tileH / 2 * 0.1;
-        } else {
-          plant.x = col * this.cellWidth;
-          plant.y = row * this.cellHeight;
-        }
-      } else {
-        plant.x = col * this.cellWidth;
-        plant.y = row * this.cellHeight;
-      }
-      plant.scale = sc.w / this.cellWidth;
-      if (this.isSlanted(col)) {
-        plant.rotation = -Math.PI / 4; // 45° left tilt for roof slant
-      }
+
+      const bodyType = plant.getBodyType ? plant.getBodyType() : 'plant';
+      const renderSize = plant.getRenderSize ? plant.getRenderSize() : 80;
+      const rect = this.getPlacementRect(bodyType, renderSize, row, col);
+      plant.x = rect.x;
+      plant.y = rect.y;
+      plant.scale = rect.scale;
+      plant.rotation = rect.rotation;
+
       return true;
     }
     return false;
@@ -165,6 +154,34 @@ export class Lawn {
       return { w: side, h: side };
     }
     return { w: this.cellWidth, h: this.cellHeight };
+  }
+
+  getPlacementRect(bodyType, renderSize, row, col, footOffset = 0) {
+    const sc = this.standardCell;
+    const scale = sc.w / this.cellWidth;
+    const sz = renderSize * scale;
+    const tile = this.usePolyGrid ? this.sceneGrid.tiles[`${row},${col}`] : null;
+    const cx = tile ? tile.center[0] : (col * this.cellWidth + this.cellWidth / 2);
+    const cy = tile ? tile.center[1] : (row * this.cellHeight + this.cellHeight / 2);
+
+    let x, y;
+    if (bodyType === 'humanoid') {
+      const rowY = this.getRowY(row);
+      // Row-level ground line, not per-tile — same row shares same foot line
+      const rowH = this.standardCell.h;
+      x = cx - sz / 2;
+      y = rowY + rowH * 0.2 - sz - footOffset * scale;
+    } else {
+      x = cx - sz / 2;
+      y = cy - sz / 2;
+    }
+
+    return {
+      x, y,
+      w: sz, h: sz,
+      scale,
+      rotation: this.isSlanted(col) ? -Math.PI / 4 : 0
+    };
   }
 
   findNearestVertex(x, y, threshold) {

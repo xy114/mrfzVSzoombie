@@ -53,6 +53,15 @@ export class PeaShooter extends Plant {
       if (this._aimTarget) {
         this._aimTimer -= deltaTime;
         if (!this._aimTarget.alive) {
+          // Fire at target's last position even though it died
+          const cfg = this._getSkinCfg();
+          const shell = new WishadelShell(
+            this.x + 30, this.y, this.row,
+            this._aimTarget,
+            cfg ? cfg.skillDamage : 120,
+            cfg ? cfg.shellSpeed : 22
+          );
+          game.addBullet(shell);
           this._aimTarget = null;
           this._aimTimer = 0;
         } else if (this._aimTimer <= 0) {
@@ -80,7 +89,7 @@ export class PeaShooter extends Plant {
           this.shooting = true;
           const m = STAR_CONFIG[this.starLevel] || STAR_CONFIG[1];
           const cfg = this._getSkinCfg();
-          const dmg = Math.floor((cfg ? cfg.peaDamage : 25) * m.damageMult);
+          const dmg = Math.floor((cfg ? cfg.peaDamage : 25) * m.damageMult + (cfg ? cfg.peaAttackBonus || 0 : 0));
           const shell = new WishadelPea(this.x + 30, this.y + 4, this.row, dmg, cfg ? cfg.peaSpeed : 22);
           game.addBullet(shell);
           setTimeout(() => { this.shooting = false; }, 200);

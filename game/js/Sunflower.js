@@ -17,9 +17,10 @@ export class Sunflower extends Plant {
     this.sunTimer += deltaTime;
     if (this.sunTimer >= this.sunInterval) {
       this.sunTimer = 0;
-      const sunX = this.x + Math.random() * 50;
-      const sunY = this.y + Math.random() * 30;
-      game.addSun(new Sun(sunX, sunY, sunY));
+      const sunX = this.x + 10 + Math.random() * 60;
+      const startY = this.y - 30 - Math.random() * 20;
+      const targetY = this.y + 20 + Math.random() * 30;
+      game.addSun(new Sun(sunX, startY, targetY));
     }
   }
 
