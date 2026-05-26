@@ -59,6 +59,8 @@ export class UIManager {
     this.$gearCanvas = document.getElementById('gear-canvas');
     this.$crystalCanvas = document.getElementById('crystal-icon-canvas');
     this.$combatExitBtn = document.getElementById('combat-exit-btn');
+    this.$pauseBtn = document.getElementById('combat-pause-btn');
+    this.$pauseOverlay = document.getElementById('pause-overlay');
     // Handbook
     this.$hbPlantGrid = document.getElementById('hb-plant-grid');
     this.$hbPlantScroll = document.getElementById('hb-plant-scroll');
@@ -91,6 +93,12 @@ export class UIManager {
     on('settings-gear-btn', 'click', () => { this.showModal('settings'); });
     if (this.$combatExitBtn) {
       this.$combatExitBtn.addEventListener('click', () => this._confirmExitCombat());
+    }
+    if (this.$pauseBtn) {
+      this.$pauseBtn.addEventListener('click', () => this._togglePause());
+    }
+    if (this.$pauseOverlay) {
+      this.$pauseOverlay.addEventListener('click', () => this._togglePause());
     }
     on('pure-mode-btn', 'click', () => { this._confirmPureMode(); });
     on('reset-save-btn', 'click', () => { this._confirmResetSave(); });
@@ -1938,6 +1946,7 @@ export class UIManager {
   }
 
   endCombat() {
+    if (this.$pauseOverlay) this.$pauseOverlay.classList.remove('active');
     if (this.battleManager) {
       this.battleManager.stop();
       if (this.battleManager._keyHandler) {
@@ -2312,6 +2321,22 @@ export class UIManager {
     const okBtn = document.getElementById('confirm-ok');
     okBtn.className = 'danger';
     this.showModal('confirm');
+  }
+
+  _togglePause() {
+    const bm = this.battleManager;
+    if (!bm || bm.battleEnded) return;
+    if (this.$pauseOverlay.classList.contains('active')) {
+      // Resume
+      this.$pauseOverlay.classList.remove('active');
+      bm.isRunning = true;
+      bm.lastTime = performance.now();
+      bm.gameLoop();
+    } else {
+      // Pause
+      bm.isRunning = false;
+      this.$pauseOverlay.classList.add('active');
+    }
   }
 
   // === Icon Drawing ===

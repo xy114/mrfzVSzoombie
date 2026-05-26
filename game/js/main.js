@@ -234,8 +234,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
 
-    // Keyboard: Space for skills, Escape to cancel drag, E to export grid, D to toggle debug
+    // Keyboard: P to pause, Space for skills, Escape to cancel drag, E to export grid, D to toggle debug
     const keyHandler = (ev) => {
+      if (ev.code === 'KeyP' || ev.code === 'KeyF') {
+        ui._togglePause();
+        return;
+      }
       if (ev.code === 'KeyD') {
         bm.lawn.debugGrid = !bm.lawn.debugGrid;
         if (bm.lawn.debugGrid) {

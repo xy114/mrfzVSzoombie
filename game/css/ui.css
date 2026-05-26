@@ -422,6 +422,96 @@ body {
 }
 #combat-exit-btn:hover { background: var(--btn-hover-bg); box-shadow: var(--btn-hover-shadow); transform: translateY(-1px); }
 #combat-exit-btn:active { transform: scale(0.92); background: var(--btn-active-bg); box-shadow: var(--btn-active-shadow); }
+
+/* Pause button — tactical terminal style */
+#combat-pause-btn {
+  position: fixed; top: 60px; left: 64px; z-index: 55;
+  background: var(--btn-bg); border: var(--btn-border);
+  box-shadow: var(--btn-shadow);
+  color: var(--btn-text); font-family: var(--font-main);
+  font-size: 15px; font-weight: bold;
+  width: 36px; height: 36px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; letter-spacing: 0;
+  transition: all 0.18s ease;
+}
+#combat-pause-btn:hover { background: var(--btn-hover-bg); box-shadow: var(--btn-hover-shadow); transform: translateY(-1px); }
+#combat-pause-btn:active { transform: scale(0.92); background: var(--btn-active-bg); box-shadow: var(--btn-active-shadow); }
+
+/* Pause overlay — tactical freeze frame */
+#pause-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(8, 6, 4, 0.82);
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+#pause-overlay.active { display: flex; }
+
+/* Scanline texture */
+.pause-scanlines {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  z-index: 1;
+}
+
+/* Subtle vignette glow */
+#pause-overlay::before {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse at center, rgba(180, 140, 80, 0.06) 0%, transparent 65%);
+}
+
+.pause-content {
+  position: relative; z-index: 2;
+  text-align: center;
+}
+
+.pause-label {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: clamp(72px, 10vw, 120px);
+  font-weight: bold;
+  letter-spacing: 0.22em;
+  color: #d4c8a0;
+  text-shadow:
+    0 0 60px rgba(200, 170, 110, 0.35),
+    0 0 120px rgba(180, 140, 80, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.6);
+  animation: pause-pulse 3s ease-in-out infinite;
+  user-select: none;
+}
+
+.pause-hint {
+  font-family: var(--font-main);
+  font-size: 13px;
+  letter-spacing: 0.35em;
+  color: rgba(190, 160, 120, 0.7);
+  margin-top: 18px;
+  animation: pause-hint-fade 2.5s ease-in-out infinite;
+  user-select: none;
+}
+
+@keyframes pause-pulse {
+  0%, 100% { opacity: 0.88; }
+  50% { opacity: 1; }
+}
+
+@keyframes pause-hint-fade {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.85; }
+}
+
 #combat-header {
   width: 900px; background: var(--bg-panel);
   border: var(--border-sharp); border-bottom: none;
