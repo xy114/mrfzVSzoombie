@@ -2,8 +2,8 @@ export const VISITOR_DEFS = [
   {
     id: 'katana_zero',
     name: '武士零',
-    displayName: '???',
-    description: '他不是僵尸，不是植物<br>只是一柄走错世界的刀',
+    displayName: '武士零',
+    description: '时空中游走的刀锋<br>在另一个世界也能出鞘<br>——来自Katana Zero',
     category: 'visitor',
     combat: {
       health: 300,
@@ -12,11 +12,11 @@ export const VISITOR_DEFS = [
       activeSkillHpRatio: 0.10,
       activeSkillSlashes: 10,
       activeSkillCooldown: 10000,
-      activeSkillDuration: 500,
+      activeSkillDuration: 5000,
       passiveSkillDamage: 100,
       passiveSkillHpRatio: 0.70,
       passiveSkillCooldown: 3000,
-      passiveSkillDuration: 300
+      passiveSkillDuration: 1300
     },
     unlockLevel: null,
     assets: {

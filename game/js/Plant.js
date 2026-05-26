@@ -13,6 +13,7 @@ export class Plant {
     this.alive = true;
     this.scale = 1;
     this.rotation = 0;
+    this._retreating = 0;
     this._doHealthScaling();
   }
 
@@ -30,6 +31,7 @@ export class Plant {
 
   getBodyType() { return 'plant'; }
   getRenderSize() { return 80; }
+  getAspectRatio() { return 1.0; }
 
   renderBars(ctx) {
     const sz = this.getRenderSize();

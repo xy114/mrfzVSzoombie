@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
     ui.setupCombatFooter(availablePlants);
+    ui.updateCardAffordability(bm.sun);
 
     const visitorSquad = e.detail.visitorSquad || StorageManager.getVisitorSquad();
     ui.renderVisitorCards(visitorSquad);
@@ -128,10 +129,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const y = ev.clientY - rect.top;
 
       // Check if dropping on a visitor — just cancel drag, let onclick handle it
+      const dropCell = bm.lawn.getCellFromPosition(x, y);
       for (const visitor of bm.visitors) {
-        const dx = x - visitor.x;
-        const dy = y - visitor.y;
-        if (dx > -10 && dx < visitor.width + 10 && dy > -10 && dy < visitor.height + 10) {
+        if (visitor.row === dropCell.row && visitor.col === dropCell.col) {
           ui.deselectPlant();
           updateDrag();
           return;
@@ -181,6 +181,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       const x = ev.clientX - rect.left;
       const y = ev.clientY - rect.top;
 
+      // Click visitor — check first by cell, then by bounding box
+      const clickCell = bm.lawn.getCellFromPosition(x, y);
+      for (const visitor of bm.visitors) {
+        if (visitor.row === clickCell.row && visitor.col === clickCell.col) {
+          ui.showUnitPanel(visitor);
+          return;
+        }
+      }
+      // Fallback: bounding box check for visitors
+      for (const visitor of bm.visitors) {
+        const vx = visitor.x, vy = visitor.y, vw = visitor.width, vh = visitor.height;
+        if (x >= vx && x <= vx + vw && y >= vy && y <= vy + vh) {
+          ui.showUnitPanel(visitor);
+          return;
+        }
+      }
+
       // Sun collection
       for (const sun of bm.suns) {
         const dx = x - sun.x;
@@ -192,26 +209,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
 
-      // Click peashooter or nut for skill
+      // Click plant — open info panel by cell
       for (const plant of bm.plants) {
-        if (plant.constructor.name === 'PeaShooter' || plant.constructor.name === 'Nut') {
-          const px = plant.x;
-          const py = plant.y;
-          const dx = x - px;
-          const dy = y - py;
-          if (dx > -10 && dx < 90 && dy > -10 && dy < 100) {
-            plant.useSkill(bm);
-            return;
-          }
+        if (plant.row === clickCell.row && plant.col === clickCell.col) {
+          ui.showUnitPanel(plant);
+          return;
         }
       }
-
-      // Click visitor — open panel
-      for (const visitor of bm.visitors) {
-        const dx = x - visitor.x;
-        const dy = y - visitor.y;
-        if (dx > -10 && dx < visitor.width + 10 && dy > -10 && dy < visitor.height + 10) {
-          ui.showVisitorPanel(visitor);
+      // Fallback: bounding box check for plants
+      for (const plant of bm.plants) {
+        const px = plant.x, py = plant.y;
+        if (x >= px && x <= px + plant.width && y >= py && y <= py + plant.height) {
+          ui.showUnitPanel(plant);
           return;
         }
       }
@@ -225,8 +234,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
 
-    // Keyboard: Space for skills, Escape to cancel drag, E to export grid, D to toggle debug
+    // Keyboard: P to pause, Space for skills, Escape to cancel drag, E to export grid, D to toggle debug
     const keyHandler = (ev) => {
+      if (ev.code === 'KeyP' || ev.code === 'KeyF') {
+        ui._togglePause();
+        return;
+      }
       if (ev.code === 'KeyD') {
         bm.lawn.debugGrid = !bm.lawn.debugGrid;
         if (bm.lawn.debugGrid) {
@@ -251,14 +264,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           updateDrag();
         }
       }
-      if (ev.code === 'Space') {
-        ev.preventDefault();
-        for (const plant of bm.plants) {
-          if (plant.constructor.name === 'PeaShooter' || plant.constructor.name === 'Nut') {
-            if (plant.useSkill(bm)) break;
-          }
-        }
-      }
     };
     document.addEventListener('keydown', keyHandler);
     bm._keyHandler = keyHandler;
@@ -280,6 +285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Callbacks
     bm.onSunChange = (sun) => {
       document.getElementById('combat-sun').textContent = sun;
+      ui.updateCardAffordability(sun);
     };
     bm.onWaveChange = (wave) => {
       document.getElementById('combat-wave').textContent = wave;

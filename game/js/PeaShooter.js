@@ -1,5 +1,5 @@
 import { Plant } from './Plant.js';
-import { Bullet, WishadelPea, WishadelShell } from './Bullet.js';
+import { Bullet, WishadelPea, WishadelShell, FirePeaBullet } from './Bullet.js';
 import { GAME_CONFIG, SKIN_CONFIG, STAR_CONFIG } from './constants.js';
 import { assetManager } from './AssetManager.js';
 import { drawPeashooter } from './PlantRenderer.js';
@@ -53,6 +53,16 @@ export class PeaShooter extends Plant {
       if (this._aimTarget) {
         this._aimTimer -= deltaTime;
         if (!this._aimTarget.alive) {
+          // Fire at target's last position even though it died
+          const cfg = this._getSkinCfg();
+          const shell = new WishadelShell(
+            this.x + 30, this.y, this.row,
+            this._aimTarget,
+            cfg ? cfg.skillDamage : 120,
+            cfg ? cfg.shellSpeed : 22
+          );
+          game.addBullet(shell);
+          this.skillCooldown = cfg ? cfg.skillCooldown : this.skillMaxCooldown;
           this._aimTarget = null;
           this._aimTimer = 0;
         } else if (this._aimTimer <= 0) {
@@ -65,6 +75,7 @@ export class PeaShooter extends Plant {
             cfg ? cfg.shellSpeed : 22
           );
           game.addBullet(shell);
+          this.skillCooldown = cfg ? cfg.skillCooldown : this.skillMaxCooldown;
           this._aimTarget = null;
         }
       }
@@ -80,7 +91,7 @@ export class PeaShooter extends Plant {
           this.shooting = true;
           const m = STAR_CONFIG[this.starLevel] || STAR_CONFIG[1];
           const cfg = this._getSkinCfg();
-          const dmg = Math.floor((cfg ? cfg.peaDamage : 25) * m.damageMult);
+          const dmg = Math.floor((cfg ? cfg.peaDamage : 25) * m.damageMult + (cfg ? cfg.peaAttackBonus || 0 : 0));
           const shell = new WishadelPea(this.x + 30, this.y + 4, this.row, dmg, cfg ? cfg.peaSpeed : 22);
           game.addBullet(shell);
           setTimeout(() => { this.shooting = false; }, 200);
@@ -130,7 +141,6 @@ export class PeaShooter extends Plant {
       if (!target) return false;
 
       const cfg = this._getSkinCfg();
-      this.skillCooldown = cfg ? cfg.skillCooldown : this.skillMaxCooldown;
       this.isSkillActive = true;
       this.skillTimer = cfg ? cfg.aimDuration : 600;
       this._aimTarget = target;
@@ -139,8 +149,16 @@ export class PeaShooter extends Plant {
       return true;
     }
 
-    // Default: no skill without a skin
-    return false;
+    // Default skill: fire a flame pea that explodes on hit
+    const firePea = new FirePeaBullet(
+      this.x + 30, this.y + 4, this.row,
+      this.skillDamage
+    );
+    game.addBullet(firePea);
+    this.skillCooldown = this.skillMaxCooldown;
+    this.isSkillActive = true;
+    this.skillTimer = 300;
+    return true;
   }
 
   getBodyType() {
@@ -152,7 +170,11 @@ export class PeaShooter extends Plant {
   }
 
   getRenderSize() {
-    return this.skinId === 'wishadel' ? 96 : 80;
+    return 80;
+  }
+
+  getAspectRatio() {
+    return this.skinId === 'wishadel' ? 1.21 : 1.0;
   }
 
   renderBars(ctx) {
@@ -174,7 +196,8 @@ export class PeaShooter extends Plant {
 
   render(ctx) {
     const isWishadel = this.skinId === 'wishadel';
-    const renderSz = isWishadel ? 96 : 80;
+    const rw = this.width;
+    const rh = this.height;
     let img = null;
 
     if (isWishadel) {
@@ -188,12 +211,12 @@ export class PeaShooter extends Plant {
     }
 
     if (img) {
-      const s = Math.min(renderSz / img.naturalWidth, renderSz / img.naturalHeight);
+      const s = Math.min(rw / img.naturalWidth, rh / img.naturalHeight);
       const dw = img.naturalWidth * s;
       const dh = img.naturalHeight * s;
-      ctx.drawImage(img, this.x + (renderSz - dw) / 2, this.y + (renderSz - dh) / 2, dw, dh);
+      ctx.drawImage(img, this.x + (rw - dw) / 2, this.y + (rh - dh) / 2, dw, dh);
     } else {
-      drawPeashooter(ctx, this.x, this.y, renderSz, renderSz, this.shooting);
+      drawPeashooter(ctx, this.x, this.y, rw, rh, this.shooting);
     }
 
     // Wishadel crosshair on target during aim

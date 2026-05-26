@@ -9,21 +9,16 @@ export class SlashEffect {
     this.isPassive = isPassive;
     this.active = true;
     this.life = 0;
-    this.maxLife = 100;
+    this.maxLife = isPassive ? 2100 : 200;
     this.angles = isPassive ? [] : [0, 36, 72, 108, 144, 180, 216, 252, 288, 324];
     if (!isPassive) {
-      this.trails = [];
       const cx = x + w / 2, cy = y + h / 2;
-      const r = Math.max(w, h) * 0.8;
-      for (const angle of this.angles) {
-        const rad = (angle * Math.PI) / 180;
-        this.trails.push({
-          x: cx + Math.cos(rad) * r,
-          y: cy + Math.sin(rad) * r,
-          angle: rad,
-          alpha: 1
-        });
-      }
+      this.trails = [{
+        x: cx,
+        y: cy,
+        angle: Math.PI / 4,
+        alpha: 1
+      }];
     }
   }
 

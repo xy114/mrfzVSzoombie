@@ -1,3 +1,5 @@
+import { getZombieDef } from './ZombieConfig.js';
+
 export class WaveManager {
   constructor(game, maxWaves = 3, zombieTypes = ['normal']) {
     this.game = game;
@@ -11,10 +13,22 @@ export class WaveManager {
     this.zombiesInWave = 3;
   }
 
+  _getAllowedTypes() {
+    const isLastWave = this.wave >= this.maxWaves;
+    return this.zombieTypes.filter(type => {
+      const def = getZombieDef(type);
+      if (!def) return true;
+      if (def.category === 'elite' && this.wave === 1) return false;
+      if (def.category === 'boss' && !isLastWave) return false;
+      return true;
+    });
+  }
+
   _pickZombieType() {
-    if (this.zombieTypes.length === 1) return this.zombieTypes[0];
+    const types = this._getAllowedTypes();
+    if (types.length === 0) return this.zombieTypes[0];
+    if (types.length === 1) return types[0];
     // Weighted random based on available types
-    const types = this.zombieTypes;
     const roll = Math.random();
     if (types.includes('imp') && roll < 0.2) return 'imp';
     if (types.includes('shield') && roll < 0.4) return 'shield';

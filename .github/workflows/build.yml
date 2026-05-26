@@ -1,0 +1,61 @@
+name: Build Installers
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build Windows
+        run: npx electron-builder --win portable --x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 植物大战僵尸-${{ github.ref_name }}-win
+          path: dist/植物大战僵尸-*.exe
+
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci 2>&1
+
+      - name: Build macOS (arm64)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_FOR_PULL_REQUEST: "true"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --arm64 2>&1
+
+      - name: Build macOS (x64)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_FOR_PULL_REQUEST: "true"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --x64 2>&1
+
+      - name: List dist
+        run: ls -la dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PvZ-Tactics-${{ github.ref_name }}-mac
+          path: |
+            dist/植物大战僵尸-*.dmg
+            dist/植物大战僵尸-*.zip

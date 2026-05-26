@@ -24,7 +24,12 @@ export class Zombie {
     this.rewardType = 'normal';
     this.rewardValue = 1;
     this._pauseTimer = 0;
+    this._timeStopFrozen = false;
   }
+
+  getRenderSize() { return this.width; }
+  getAspectRatio() { return this.height / this.width; }
+  getBodyType() { return 'humanoid'; }
 
   update(deltaTime, game) {
     // Pause during slash effect
@@ -37,12 +42,18 @@ export class Zombie {
       game.plants.find(p => {
         if (p.row !== this.row) return false;
         const r = (p.getRenderSize ? p.getRenderSize() : 80) * (p.scale || 1);
-        return p.x < this.x + this.width && p.x > this.x - r - 5;
+        const zcx = this.x + this.width / 2;
+        const pcx = p.x + r / 2;
+        const halfCell = game.lawn.standardCell.w / 2;
+        return pcx < zcx && Math.abs(zcx - pcx) <= halfCell;
       }) ||
       game.visitors.find(v => {
         if (!v.alive || v.row !== this.row) return false;
         const r = (v.getRenderSize ? v.getRenderSize() : 80) * (v.scale || 1);
-        return v.x < this.x + this.width && v.x > this.x - r - 5;
+        const zcx = this.x + this.width / 2;
+        const vcx = v.x + r / 2;
+        const halfCell = game.lawn.standardCell.w / 2;
+        return vcx < zcx && Math.abs(zcx - vcx) <= halfCell;
       });
 
     if (blocker) {
@@ -86,6 +97,35 @@ export class Zombie {
   render(ctx) {
     const attackKey = this.type + '_attack';
     let img = assetManager.getImage(attackKey) || assetManager.getImage(this.type);
+
+    if (this._timeStopFrozen) {
+      const bcx = this.x + this.width / 2;
+      const bcy = this.y + this.height;
+      // Render zombie + blue tint on offscreen canvas to avoid
+      // source-atop bleeding into lawn background
+      const off = document.createElement('canvas');
+      off.width = this.width;
+      off.height = this.height;
+      const octx = off.getContext('2d');
+      if (img) {
+        octx.drawImage(img, 0, 0, this.width, this.height);
+      } else if (this.type === 'cone') {
+        drawConeZombie(octx, 0, 0, this.width, this.height, this.attacking);
+      } else {
+        drawNormalZombie(octx, 0, 0, this.width, this.height, this.attacking);
+      }
+      octx.globalCompositeOperation = 'source-atop';
+      octx.fillStyle = 'rgba(30, 80, 180, 0.45)';
+      octx.fillRect(0, 0, this.width, this.height);
+      // Draw tinted result with backward tilt
+      ctx.save();
+      ctx.translate(bcx, bcy);
+      ctx.rotate(0.12);
+      ctx.translate(-bcx, -bcy);
+      ctx.drawImage(off, this.x, this.y);
+      ctx.restore();
+      return;
+    }
 
     if (img) {
       ctx.drawImage(img, this.x, this.y, 86, 115);

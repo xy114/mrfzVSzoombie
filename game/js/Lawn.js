@@ -64,26 +64,16 @@ export class Lawn {
       this.grid[row][col] = plant;
       plant.row = row;
       plant.col = col;
-      const sc = this.standardCell;
-      if (this.usePolyGrid) {
-        const tile = this.sceneGrid.tiles[`${row},${col}`];
-        if (tile) {
-          const s = sc.w / this.cellWidth;
-          const tileH = this.getTileSize(row, col).h;
-          plant.x = tile.center[0] - plant.width / 2 * s;
-          plant.y = tile.center[1] - plant.height / 2 * s - tileH / 2 * 0.1;
-        } else {
-          plant.x = col * this.cellWidth;
-          plant.y = row * this.cellHeight;
-        }
-      } else {
-        plant.x = col * this.cellWidth;
-        plant.y = row * this.cellHeight;
-      }
-      plant.scale = sc.w / this.cellWidth;
-      if (this.isSlanted(col)) {
-        plant.rotation = -Math.PI / 4; // 45° left tilt for roof slant
-      }
+
+      const bodyType = plant.getBodyType ? plant.getBodyType() : 'plant';
+      const renderSize = plant.getRenderSize ? plant.getRenderSize() : 80;
+      const aspectRatio = plant.getAspectRatio ? plant.getAspectRatio() : 1.0;
+      const rect = this.getPlacementRect(bodyType, renderSize, row, col, 0, aspectRatio);
+      plant.x = rect.x;
+      plant.y = rect.y;
+      plant.scale = rect.scale;
+      plant.rotation = rect.rotation;
+
       return true;
     }
     return false;
@@ -165,6 +155,27 @@ export class Lawn {
       return { w: side, h: side };
     }
     return { w: this.cellWidth, h: this.cellHeight };
+  }
+
+  getPlacementRect(bodyType, renderSize, row, col, footOffset = 0, aspectRatio = 1.0) {
+    const sc = this.standardCell;
+    const scale = sc.w / this.cellWidth;
+    const rw = renderSize * scale;
+    const rh = rw * aspectRatio;
+    const tile = this.usePolyGrid ? this.sceneGrid.tiles[`${row},${col}`] : null;
+    const cx = tile ? tile.center[0] : (col * this.cellWidth + this.cellWidth / 2);
+    const cy = tile ? tile.center[1] : (row * this.cellHeight + this.cellHeight / 2);
+
+    // Plant roots and humanoid feet both anchor at tile center
+    const x = cx - rw / 2;
+    const y = cy - rh - footOffset * scale;
+
+    return {
+      x, y,
+      w: rw, h: rh,
+      scale,
+      rotation: this.isSlanted(col) ? -Math.PI / 4 : 0
+    };
   }
 
   findNearestVertex(x, y, threshold) {

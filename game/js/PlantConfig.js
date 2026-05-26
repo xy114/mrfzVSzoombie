@@ -3,7 +3,7 @@ export const PLANT_DEFS = [
     id: 'sunflower',
     name: '向日葵',
     emoji: '🌻',
-    description: '生产阳光的基础植物，每7秒产出25阳光',
+    description: '生产阳光的基础植物，每7秒产出25阳光。升星可缩短生产间隔',
     unlockLevel: null,
     combat: { cost: 50, health: 100, sunInterval: 7000 }
   },
@@ -11,7 +11,8 @@ export const PLANT_DEFS = [
     id: 'peashooter',
     name: '豌豆射手',
     emoji: '🫛',
-    description: '发射豌豆攻击前方僵尸',
+    description: '发射豌豆攻击前方僵尸，造成物理伤害',
+    skillDescription: '发射一颗炽热的火焰豌豆，击中敌人后迸裂为烈焰风暴，灼烧周围3×3格内的所有僵尸，造成法术伤害',
     unlockLevel: null,
     combat: { cost: 100, health: 100, shootInterval: 1500, damage: 20, bulletSpeed: 5,
       skillMaxCooldown: 10000 }
@@ -20,7 +21,8 @@ export const PLANT_DEFS = [
     id: 'nut',
     name: '坚果',
     emoji: '🥜',
-    description: '坚固的防御植物，技能：短时间内防御力大幅提升',
+    description: '坚固的防御植物，拥有极高的生命值',
+    skillDescription: '激发潜能，获得+30护甲持续5秒，使受到的物理伤害显著降低（法术伤害不受影响）',
     unlockLevel: '1-2',
     combat: { cost: 50, health: 400,
       skillMaxCooldown: 15000, skillDefenseBonus: 30, skillDuration: 5000 }
@@ -29,9 +31,10 @@ export const PLANT_DEFS = [
     id: 'cherrybomb',
     name: '樱桃炸弹',
     emoji: '🍒',
-    description: '一次性爆炸植物，对3x3范围造成巨额伤害',
+    description: '一次性爆炸植物，以自身为代价摧毁成片僵尸',
+    skillDescription: '部署后进入1.5秒备战状态，随后引爆自身，对3×3格范围造成攻击力400%的巨额物理伤害',
     unlockLevel: '1-3',
-    combat: { cost: 150, health: 100, explosionDamage: 200, explosionRadius: 3, armingTime: 1500 }
+    combat: { cost: 150, health: 100, damage: 50, explosionRadius: 3, armingTime: 1500 }
   }
 ];
 
@@ -50,8 +53,10 @@ export const SKIN_DEFS = {
       name: '维什戴尔',
       emoji: '💥',
       description: '异界的轰鸣点燃草坪，碾碎不识好歹的敌人',
-      cost: 300,
-      owned: true
+      skillDescription: '锁定同行最近敌人，瞄准后发射追踪爆弹。命中后引发5×5格热压爆炸（四角除外），造成巨额法术伤害并短暂眩晕',
+      attackBonus: 20,
+      cost: 9000,
+      owned: false
     }
   ]
 };

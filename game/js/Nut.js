@@ -26,13 +26,13 @@ export class Nut extends Plant {
       if (this.skillTimer <= 0) {
         this.isSkillActive = false;
         this.defense = 0;
+        this.skillCooldown = this.skillMaxCooldown;
       }
     }
   }
 
   useSkill(game) {
     if (this.skillCooldown <= 0 && !this.isSkillActive) {
-      this.skillCooldown = this.skillMaxCooldown;
       this.isSkillActive = true;
       this.skillTimer = this.skillDuration;
       this.defense = this.baseSkillDefense;
@@ -52,9 +52,9 @@ export class Nut extends Plant {
   render(ctx) {
     const img = assetManager.getImage('nut');
     if (img) {
-      ctx.drawImage(img, this.x, this.y, 80, 80);
+      ctx.drawImage(img, this.x, this.y, this.width, this.height);
     } else {
-      drawNut(ctx, this.x, this.y, 80, 80, this.isSkillActive);
+      drawNut(ctx, this.x, this.y, this.width, this.height, this.isSkillActive);
     }
   }
 

@@ -38,13 +38,18 @@
   </div>
 
   <div id="page-level-select" class="page">
-    <button id="ls-back">← 返回</button>
-    <div id="ls-title">作 战</div>
+    <canvas id="ls-bg-canvas"></canvas>
+    <div class="ls-overlay"></div>
+    <div class="ls-top-bar">
+      <button id="ls-back">← 返回</button>
+      <div id="ls-title">作 战</div>
+    </div>
     <div id="ls-content"></div>
   </div>
 
   <div id="page-combat" class="page">
     <button id="combat-exit-btn" title="退出作战">&lt;</button>
+    <button id="combat-pause-btn" title="暂停">⏸</button>
     <button id="debug-export-btn" title="导出网格" style="display:none;position:absolute;top:0;right:100px;z-index:100;padding:4px 12px;background:#ff0;color:#000;border:1px solid #880;cursor:pointer;font-size:12px;">导出网格</button>
     <div id="combat-header">
       <span class="sun-display">☀️ <span id="combat-sun">150</span></span>
@@ -55,25 +60,43 @@
     <div id="visitor-cards" style="display:none; position:absolute; top:60px; right:12px; gap:8px; z-index:50;"></div>
     <div id="visitor-panel" class="visitor-panel" style="display:none;">
       <div class="vp-bg"></div>
-      <div class="vp-content">
-        <div class="vp-portrait">
-          <canvas id="vp-canvas" width="200" height="280"></canvas>
+      <div class="vp-header">
+        <img id="vp-retreat-btn" class="vp-retreat-btn" src="" alt="撤退" title="撤退 (返还50%阳光)" />
+        <div class="vp-name" id="vp-name">???</div>
+      </div>
+      <div class="vp-stats-row">
+        <div class="vp-stat-chip">
+          <span class="vp-stat-icon">♥</span>
+          <span class="vp-stat-label">生命</span>
+          <span class="vp-stat-val" id="vp-hp">---</span>
         </div>
-        <div class="vp-info">
-          <div class="vp-name" id="vp-name">???</div>
-          <div class="vp-hp" id="vp-hp">HP: ---</div>
-          <div class="vp-atk" id="vp-atk">ATK: ---</div>
-          <div class="vp-skills">
-            <div class="vp-skill" id="vp-active-skill">
-              <div class="vp-skill-name">主动技能</div>
-              <div class="vp-skill-desc" id="vp-active-desc"></div>
-              <button class="vp-skill-btn" id="vp-active-btn">释 放</button>
-            </div>
-            <div class="vp-skill" id="vp-passive-skill">
-              <div class="vp-skill-name">被动技能</div>
-              <div class="vp-skill-desc" id="vp-passive-desc"></div>
-            </div>
-          </div>
+        <div class="vp-stat-chip">
+          <span class="vp-stat-icon">⚔</span>
+          <span class="vp-stat-label">攻击</span>
+          <span class="vp-stat-val" id="vp-atk">---</span>
+        </div>
+        <div class="vp-stat-chip">
+          <span class="vp-stat-icon">🛡</span>
+          <span class="vp-stat-label">防御</span>
+          <span class="vp-stat-val" id="vp-def">0</span>
+        </div>
+      </div>
+      <div class="vp-portrait-area">
+        <canvas id="vp-canvas" width="280" height="380"></canvas>
+      </div>
+      <div class="vp-divider"></div>
+      <div class="vp-skills">
+        <div class="vp-skill" id="vp-active-skill">
+          <div class="vp-skill-name">◆ 主动技能</div>
+          <div class="vp-skill-desc" id="vp-active-desc"></div>
+          <button class="vp-skill-btn" id="vp-active-btn">
+            <span class="vp-btn-label">释 放</span>
+            <span class="vp-btn-bar"><span class="vp-btn-fill" id="vp-active-fill"></span></span>
+          </button>
+        </div>
+        <div class="vp-skill" id="vp-passive-skill">
+          <div class="vp-skill-name">◇ 被动技能</div>
+          <div class="vp-skill-desc" id="vp-passive-desc"></div>
         </div>
       </div>
     </div>
@@ -84,6 +107,13 @@
       <div class="result-detail" id="result-detail-2"></div>
       <div class="result-detail" id="result-detail-3"></div>
       <button class="result-btn" id="result-btn">返回关卡列表</button>
+    </div>
+    <div id="pause-overlay">
+      <div class="pause-scanlines"></div>
+      <div class="pause-content">
+        <div class="pause-label">PAUSE</div>
+        <div class="pause-hint">CLICK TO RESUME</div>
+      </div>
     </div>
   </div>
 

@@ -1,5 +1,5 @@
 import { assetManager } from './AssetManager.js';
-import { drawPea, drawWishadelPea } from './ProjectileRenderer.js';
+import { drawPea, drawWishadelPea, drawFirePea, drawFireExplosion } from './ProjectileRenderer.js';
 
 export class Bullet {
   constructor(x, y, row, damage = 20) {
@@ -28,7 +28,7 @@ export class Bullet {
   }
 }
 
-// Wishadel normal attack — purple-red shell, direct hit
+// Wishadel normal attack — 70% size shell image, direct hit
 export class WishadelPea {
   constructor(x, y, row, damage = 25, speed = 6) {
     this.x = x;
@@ -37,8 +37,8 @@ export class WishadelPea {
     this.speed = speed;
     this.damage = damage;
     this.damageType = 'magic';
-    this.width = 30;
-    this.height = 16;
+    this.width = 21;
+    this.height = 11;
     this.active = true;
     this.skipCollisionCheck = true;
   }
@@ -60,7 +60,12 @@ export class WishadelPea {
   }
 
   render(ctx) {
-    drawWishadelPea(ctx, this.x, this.y, this.width, this.height);
+    const img = assetManager.getImage('wishadel_shell');
+    if (img) {
+      ctx.drawImage(img, this.x, this.y, this.width, this.height);
+    } else {
+      drawWishadelPea(ctx, this.x, this.y, this.width, this.height);
+    }
   }
 }
 
@@ -73,12 +78,14 @@ export class WishadelShell {
     this.speed = speed;
     this.damage = damage;
     this.damageType = 'magic';
-    this.width = 30;
-    this.height = 15;
+    this.width = 51;
+    this.height = 26;
     this.active = true;
     this.exploded = false;
     this.skipCollisionCheck = true;
     this.target = target;
+    this._targetX = target ? target.x + target.width / 2 : x;
+    this._targetY = target ? target.y + target.height / 2 : y;
     this._explosionStage = 0; // 0=flight, 1=flash, 2=shockwave, 3=afterglow
     this._stageTimer = 0;
   }
@@ -89,11 +96,11 @@ export class WishadelShell {
       if (this._stageTimer <= 0) {
         this._explosionStage++;
         if (this._explosionStage === 1) {
-          this._stageTimer = 100; // Flash: 100ms
+          this._stageTimer = 300; // Flash: 300ms
         } else if (this._explosionStage === 2) {
-          this._stageTimer = 250; // Shockwave: 250ms
+          this._stageTimer = 450; // Shockwave: 450ms
         } else if (this._explosionStage === 3) {
-          this._stageTimer = 300; // Afterglow: 300ms
+          this._stageTimer = 500; // Afterglow: 500ms
         } else {
           this.active = false;
         }
@@ -101,38 +108,30 @@ export class WishadelShell {
       return;
     }
 
-    // Home toward target
+    // Track target position (alive or dead)
     if (this.target && this.target.alive) {
-      const tx = this.target.x + this.target.width / 2;
-      const ty = this.target.y + this.target.height / 2;
-      const dx = tx - (this.x + this.width / 2);
-      const dy = ty - (this.y + this.height / 2);
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > 0) {
-        const step = this.speed * (deltaTime / 16);
-        this.x += (dx / dist) * step;
-        this.y += (dy / dist) * step;
-      }
-    } else {
-      // Target lost, fly straight
-      this.x += this.speed * (deltaTime / 16);
+      this._targetX = this.target.x + this.target.width / 2;
+      this._targetY = this.target.y + this.target.height / 2;
     }
 
-    // Hit detection
-    const hit = game.zombies.find(z =>
-      z.alive &&
-      Math.abs(z.x + z.width / 2 - (this.x + this.width / 2)) < 35 &&
-      Math.abs(z.y + z.height / 2 - (this.y + this.height / 2)) < 50
-    );
-    if (hit || this.x > game.canvas.width + 100) {
+    // Fly toward tracked position
+    const dx = this._targetX - (this.x + this.width / 2);
+    const dy = this._targetY - (this.y + this.height / 2);
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 20 || this.x > game.canvas.width + 100) {
+      // Reached destination or off-screen — explode
       this.explode(game);
+    } else {
+      const step = this.speed * (deltaTime / 16);
+      this.x += (dx / dist) * step;
+      this.y += (dy / dist) * step;
     }
   }
 
   explode(game) {
     this.exploded = true;
     this._explosionStage = 1;
-    this._stageTimer = 100;
+    this._stageTimer = 300;
 
     const sc = game.lawn.standardCell;
     const cellSize = Math.max(sc.w, sc.h);
@@ -173,12 +172,7 @@ export class WishadelShell {
     const cx = this.x + this.width / 2;
     const cy = this.y + this.height / 2;
     // Rotate toward target
-    let angle = 0;
-    if (this.target && this.target.alive) {
-      const tx = this.target.x + this.target.width / 2;
-      const ty = this.target.y + this.target.height / 2;
-      angle = Math.atan2(ty - cy, tx - cx);
-    }
+    const angle = Math.atan2(this._targetY - cy, this._targetX - cx);
     ctx.translate(cx, cy);
     ctx.rotate(angle);
     if (img) {
@@ -195,7 +189,7 @@ export class WishadelShell {
     ctx.save();
     if (this._explosionStage === 1) {
       // Stage 1: White flash at core
-      const progress = 1 - this._stageTimer / 100;
+      const progress = 1 - this._stageTimer / 300;
       const r = 10 + progress * 40;
       const alpha = 1 - progress * 0.5;
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
@@ -209,7 +203,7 @@ export class WishadelShell {
       ctx.fill();
     } else if (this._explosionStage === 2) {
       // Stage 2: Purple-red shockwave expanding outward
-      const progress = this._stageTimer / 250; // 1 → 0
+      const progress = this._stageTimer / 450; // 1 → 0
       const r = 30 + (1 - progress) * 130;
       const alpha = progress;
       const grad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r);
@@ -232,7 +226,7 @@ export class WishadelShell {
       ctx.stroke();
     } else if (this._explosionStage === 3) {
       // Stage 3: Afterglow — fading purple-red haze
-      const progress = this._stageTimer / 300;
+      const progress = this._stageTimer / 500;
       const r = 120 + (1 - progress) * 50;
       const grad = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r);
       grad.addColorStop(0, `rgba(200,40,80,${progress * 0.6})`);
@@ -257,5 +251,103 @@ export class WishadelShell {
       }
     }
     ctx.restore();
+  }
+}
+
+// Fire Pea skill bullet — explodes on hit, AoE 3×3 cells
+export class FirePeaBullet {
+  constructor(x, y, row, damage = 50, speed = 4.5) {
+    this.x = x;
+    this.y = y;
+    this.row = row;
+    this.speed = speed;
+    this.damage = damage;
+    this.damageType = 'magic';
+    this.width = 22;
+    this.height = 22;
+    this.active = true;
+    this.exploded = false;
+    this._explosionTimer = 0;
+    this._explosionR = 0;
+    this._maxExplosionR = 80;
+    this.skipCollisionCheck = true;
+  }
+
+  update(deltaTime, game) {
+    if (this.exploded) {
+      this._explosionTimer -= deltaTime;
+      this._explosionR += (this._maxExplosionR - this._explosionR) * 0.15;
+      if (this._explosionTimer <= 0) {
+        this.active = false;
+      }
+      return;
+    }
+
+    this.x += this.speed * (deltaTime / 16);
+    if (this.x > game.canvas.width + 30) {
+      this.active = false;
+      return;
+    }
+
+    // Hit detection — same row zombie with proximity check
+    const hit = game.zombies.find(z =>
+      z.alive && z.row === this.row &&
+      Math.abs(z.x + z.width / 2 - (this.x + this.width / 2)) < 30
+    );
+    if (hit) {
+      this.explode(game);
+    }
+  }
+
+  explode(game) {
+    this.exploded = true;
+    this._explosionTimer = 350;
+
+    const cx = this.x + this.width / 2;
+    const cy = this.y + this.height / 2;
+    const sc = game.lawn.standardCell;
+    const cellSize = Math.max(sc.w, sc.h);
+
+    // 3×3 cell AoE
+    const hitSet = new Set();
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const row = this.row + dr;
+        const tgtCol = Math.floor(cx / cellSize) + dc;
+        for (const z of game.zombies) {
+          if (hitSet.has(z)) continue;
+          if (z.alive && z.row === row) {
+            const zCol = Math.floor((z.x + z.width / 2) / cellSize);
+            if (Math.abs(zCol - tgtCol) <= 1) {
+              hitSet.add(z);
+              const dist = Math.sqrt(
+                (z.x + z.width / 2 - cx) ** 2 +
+                (z.y + z.height / 2 - cy) ** 2
+              );
+              const falloff = Math.max(0.4, 1 - dist / (cellSize * 2));
+              z.takeDamage(Math.floor(this.damage * falloff), 'magic');
+            }
+          }
+        }
+      }
+    }
+  }
+
+  render(ctx) {
+    if (this.exploded) {
+      const cx = this.x + this.width / 2;
+      const cy = this.y + this.height / 2;
+      const alpha = Math.max(0, this._explosionTimer / 350);
+      drawFireExplosion(ctx, cx, cy, this._explosionR, alpha);
+      return;
+    }
+    const img = assetManager.getImage('firePea');
+    if (img) {
+      const dw = this.width + 6;
+      const dh = this.height + 6;
+      ctx.drawImage(img, this.x - 3, this.y - 3, dw, dh);
+    } else {
+      drawFirePea(ctx, this.x + this.width / 2, this.y + this.height / 2, 12);
+    }
   }
 }

@@ -12,8 +12,8 @@ export class Visitor {
     this.x = x;
     this.y = y;
     this.row = row;
-    this.width = 60;
-    this.height = 80;
+    this.width = 96;
+    this.height = 96;
     this.health = def.combat.health;
     this.maxHealth = def.combat.health;
     this.alive = true;
@@ -21,9 +21,11 @@ export class Visitor {
 
     this.getBodyType = () => 'humanoid';
     this.getRenderSize = () => 80;
+    this.getAspectRatio = () => 0.98;
     this.scale = 1;
     this.rotation = 0;
     this._timeStopForm = false;
+    this._retreating = 0;
     this._passiveCooldownRemaining = 0;
     this._activeCooldownRemaining = 0;
     this._pendingPassive = false;
@@ -95,12 +97,28 @@ export class Visitor {
   }
 
   renderBars(ctx) {
-    if (this._activeCooldownRemaining > 0) {
+    const sz = this.getRenderSize();
+    const barW = GAME_CONFIG.CELL_WIDTH * 0.7;
+    const barX = this.x + (sz - barW) / 2;
+
+    // Health bar
+    const healthPercent = this.health / this.maxHealth;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(barX, this.y - 8, barW, 5);
+    ctx.fillStyle = '#0dc5d0';
+    ctx.fillRect(barX, this.y - 8, barW * healthPercent, 5);
+
+    // Active skill cooldown bar — always visible
+    const activeRemaining = this._activeCooldownRemaining || 0;
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(barX, this.y - 14, barW, 4);
+    if (activeRemaining > 0) {
       const ratio = this.getCooldownRatio('active');
-      ctx.fillStyle = '#333';
-      ctx.fillRect(this.x, this.y + this.height + 2, this.width, 4);
       ctx.fillStyle = '#c040ff';
-      ctx.fillRect(this.x, this.y + this.height + 2, this.width * ratio, 4);
+      ctx.fillRect(barX, this.y - 14, barW * ratio, 4);
+    } else {
+      ctx.fillStyle = '#c040ff';
+      ctx.fillRect(barX, this.y - 14, barW, 4);
     }
   }
 }
@@ -115,23 +133,37 @@ export class KatanaZero extends Visitor {
     const def = getVisitorDef('katana_zero');
     game.setTimeScale(GAME_CONFIG.TIME_STOP);
     this._timeStopForm = true;
-    this._passiveCooldownRemaining = def.combat.passiveSkillCooldown;
 
     const targets = game.zombies.filter(z => z.alive && z.row === this.row);
+    const effects = [];
     for (const z of targets) {
-      const dmg = def.combat.passiveSkillDamage + z.maxHealth * def.combat.passiveSkillHpRatio;
+      const dmg = Math.floor(def.combat.passiveSkillDamage + z.maxHealth * def.combat.passiveSkillHpRatio);
       z.takeDamage(dmg, 'magic');
       z._pauseTimer = 100;
-
-      game.addSlashEffect(new SlashEffect(z.x, z.y, z.width, z.height, true));
-      game.addDamageNumber(new DamageNumber(
-        z.x + z.width / 2, z.y, dmg, true
-      ));
+      z._timeStopFrozen = true;
+      effects.push({ zombie: z, dmg, isPassive: true });
     }
+
+    // Stagger slash effects during time stop
+    effects.forEach((ef, i) => {
+      setTimeout(() => {
+        game.addSlashEffect(new SlashEffect(ef.zombie.x, ef.zombie.y, ef.zombie.width, ef.zombie.height, true));
+      }, i * 100);
+    });
 
     setTimeout(() => {
       game.setTimeScale(1.0);
       this._timeStopForm = false;
+      this._passiveCooldownRemaining = def.combat.passiveSkillCooldown;
+      for (const ef of effects) {
+        ef.zombie._timeStopFrozen = false;
+      }
+      // Damage numbers appear after time stop
+      for (const ef of effects) {
+        game.addDamageNumber(new DamageNumber(
+          ef.zombie.x + ef.zombie.width / 2, ef.zombie.y, ef.dmg, true
+        ));
+      }
     }, def.combat.passiveSkillDuration);
   }
 
@@ -141,33 +173,44 @@ export class KatanaZero extends Visitor {
 
     game.setTimeScale(GAME_CONFIG.TIME_STOP);
     this._timeStopForm = true;
-    this._activeCooldownRemaining = def.combat.activeSkillCooldown;
 
     const targets = game.zombies.filter(z => z.alive);
-    let totalDmg = 0;
-
+    const dmgMap = new Map();
     for (const z of targets) {
-      for (let i = 0; i < def.combat.activeSkillSlashes; i++) {
-        const dmg = def.combat.activeSkillDamage + z.maxHealth * def.combat.activeSkillHpRatio;
-        z.takeDamage(dmg, 'magic');
-        totalDmg += dmg;
-        z._pauseTimer = 100;
-      }
-      game.addSlashEffect(new SlashEffect(z.x, z.y, z.width, z.height, false));
+      z._timeStopFrozen = true;
+      dmgMap.set(z, 0);
     }
 
-    if (targets.length > 0) {
-      const mid = targets[Math.floor(targets.length / 2)];
-      game.addDamageNumber(new DamageNumber(
-        mid.x + mid.width / 2, mid.y - 20, totalDmg, true
-      ));
+    const slashCount = def.combat.activeSkillSlashes;
+    const slashInterval = def.combat.activeSkillDuration / slashCount;
+
+    for (let i = 0; i < slashCount; i++) {
+      setTimeout(() => {
+        for (const z of targets) {
+          if (!z.alive && !z._timeStopFrozen) continue;
+          const dmg = Math.floor(def.combat.activeSkillDamage + z.maxHealth * def.combat.activeSkillHpRatio);
+          z.takeDamage(dmg, 'magic');
+          dmgMap.set(z, dmgMap.get(z) + dmg);
+          z._pauseTimer = 100;
+          game.addSlashEffect(new SlashEffect(z.x, z.y, z.width, z.height, false));
+        }
+      }, i * slashInterval);
     }
 
     setTimeout(() => {
       game.setTimeScale(1.0);
       this._timeStopForm = false;
+      this._activeCooldownRemaining = def.combat.activeSkillCooldown;
       for (const z of targets) {
         z._pauseTimer = 0;
+        z._timeStopFrozen = false;
+      }
+      for (const [z, totalDmg] of dmgMap) {
+        if (totalDmg > 0) {
+          game.addDamageNumber(new DamageNumber(
+            z.x + z.width / 2, z.y - 20, totalDmg, true
+          ));
+        }
       }
     }, def.combat.activeSkillDuration);
 
