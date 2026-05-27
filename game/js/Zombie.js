@@ -153,10 +153,9 @@ export class Zombie {
     let drawY = this.y;
 
     if (hasGif) {
-      const s = Math.min(this.width / animator.naturalWidth, this.height / animator.naturalHeight);
-      drawW = Math.round(animator.naturalWidth * s);
-      drawH = Math.round(animator.naturalHeight * s);
-      drawX = this.x + (this.width - drawW) / 2;
+      const scale = this.width / animator.naturalWidth;
+      drawW = this.width;
+      drawH = Math.round(animator.naturalHeight * scale);
       drawY = this.y + this.height - drawH;
     }
 
