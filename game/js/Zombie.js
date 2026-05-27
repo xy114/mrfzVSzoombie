@@ -38,8 +38,7 @@ export class Zombie {
     this.attackAnimator = assetManager.createAnimator(this.type + '_attack');
 
     if (this.walkAnimator && this.walkAnimator.frameCount > 0) {
-      const scale = this.width / this.walkAnimator.naturalWidth;
-      this.height = Math.round(this.walkAnimator.naturalHeight * scale);
+      // Keep original width/height as bounding box; don't override from GIF aspect ratio
     }
 
     if (this.type === 'imp') {
@@ -154,9 +153,10 @@ export class Zombie {
     let drawY = this.y;
 
     if (hasGif) {
-      const scale = this.width / animator.naturalWidth;
-      drawW = this.width;
-      drawH = Math.round(animator.naturalHeight * scale);
+      const s = Math.min(this.width / animator.naturalWidth, this.height / animator.naturalHeight);
+      drawW = Math.round(animator.naturalWidth * s);
+      drawH = Math.round(animator.naturalHeight * s);
+      drawX = this.x + (this.width - drawW) / 2;
       drawY = this.y + this.height - drawH;
     }
 
