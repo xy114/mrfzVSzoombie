@@ -25,7 +25,6 @@ import { getPlantDef, getAllPlantDefs } from './PlantConfig.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   await assetManager.loadImages();
-
   StorageManager.load();
   let ui;
   try {
@@ -41,6 +40,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Handle startCombat event from UIManager
   window.addEventListener('startCombat', (e) => {
+    // Load GIF animation frames only when entering combat
+    assetManager.loadGifManifest();
+
     const { levelId, squad } = e.detail;
     const levelConfig = getLevel(levelId);
     if (!levelConfig) return;

@@ -1,7 +1,5 @@
 import { Zombie } from './Zombie.js';
 import { ZOMBIE_TYPES } from './constants.js';
-import { assetManager } from './AssetManager.js';
-import { drawImpZombie } from './ZombieRenderer.js';
 
 export class ImpZombie extends Zombie {
   constructor(x, y, row) {
@@ -17,25 +15,16 @@ export class ImpZombie extends Zombie {
     this.type = 'imp';
     this.rewardType = 'imp';
     this.rewardValue = 1;
-    this.width = 65;
-    this.height = 86;
-  }
-
-  render(ctx) {
-    const attackKey = 'imp_attack';
-    const img = assetManager.getImage(attackKey) || assetManager.getImage('imp');
-    if (img) {
-      ctx.drawImage(img, this.x, this.y, 65, 86);
-    } else {
-      drawImpZombie(ctx, this.x, this.y, 65, 86, this.attacking);
-    }
+    this.width = 72;
+    this.height = 72;
+    this.initAnimators();
   }
 
   renderBars(ctx) {
     const hpPct = this.health / this.maxHealth;
     ctx.fillStyle = '#fff';
-    ctx.fillRect(this.x + 5, this.y - 5, 55, 4);
+    ctx.fillRect(this.x + 5, this.y - 5, 65, 4);
     ctx.fillStyle = '#ef4444';
-    ctx.fillRect(this.x + 5, this.y - 5, 55 * hpPct, 4);
+    ctx.fillRect(this.x + 5, this.y - 5, 65 * hpPct, 4);
   }
 }

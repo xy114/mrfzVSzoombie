@@ -1,7 +1,10 @@
+import { GifAnimator } from './GifAnimator.js';
+
 export class AssetManager {
   constructor() {
     this.images = {};
     this._noBgCache = {};
+    this._gifFrames = {};
     this.loaded = false;
     this.imagePaths = {
       // Plants — combat sprites
@@ -28,6 +31,10 @@ export class AssetManager {
       cone_portrait: 'resources/zombies/路障僵尸.gif',
       shield_portrait: 'resources/zombies/铁门僵尸.gif',
       imp_portrait: 'resources/zombies/小鬼僵尸.gif',
+      // Zombie death animations
+      zombie_death: 'resources/zombies/僵尸死.gif',
+      zombie_head: 'resources/zombies/头.gif',
+      imp_death: 'resources/zombies/小鬼死亡.gif',
       // Projectiles
       pea: 'resources/plants/豆.gif',
       firePea: 'resources/plants/火豆.gif',
@@ -62,7 +69,8 @@ export class AssetManager {
       peashooter_skin_wishadel_combat: 'resources/special/维什戴尔战斗形象.png',
       // Retreat buttons
       retreat_plant: 'resources/tools/plant撤退.png',
-      retreat_humanoid: 'resources/tools/human撤退.png'
+      retreat_humanoid: 'resources/tools/human撤退.png',
+      cherrybomb_explosion: 'resources/plants/爆炸！.gif'
     };
   }
 
@@ -84,6 +92,15 @@ export class AssetManager {
 
     await Promise.all(promises);
     this.loaded = true;
+  }
+
+  // Copy pre-parsed GIF frames from window.__gifManifest (populated by index.html)
+  loadGifManifest() {
+    const manifest = window.__gifManifest;
+    if (manifest) {
+      this._gifFrames = manifest;
+      console.log('GIF manifest loaded: ' + Object.keys(manifest).length + ' entries');
+    }
   }
 
   getImage(name) {
@@ -158,6 +175,17 @@ export class AssetManager {
 
   hasImage(name) {
     return !!this.images[name];
+  }
+
+  getGifFrames(name) {
+    return this._gifFrames[name] || null;
+  }
+
+  createAnimator(name) {
+    const gifData = this._gifFrames[name];
+    if (!gifData) return null;
+    const frames = gifData.frames.map(f => ({ canvas: f.canvas, delay: f.delay }));
+    return new GifAnimator(frames, gifData.width, gifData.height);
   }
 }
 

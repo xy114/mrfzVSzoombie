@@ -16,6 +16,8 @@ import { getZombieDef } from './ZombieConfig.js';
 import { KatanaZero } from './Visitor.js';
 import { getVisitorDef } from './VisitorConfig.js';
 import { DamageNumber } from './DamageNumber.js';
+import { DeathEffect } from './DeathEffect.js';
+import { ExplosionEffect } from './ExplosionEffect.js';
 import { drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
 import { assetManager } from './AssetManager.js';
 
@@ -49,6 +51,8 @@ export class BattleManager {
     this.visitors = [];
     this.damageNumbers = [];
     this.slashEffects = [];
+    this.deathEffects = [];
+    this.explosionEffects = [];
 
     this.onVictory = null;
     this.onDefeat = null;
@@ -135,6 +139,16 @@ export class BattleManager {
     this.slashEffects = this.slashEffects.filter(se => {
       se.update(deltaTime);
       return se.active;
+    });
+
+    this.deathEffects = this.deathEffects.filter(de => {
+      de.update(deltaTime);
+      return de.active;
+    });
+
+    this.explosionEffects = this.explosionEffects.filter(ee => {
+      ee.update(deltaTime);
+      return ee.active;
     });
 
     this.checkCollisions();
@@ -253,6 +267,8 @@ export class BattleManager {
     // ============================================
     this.bullets.forEach(bullet => bullet.render(this.ctx));
     this.slashEffects.forEach(se => se.render(this.ctx));
+    this.deathEffects.forEach(de => de.render(this.ctx));
+    this.explosionEffects.forEach(ee => ee.render(this.ctx));
     this.damageNumbers.forEach(dn => dn.render(this.ctx));
 
     // Health / skill bars — behind characters so they don't cover other entities
@@ -408,6 +424,21 @@ export class BattleManager {
     for (const zombie of newDead) {
       zombie._killTracked = true;
       this.enemiesKilled[zombie.rewardType] = (this.enemiesKilled[zombie.rewardType] || 0) + 1;
+
+      // Spawn death effects
+      if (zombie._shouldSpawnDeathEffect && zombie.deathGifKey) {
+        zombie._shouldSpawnDeathEffect = false;
+        const deathX = zombie.x;
+        const bottomY = zombie.y + zombie.height;
+        const w = zombie.width;
+
+        if (zombie.deathGifKey === 'imp_death') {
+          this.addDeathEffect(new DeathEffect(deathX, bottomY, w, 'imp_death'));
+        } else {
+          this.addDeathEffect(new DeathEffect(deathX, bottomY, w, 'zombie_death'));
+          this.addDeathEffect(new DeathEffect(deathX + w * 0.1, bottomY - zombie.height * 0.3, w * 0.5, 'zombie_head'));
+        }
+      }
     }
   }
 
@@ -519,6 +550,8 @@ export class BattleManager {
   addVisitor(visitor) { this.visitors.push(visitor); }
   addDamageNumber(dn) { this.damageNumbers.push(dn); }
   addSlashEffect(se) { this.slashEffects.push(se); }
+  addDeathEffect(de) { this.deathEffects.push(de); }
+  addExplosionEffect(ee) { this.explosionEffects.push(ee); }
 
   setTimeScale(scale) {
     this.timeScale = scale;

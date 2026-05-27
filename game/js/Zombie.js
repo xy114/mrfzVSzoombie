@@ -7,8 +7,8 @@ export class Zombie {
     this.x = x;
     this.y = y;
     this.row = row;
-    this.width = 86;
-    this.height = 115;
+    this.width = 96;
+    this.height = 96;
     this.health = 100;
     this.maxHealth = 100;
     this.speed = 0.3;
@@ -25,6 +25,28 @@ export class Zombie {
     this.rewardValue = 1;
     this._pauseTimer = 0;
     this._timeStopFrozen = false;
+    this.walkAnimator = null;
+    this.attackAnimator = null;
+    this._flashTimer = 0;
+    this._shouldSpawnDeathEffect = false;
+    this.deathGifKey = null;
+    this._originalType = null;
+  }
+
+  initAnimators() {
+    this.walkAnimator = assetManager.createAnimator(this.type);
+    this.attackAnimator = assetManager.createAnimator(this.type + '_attack');
+
+    if (this.walkAnimator && this.walkAnimator.frameCount > 0) {
+      const scale = this.width / this.walkAnimator.naturalWidth;
+      this.height = Math.round(this.walkAnimator.naturalHeight * scale);
+    }
+
+    if (this.type === 'imp') {
+      this.deathGifKey = 'imp_death';
+    } else {
+      this.deathGifKey = 'zombie_death';
+    }
   }
 
   getRenderSize() { return this.width; }
@@ -32,6 +54,11 @@ export class Zombie {
   getBodyType() { return 'humanoid'; }
 
   update(deltaTime, game) {
+    // Update GIF animators (always run, even during pause)
+    if (this.walkAnimator) this.walkAnimator.update(deltaTime);
+    if (this.attackAnimator) this.attackAnimator.update(deltaTime);
+    if (this._flashTimer > 0) this._flashTimer -= deltaTime;
+
     // Pause during slash effect
     if (this._pauseTimer > 0) {
       this._pauseTimer -= deltaTime;
@@ -72,6 +99,7 @@ export class Zombie {
 
     if (this.health <= 0) {
       this.alive = false;
+      this._shouldSpawnDeathEffect = true;
     }
   }
 
@@ -89,51 +117,98 @@ export class Zombie {
       actualDamage = damage * (1 - this.magicResist * 0.001);
     }
     this.health -= actualDamage;
+
+    // Track original type for equipment break
+    if (this._originalType === null) {
+      this._originalType = this.type;
+    }
+
+    // Equipment break: cone/shield lose gear at <30% health
+    if (this.health > 0 &&
+        this.health < this.maxHealth * 0.3 &&
+        (this.type === 'cone' || this.type === 'shield')) {
+      this.type = 'normal';
+      this.walkAnimator = assetManager.createAnimator('normal');
+      this.attackAnimator = assetManager.createAnimator('normal_attack');
+      if (this.walkAnimator && this.walkAnimator.frameCount > 0) {
+        const scale = this.width / this.walkAnimator.naturalWidth;
+        this.height = Math.round(this.walkAnimator.naturalHeight * scale);
+      }
+      this._flashTimer = 1500;
+      this.deathGifKey = 'zombie_death';
+    }
+
     if (this.health <= 0) {
       this.alive = false;
     }
   }
 
   render(ctx) {
-    const attackKey = this.type + '_attack';
-    let img = assetManager.getImage(attackKey) || assetManager.getImage(this.type);
+    const animator = this.attacking ? this.attackAnimator : this.walkAnimator;
+    const hasGif = animator && animator.frameCount > 0;
 
-    if (this._timeStopFrozen) {
-      const bcx = this.x + this.width / 2;
-      const bcy = this.y + this.height;
-      // Render zombie + blue tint on offscreen canvas to avoid
-      // source-atop bleeding into lawn background
-      const off = document.createElement('canvas');
-      off.width = this.width;
-      off.height = this.height;
-      const octx = off.getContext('2d');
-      if (img) {
-        octx.drawImage(img, 0, 0, this.width, this.height);
-      } else if (this.type === 'cone') {
-        drawConeZombie(octx, 0, 0, this.width, this.height, this.attacking);
+    // Calculate draw dimensions with proportional scaling
+    let drawW = this.width;
+    let drawH = this.height;
+    let drawX = this.x;
+    let drawY = this.y;
+
+    if (hasGif) {
+      const scale = this.width / animator.naturalWidth;
+      drawW = this.width;
+      drawH = Math.round(animator.naturalHeight * scale);
+      drawY = this.y + this.height - drawH;
+    }
+
+    // Helper to draw the current image (GIF frame or static fallback)
+    const drawImage = (targetCtx, tx, ty, tw, th) => {
+      if (hasGif) {
+        targetCtx.drawImage(animator.getCurrentCanvas(), tx, ty, tw, th);
       } else {
-        drawNormalZombie(octx, 0, 0, this.width, this.height, this.attacking);
+        const fallbackKey = this.attacking ? (this.type + '_attack') : this.type;
+        const img = assetManager.getImage(fallbackKey) || assetManager.getImage(this.type);
+        if (img) {
+          targetCtx.drawImage(img, tx, ty, tw, th);
+        } else if (this.type === 'cone') {
+          drawConeZombie(targetCtx, tx, ty, tw, th, this.attacking);
+        } else {
+          drawNormalZombie(targetCtx, tx, ty, tw, th, this.attacking);
+        }
       }
-      octx.globalCompositeOperation = 'source-atop';
-      octx.fillStyle = 'rgba(30, 80, 180, 0.45)';
-      octx.fillRect(0, 0, this.width, this.height);
-      // Draw tinted result with backward tilt
+    };
+
+    // Equipment break flash
+    if (this._flashTimer > 0) {
       ctx.save();
-      ctx.translate(bcx, bcy);
-      ctx.rotate(0.12);
-      ctx.translate(-bcx, -bcy);
-      ctx.drawImage(off, this.x, this.y);
+      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(this._flashTimer * 0.02);
+      drawImage(ctx, drawX, drawY, drawW, drawH);
       ctx.restore();
       return;
     }
 
-    if (img) {
-      ctx.drawImage(img, this.x, this.y, 86, 115);
-    } else if (this.type === 'cone') {
-      drawConeZombie(ctx, this.x, this.y, 86, 115, this.attacking);
-    } else {
-      drawNormalZombie(ctx, this.x, this.y, 86, 115, this.attacking);
+    // Time stop rendering
+    if (this._timeStopFrozen) {
+      const bcx = this.x + this.width / 2;
+      const bcy = this.y + this.height;
+      const off = document.createElement('canvas');
+      off.width = drawW;
+      off.height = drawH;
+      const octx = off.getContext('2d');
+      drawImage(octx, 0, 0, drawW, drawH);
+      octx.globalCompositeOperation = 'source-atop';
+      octx.fillStyle = 'rgba(30, 80, 180, 0.45)';
+      octx.fillRect(0, 0, drawW, drawH);
+      ctx.save();
+      ctx.translate(bcx, bcy);
+      ctx.rotate(0.12);
+      ctx.translate(-bcx, -bcy);
+      ctx.drawImage(off, drawX, drawY);
+      ctx.restore();
+      return;
     }
+
+    // Normal rendering
+    drawImage(ctx, drawX, drawY, drawW, drawH);
   }
 
   renderBars(ctx) {

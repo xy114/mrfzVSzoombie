@@ -2,6 +2,7 @@ import { Plant } from './Plant.js';
 import { STAR_CONFIG } from './constants.js';
 import { assetManager } from './AssetManager.js';
 import { drawNut } from './PlantRenderer.js';
+import { GifAnimator } from './GifAnimator.js';
 
 export class Nut extends Plant {
   constructor(x, y, starLevel = 1) {
@@ -15,9 +16,11 @@ export class Nut extends Plant {
     this.skillDuration = 5000;
     this.skillTimer = 0;
     this.isSkillActive = false;
+    this._animator = assetManager.createAnimator('nut');
   }
 
   update(deltaTime, game) {
+    if (this._animator) this._animator.update(deltaTime);
     if (this.skillCooldown > 0) {
       this.skillCooldown -= deltaTime;
     }
@@ -50,6 +53,22 @@ export class Nut extends Plant {
   }
 
   render(ctx) {
+    if (this._animator) {
+      const frame = this._animator.getCurrentCanvas();
+      const scale = this.width / this._animator.naturalWidth;
+      const drawW = this.width;
+      const drawH = Math.round(this._animator.naturalHeight * scale);
+      const drawY = this.y + this.height - drawH;
+      ctx.drawImage(frame, this.x, drawY, drawW, drawH);
+      if (this.isSkillActive) {
+        ctx.save();
+        ctx.globalAlpha = 0.25;
+        ctx.fillStyle = '#60a5fa';
+        ctx.fillRect(this.x, drawY, drawW, drawH);
+        ctx.restore();
+      }
+      return;
+    }
     const img = assetManager.getImage('nut');
     if (img) {
       ctx.drawImage(img, this.x, this.y, this.width, this.height);

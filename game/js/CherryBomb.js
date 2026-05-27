@@ -2,6 +2,8 @@ import { Plant } from './Plant.js';
 import { STAR_CONFIG } from './constants.js';
 import { assetManager } from './AssetManager.js';
 import { drawCherryBomb } from './PlantRenderer.js';
+import { GifAnimator } from './GifAnimator.js';
+import { ExplosionEffect } from './ExplosionEffect.js';
 
 export class CherryBomb extends Plant {
   constructor(x, y, starLevel = 1) {
@@ -16,9 +18,11 @@ export class CherryBomb extends Plant {
     this.armTimer = 0;
     this.armed = false;
     this.exploded = false;
+    this._animator = assetManager.createAnimator('cherrybomb');
   }
 
   update(deltaTime, game) {
+    if (this._animator) this._animator.update(deltaTime);
     if (this.exploded) return;
     this.armTimer += deltaTime;
     if (this.armTimer >= this.armingTime && !this.armed) {
@@ -32,6 +36,9 @@ export class CherryBomb extends Plant {
   explode(game) {
     this.exploded = true;
     this.alive = false;
+    game.addExplosionEffect(new ExplosionEffect(
+      this.x, this.y + this.height * 0.3, this.width, 'cherrybomb_explosion'
+    ));
 
     const cellW = 100;
     for (const zombie of game.zombies) {
@@ -54,6 +61,15 @@ export class CherryBomb extends Plant {
 
   render(ctx) {
     if (this.exploded) return;
+    if (this._animator) {
+      const frame = this._animator.getCurrentCanvas();
+      const scale = this.width / this._animator.naturalWidth;
+      const drawW = this.width;
+      const drawH = Math.round(this._animator.naturalHeight * scale);
+      const drawY = this.y + this.height - drawH;
+      ctx.drawImage(frame, this.x, drawY, drawW, drawH);
+      return;
+    }
     const img = assetManager.getImage('cherrybomb');
     if (img) {
       const s = Math.min(this.width / img.naturalWidth, this.height / img.naturalHeight);

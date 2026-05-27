@@ -3,6 +3,7 @@ import { Bullet, WishadelPea, WishadelShell, FirePeaBullet } from './Bullet.js';
 import { GAME_CONFIG, SKIN_CONFIG, STAR_CONFIG } from './constants.js';
 import { assetManager } from './AssetManager.js';
 import { drawPeashooter } from './PlantRenderer.js';
+import { GifAnimator } from './GifAnimator.js';
 
 export class PeaShooter extends Plant {
   constructor(x, y, starLevel = 1, skinId = null) {
@@ -26,6 +27,12 @@ export class PeaShooter extends Plant {
     this._aimTarget = null;
     this._aimTimer = 0;
     this._aimDuration = 0;
+
+    if (!this.skinId) {
+      this._animator = assetManager.createAnimator('peashooter');
+    } else {
+      this._animator = null;
+    }
   }
 
   _applyPeaStarScaling() {
@@ -46,6 +53,8 @@ export class PeaShooter extends Plant {
   }
 
   update(deltaTime, game) {
+    if (this._animator) this._animator.update(deltaTime);
+
     const isWishadel = this.skinId === 'wishadel';
 
     if (isWishadel) {
@@ -198,18 +207,41 @@ export class PeaShooter extends Plant {
     const isWishadel = this.skinId === 'wishadel';
     const rw = this.width;
     const rh = this.height;
-    let img = null;
 
+    // Wishadel skin uses static image (no GIF)
     if (isWishadel) {
-      img = assetManager.getImageNoBg('wishadel_combat');
+      const img = assetManager.getImageNoBg('wishadel_combat');
+      if (img) {
+        const s = Math.min(rw / img.naturalWidth, rh / img.naturalHeight);
+        const dw = img.naturalWidth * s;
+        const dh = img.naturalHeight * s;
+        ctx.drawImage(img, this.x + (rw - dw) / 2, this.y + (rh - dh) / 2, dw, dh);
+      }
+      if (this._aimTarget && this._aimTarget.alive) {
+        this._renderCrosshair(ctx, this._aimTarget);
+      }
+      return;
     }
-    if (!img && this.shooting) {
+
+    // GIF animation (default peashooter, no skin)
+    if (this._animator) {
+      const frame = this._animator.getCurrentCanvas();
+      const scale = this.width / this._animator.naturalWidth;
+      const drawW = this.width;
+      const drawH = Math.round(this._animator.naturalHeight * scale);
+      const drawY = this.y + this.height - drawH;
+      ctx.drawImage(frame, this.x, drawY, drawW, drawH);
+      return;
+    }
+
+    // Fallback to static image
+    let img = null;
+    if (this.shooting) {
       img = assetManager.getImage('peashooter_shoot');
     }
     if (!img) {
       img = assetManager.getImage('peashooter');
     }
-
     if (img) {
       const s = Math.min(rw / img.naturalWidth, rh / img.naturalHeight);
       const dw = img.naturalWidth * s;
@@ -217,11 +249,6 @@ export class PeaShooter extends Plant {
       ctx.drawImage(img, this.x + (rw - dw) / 2, this.y + (rh - dh) / 2, dw, dh);
     } else {
       drawPeashooter(ctx, this.x, this.y, rw, rh, this.shooting);
-    }
-
-    // Wishadel crosshair on target during aim
-    if (isWishadel && this._aimTarget && this._aimTarget.alive) {
-      this._renderCrosshair(ctx, this._aimTarget);
     }
   }
 

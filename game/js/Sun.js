@@ -1,5 +1,6 @@
 import { SUN_CONFIG } from './constants.js';
 import { assetManager } from './AssetManager.js';
+import { GifAnimator } from './GifAnimator.js';
 import { drawSun } from './ProjectileRenderer.js';
 
 export class Sun {
@@ -16,9 +17,11 @@ export class Sun {
     this.speed = 1.5;
     this.dimStart = 2000;
     this.alpha = 1;
+    this._animator = assetManager.createAnimator('sun');
   }
 
   update(deltaTime) {
+    if (this._animator) this._animator.update(deltaTime);
     this.timer += deltaTime;
 
     if (this.falling) {
@@ -46,11 +49,16 @@ export class Sun {
   render(ctx) {
     ctx.save();
     ctx.globalAlpha = this.alpha;
-    const img = assetManager.getImage('sun');
-    if (img) {
-      ctx.drawImage(img, this.x, this.y, 40, 40);
+    if (this._animator) {
+      const frame = this._animator.getCurrentCanvas();
+      ctx.drawImage(frame, this.x, this.y, this.width, this.height);
     } else {
-      drawSun(ctx, this.x + 20, this.y + 20, 18);
+      const img = assetManager.getImage('sun');
+      if (img) {
+        ctx.drawImage(img, this.x, this.y, 40, 40);
+      } else {
+        drawSun(ctx, this.x + 20, this.y + 20, 18);
+      }
     }
     ctx.restore();
   }
