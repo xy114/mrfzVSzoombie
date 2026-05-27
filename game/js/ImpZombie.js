@@ -15,8 +15,8 @@ export class ImpZombie extends Zombie {
     this.type = 'imp';
     this.rewardType = 'imp';
     this.rewardValue = 1;
-    this.width = 72;
-    this.height = 72;
+    this.width = 60;
+    this.height = 60;
     this.initAnimators();
   }
 
