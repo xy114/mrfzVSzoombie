@@ -44,7 +44,7 @@ export class WishadelPea {
     this.row = row;
     this.speed = speed;
     this.damage = damage;
-    this.damageType = 'magic';
+    this.damageType = 'physical';
     this.width = 21;
     this.height = 11;
     this.active = true;
@@ -63,12 +63,12 @@ export class WishadelPea {
     );
     if (hit) {
       this.active = false;
-      hit.takeDamage(this.damage, 'magic');
+      hit.takeDamage(this.damage, this.damageType);
     }
   }
 
   render(ctx) {
-    const img = assetManager.getImage('wishadel_shell');
+    const img = assetManager.getImage('peashooter_skin_wishadel_shell');
     if (img) {
       ctx.drawImage(img, this.x, this.y, this.width, this.height);
     } else {
@@ -85,7 +85,7 @@ export class WishadelShell {
     this.row = row;
     this.speed = speed;
     this.damage = damage;
-    this.damageType = 'magic';
+    this.damageType = 'physical';
     this.width = 51;
     this.height = 26;
     this.active = true;
@@ -175,7 +175,7 @@ export class WishadelShell {
       return;
     }
     // Cannonball image
-    const img = assetManager.getImage('wishadel_shell');
+    const img = assetManager.getImage('peashooter_skin_wishadel_shell');
     ctx.save();
     const cx = this.x + this.width / 2;
     const cy = this.y + this.height / 2;

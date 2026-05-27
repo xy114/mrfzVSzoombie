@@ -40,19 +40,3 @@ export const STAR_CONFIG = {
   2: { healthMult: 1.25, damageMult: 1.2, cooldownMult: 0.9 },
   3: { healthMult: 1.6, damageMult: 1.5, cooldownMult: 0.75 }
 };
-
-export const SKIN_CONFIG = {
-  peashooter: {
-    wishadel: {
-      skillDamage: 120,
-      skillCooldown: 10000,
-      shellSpeed: 22,
-      aimDuration: 600,
-      explosionRadius: 2.5,
-      peaDamage: 25,
-      peaSpeed: 22,
-      peaAttackBonus: 20,
-      bodyType: 'humanoid'
-    }
-  }
-};

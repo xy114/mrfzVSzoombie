@@ -60,13 +60,37 @@ export class AssetManager {
       visitor_katana_zero: 'resources/special/Katana_Zero.png',
       visitor_katana_zero_time: 'resources/special/Katana_Zero_time.png',
       visitor_slash: 'resources/special/刀光.png',
-      // Wishadel skin
-      wishadel_combat: 'resources/special/维什戴尔战斗形象.png',
-      wishadel_shell: 'resources/special/维什戴尔技能释放的炮弹.png',
-      wishadel_portrait: 'resources/special/立绘_维什戴尔.png',
+      // Skin resources — unified naming: {unitId}_skin_{skinId}_{resourceType}
+      // Plant default skins
+      sunflower_skin_default_combat: 'resources/plants/向日葵.gif',
+      sunflower_skin_default_portrait: 'resources/plants/向日葵.gif',
+      sunflower_skin_default_headshot: 'resources/plants/向日葵.gif',
+      peashooter_skin_default_combat: 'resources/plants/豌豆射手.gif',
+      peashooter_skin_default_portrait: 'resources/plants/豌豆射手.gif',
+      peashooter_skin_default_headshot: 'resources/plants/豌豆射手.gif',
+      nut_skin_default_combat: 'resources/plants/坚果.gif',
+      nut_skin_default_portrait: 'resources/plants/坚果.gif',
+      nut_skin_default_headshot: 'resources/plants/坚果.gif',
+      cherrybomb_skin_default_combat: 'resources/plants/樱桃炸弹.gif',
+      cherrybomb_skin_default_portrait: 'resources/plants/樱桃炸弹.gif',
+      cherrybomb_skin_default_headshot: 'resources/plants/樱桃炸弹.gif',
+      // Wishadel derived skin
       peashooter_skin_wishadel_portrait: 'resources/special/立绘_维什戴尔.png',
       peashooter_skin_wishadel_headshot: 'resources/special/维什戴尔大头像.png',
       peashooter_skin_wishadel_combat: 'resources/special/维什戴尔战斗形象.png',
+      peashooter_skin_wishadel_shell: 'resources/special/维什戴尔技能释放的炮弹.png',
+      // Visitor default skin
+      katana_zero_skin_default_combat: 'resources/special/Katana_Zero.png',
+      katana_zero_skin_default_portrait: 'resources/special/Katana_Zero.png',
+      // Zombie skin keys (portrait uses combat GIF as fallback)
+      normal_skin_default_combat: 'resources/zombies/普通僵尸走路.gif',
+      normal_skin_default_portrait: 'resources/zombies/普通僵尸走路.gif',
+      cone_skin_default_combat: 'resources/zombies/路障僵尸.gif',
+      cone_skin_default_portrait: 'resources/zombies/路障僵尸.gif',
+      shield_skin_default_combat: 'resources/zombies/铁门僵尸.gif',
+      shield_skin_default_portrait: 'resources/zombies/铁门僵尸.gif',
+      imp_skin_default_combat: 'resources/zombies/小鬼僵尸.gif',
+      imp_skin_default_portrait: 'resources/zombies/小鬼僵尸.gif',
       // Retreat buttons
       retreat_plant: 'resources/tools/plant撤退.png',
       retreat_humanoid: 'resources/tools/human撤退.png',
@@ -179,6 +203,11 @@ export class AssetManager {
 
   getGifFrames(name) {
     return this._gifFrames[name] || null;
+  }
+
+  getSkinCombatImage(unitId, skinId) {
+    const key = unitId + '_skin_' + (skinId || 'default') + '_combat';
+    return this.getImageNoBg(key) || this.getImage(key);
   }
 
   createAnimator(name) {

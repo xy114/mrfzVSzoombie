@@ -200,7 +200,7 @@ export class BattleManager {
             bodyType = 'humanoid';
             ghostAspect = 0.98;
           } else if (plantType === 'peashooter') {
-            const skinId = (this.playerData.plantSkins || {})[plantType];
+            const skinId = (this.playerData.equippedSkins || {})[plantType];
             if (skinId === 'wishadel') {
               bodyType = 'humanoid';
               ghostAspect = 1.21;
@@ -408,7 +408,7 @@ export class BattleManager {
   }
 
   _getSkinGhostImage(plantType) {
-    const skinId = (this.playerData.plantSkins || {})[plantType];
+    const skinId = (this.playerData.equippedSkins || {})[plantType];
     if (skinId) {
       const combatKey = plantType + '_skin_' + skinId + '_combat';
       const combatImg = assetManager.getImage(combatKey);
@@ -639,7 +639,7 @@ export class BattleManager {
     const plantX = center.x - sc.w / 2;
     const plantY = center.y - sc.h / 2;
     const star = (this.playerData.plantStars || {})[plantType] || 1;
-    const skin = (this.playerData.plantSkins || {})[plantType] || null;
+    const skin = (this.playerData.equippedSkins || {})[plantType] || 'default';
 
     let placed = false;
     if (plantType === 'sunflower') {

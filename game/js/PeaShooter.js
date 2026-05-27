@@ -1,6 +1,7 @@
 import { Plant } from './Plant.js';
 import { Bullet, WishadelPea, WishadelShell, FirePeaBullet } from './Bullet.js';
-import { GAME_CONFIG, SKIN_CONFIG, STAR_CONFIG } from './constants.js';
+import { GAME_CONFIG, STAR_CONFIG } from './constants.js';
+import { getSkin } from './PlantConfig.js';
 import { assetManager } from './AssetManager.js';
 import { drawPeashooter } from './PlantRenderer.js';
 import { GifAnimator } from './GifAnimator.js';
@@ -28,7 +29,7 @@ export class PeaShooter extends Plant {
     this._aimTimer = 0;
     this._aimDuration = 0;
 
-    if (!this.skinId) {
+    if (!this.skinId || this.skinId === 'default') {
       this._animator = assetManager.createAnimator('peashooter');
     } else {
       this._animator = null;
@@ -41,15 +42,16 @@ export class PeaShooter extends Plant {
   }
 
   applySkin() {
-    if (!this.skinId) return;
-    const skinCfg = SKIN_CONFIG.peashooter?.[this.skinId];
-    if (!skinCfg) return;
-    if (skinCfg.firePeaDamage) this.skillDamage = skinCfg.firePeaDamage;
-    if (skinCfg.skillCooldown) this.skillMaxCooldown = skinCfg.skillCooldown;
+    if (!this.skinId || this.skinId === 'default') return;
+    const skin = getSkin('peashooter', this.skinId);
+    if (!skin || !skin.combat) return;
+    if (skin.combat.peaDamage) this.skillDamage = skin.combat.peaDamage;
+    if (skin.combat.skillCooldown) this.skillMaxCooldown = skin.combat.skillCooldown;
   }
 
   _getSkinCfg() {
-    return SKIN_CONFIG.peashooter?.[this.skinId] || null;
+    const skin = getSkin('peashooter', this.skinId);
+    return skin ? skin.combat : null;
   }
 
   update(deltaTime, game) {
@@ -171,7 +173,7 @@ export class PeaShooter extends Plant {
   }
 
   getBodyType() {
-    if (this.skinId) {
+    if (this.skinId && this.skinId !== 'default') {
       const cfg = this._getSkinCfg();
       if (cfg && cfg.bodyType) return cfg.bodyType;
     }
@@ -210,7 +212,7 @@ export class PeaShooter extends Plant {
 
     // Wishadel skin uses static image (no GIF)
     if (isWishadel) {
-      const img = assetManager.getImageNoBg('wishadel_combat');
+      const img = assetManager.getSkinCombatImage('peashooter', this.skinId);
       if (img) {
         const s = Math.min(rw / img.naturalWidth, rh / img.naturalHeight);
         const dw = img.naturalWidth * s;

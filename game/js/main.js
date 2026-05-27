@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const saveData = StorageManager.load();
     const playerData = {
       plantStars: { ...saveData.plantStars },
-      plantSkins: { ...saveData.plantSkins }
+      equippedSkins: { ...saveData.equippedSkins }
     };
 
     const bm = new BattleManager(ui.canvas, levelConfig, playerData);
