@@ -7,8 +7,8 @@ export class Zombie {
     this.x = x;
     this.y = y;
     this.row = row;
-    this.width = 96;
-    this.height = 96;
+    this.width = 125;
+    this.height = 125;
     this.health = 100;
     this.maxHealth = 100;
     this.speed = 0.3;
@@ -140,6 +140,7 @@ export class Zombie {
 
     if (this.health <= 0) {
       this.alive = false;
+      this._shouldSpawnDeathEffect = true;
     }
   }
 

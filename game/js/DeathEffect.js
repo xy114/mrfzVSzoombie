@@ -11,12 +11,12 @@ export class DeathEffect {
 
     const gifData = assetManager.getGifFrames(gifKey);
     if (gifData) {
-      const frames = gifData.frames.map(f => ({ canvas: f.canvas, delay: f.delay }));
+      const frames = gifData.frames.map(f => ({ canvas: f.canvas, delay: f.delay * 2 }));
       this._animator = new GifAnimator(frames, gifData.width, gifData.height);
       this._animator.setLoop(false);
       this._gifWidth = gifData.width;
       this._gifHeight = gifData.height;
-      this.maxLife = gifData.frames.reduce((sum, f) => sum + f.delay, 0) + 500;
+      this.maxLife = frames.reduce((sum, f) => sum + f.delay, 0) + 500;
     } else {
       this._animator = null;
       this.maxLife = 1000;
