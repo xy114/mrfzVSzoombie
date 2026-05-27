@@ -10,5 +10,6 @@ export class NormalZombie extends Zombie {
     this.type = 'normal';
     this.rewardType = 'normal';
     this.rewardValue = 1;
+    this.initAnimators();
   }
 }

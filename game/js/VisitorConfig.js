@@ -5,6 +5,8 @@ export const VISITOR_DEFS = [
     displayName: '武士零',
     description: '时空中游走的刀锋<br>在另一个世界也能出鞘<br>——来自Katana Zero',
     category: 'visitor',
+    skillDescription: '时停5s，期间发动10连斩，每刀造成50+10%敌人最大HP的物理伤害。冷却10s',
+    passiveSkillDescription: '受击时触发时停1.3s，同行发动斩击，造成100+70%敌人最大HP的物理伤害。冷却3s',
     combat: {
       health: 300,
       attack: 0,

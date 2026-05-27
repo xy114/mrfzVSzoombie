@@ -16,6 +16,8 @@ import { getZombieDef } from './ZombieConfig.js';
 import { KatanaZero } from './Visitor.js';
 import { getVisitorDef } from './VisitorConfig.js';
 import { DamageNumber } from './DamageNumber.js';
+import { DeathEffect } from './DeathEffect.js';
+import { ExplosionEffect } from './ExplosionEffect.js';
 import { drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
 import { assetManager } from './AssetManager.js';
 
@@ -49,6 +51,8 @@ export class BattleManager {
     this.visitors = [];
     this.damageNumbers = [];
     this.slashEffects = [];
+    this.deathEffects = [];
+    this.explosionEffects = [];
 
     this.onVictory = null;
     this.onDefeat = null;
@@ -137,6 +141,16 @@ export class BattleManager {
       return se.active;
     });
 
+    this.deathEffects = this.deathEffects.filter(de => {
+      de.update(deltaTime);
+      return de.active;
+    });
+
+    this.explosionEffects = this.explosionEffects.filter(ee => {
+      ee.update(deltaTime);
+      return ee.active;
+    });
+
     this.checkCollisions();
     this._tickRetreatTimers(deltaTime);
     this.trackDeadZombies();
@@ -186,7 +200,7 @@ export class BattleManager {
             bodyType = 'humanoid';
             ghostAspect = 0.98;
           } else if (plantType === 'peashooter') {
-            const skinId = (this.playerData.plantSkins || {})[plantType];
+            const skinId = (this.playerData.equippedSkins || {})[plantType];
             if (skinId === 'wishadel') {
               bodyType = 'humanoid';
               ghostAspect = 1.21;
@@ -253,6 +267,8 @@ export class BattleManager {
     // ============================================
     this.bullets.forEach(bullet => bullet.render(this.ctx));
     this.slashEffects.forEach(se => se.render(this.ctx));
+    this.deathEffects.forEach(de => de.render(this.ctx));
+    this.explosionEffects.forEach(ee => ee.render(this.ctx));
     this.damageNumbers.forEach(dn => dn.render(this.ctx));
 
     // Health / skill bars — behind characters so they don't cover other entities
@@ -392,7 +408,7 @@ export class BattleManager {
   }
 
   _getSkinGhostImage(plantType) {
-    const skinId = (this.playerData.plantSkins || {})[plantType];
+    const skinId = (this.playerData.equippedSkins || {})[plantType];
     if (skinId) {
       const combatKey = plantType + '_skin_' + skinId + '_combat';
       const combatImg = assetManager.getImage(combatKey);
@@ -408,6 +424,21 @@ export class BattleManager {
     for (const zombie of newDead) {
       zombie._killTracked = true;
       this.enemiesKilled[zombie.rewardType] = (this.enemiesKilled[zombie.rewardType] || 0) + 1;
+
+      // Spawn death effects
+      if (zombie._shouldSpawnDeathEffect && zombie.deathGifKey) {
+        zombie._shouldSpawnDeathEffect = false;
+        const deathX = zombie.x;
+        const bottomY = zombie.y + zombie.height;
+        const w = zombie.width;
+
+        if (zombie.deathGifKey === 'imp_death') {
+          this.addDeathEffect(new DeathEffect(deathX, bottomY, w, 'imp_death'));
+        } else {
+          this.addDeathEffect(new DeathEffect(deathX, bottomY, w, 'zombie_death'));
+          this.addDeathEffect(new DeathEffect(deathX + w * 0.1, bottomY - zombie.height * 0.3, w * 0.5, 'zombie_head'));
+        }
+      }
     }
   }
 
@@ -519,6 +550,8 @@ export class BattleManager {
   addVisitor(visitor) { this.visitors.push(visitor); }
   addDamageNumber(dn) { this.damageNumbers.push(dn); }
   addSlashEffect(se) { this.slashEffects.push(se); }
+  addDeathEffect(de) { this.deathEffects.push(de); }
+  addExplosionEffect(ee) { this.explosionEffects.push(ee); }
 
   setTimeScale(scale) {
     this.timeScale = scale;
@@ -606,7 +639,7 @@ export class BattleManager {
     const plantX = center.x - sc.w / 2;
     const plantY = center.y - sc.h / 2;
     const star = (this.playerData.plantStars || {})[plantType] || 1;
-    const skin = (this.playerData.plantSkins || {})[plantType] || null;
+    const skin = (this.playerData.equippedSkins || {})[plantType] || 'default';
 
     let placed = false;
     if (plantType === 'sunflower') {

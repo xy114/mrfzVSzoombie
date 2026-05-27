@@ -10,5 +10,6 @@ export class ConeZombie extends Zombie {
     this.type = 'cone';
     this.rewardType = 'cone';
     this.rewardValue = 2;
+    this.initAnimators();
   }
 }

@@ -25,7 +25,6 @@ import { getPlantDef, getAllPlantDefs } from './PlantConfig.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   await assetManager.loadImages();
-
   StorageManager.load();
   let ui;
   try {
@@ -41,6 +40,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Handle startCombat event from UIManager
   window.addEventListener('startCombat', (e) => {
+    // Load GIF animation frames only when entering combat
+    assetManager.loadGifManifest();
+
     const { levelId, squad } = e.detail;
     const levelConfig = getLevel(levelId);
     if (!levelConfig) return;
@@ -48,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const saveData = StorageManager.load();
     const playerData = {
       plantStars: { ...saveData.plantStars },
-      plantSkins: { ...saveData.plantSkins }
+      equippedSkins: { ...saveData.equippedSkins }
     };
 
     const bm = new BattleManager(ui.canvas, levelConfig, playerData);

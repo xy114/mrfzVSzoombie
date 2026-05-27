@@ -1,4 +1,5 @@
 import { assetManager } from './AssetManager.js';
+import { GifAnimator } from './GifAnimator.js';
 import { drawPea, drawWishadelPea, drawFirePea, drawFireExplosion } from './ProjectileRenderer.js';
 
 export class Bullet {
@@ -12,13 +13,20 @@ export class Bullet {
     this.width = 20;
     this.height = 20;
     this.active = true;
+    this._animator = assetManager.createAnimator('pea');
   }
 
   update(deltaTime) {
+    if (this._animator) this._animator.update(deltaTime);
     this.x += this.speed * (deltaTime / 16);
   }
 
   render(ctx) {
+    if (this._animator) {
+      const frame = this._animator.getCurrentCanvas();
+      ctx.drawImage(frame, this.x, this.y, this.width, this.height);
+      return;
+    }
     const img = assetManager.getImage('pea');
     if (img) {
       ctx.drawImage(img, this.x, this.y, 20, 20);
@@ -36,7 +44,7 @@ export class WishadelPea {
     this.row = row;
     this.speed = speed;
     this.damage = damage;
-    this.damageType = 'magic';
+    this.damageType = 'physical';
     this.width = 21;
     this.height = 11;
     this.active = true;
@@ -55,12 +63,12 @@ export class WishadelPea {
     );
     if (hit) {
       this.active = false;
-      hit.takeDamage(this.damage, 'magic');
+      hit.takeDamage(this.damage, this.damageType);
     }
   }
 
   render(ctx) {
-    const img = assetManager.getImage('wishadel_shell');
+    const img = assetManager.getImage('peashooter_skin_wishadel_shell');
     if (img) {
       ctx.drawImage(img, this.x, this.y, this.width, this.height);
     } else {
@@ -77,7 +85,7 @@ export class WishadelShell {
     this.row = row;
     this.speed = speed;
     this.damage = damage;
-    this.damageType = 'magic';
+    this.damageType = 'physical';
     this.width = 51;
     this.height = 26;
     this.active = true;
@@ -167,7 +175,7 @@ export class WishadelShell {
       return;
     }
     // Cannonball image
-    const img = assetManager.getImage('wishadel_shell');
+    const img = assetManager.getImage('peashooter_skin_wishadel_shell');
     ctx.save();
     const cx = this.x + this.width / 2;
     const cy = this.y + this.height / 2;
@@ -271,9 +279,11 @@ export class FirePeaBullet {
     this._explosionR = 0;
     this._maxExplosionR = 80;
     this.skipCollisionCheck = true;
+    this._animator = assetManager.createAnimator('firePea');
   }
 
   update(deltaTime, game) {
+    if (this._animator) this._animator.update(deltaTime);
     if (this.exploded) {
       this._explosionTimer -= deltaTime;
       this._explosionR += (this._maxExplosionR - this._explosionR) * 0.15;
@@ -339,6 +349,11 @@ export class FirePeaBullet {
       const cy = this.y + this.height / 2;
       const alpha = Math.max(0, this._explosionTimer / 350);
       drawFireExplosion(ctx, cx, cy, this._explosionR, alpha);
+      return;
+    }
+    if (this._animator) {
+      const frame = this._animator.getCurrentCanvas();
+      ctx.drawImage(frame, this.x - 3, this.y - 3, this.width + 6, this.height + 6);
       return;
     }
     const img = assetManager.getImage('firePea');

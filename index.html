@@ -327,7 +327,14 @@
         <div class="squad-picker-title">选择异客</div>
       </div>
       <div class="squad-picker-grid" id="visitor-picker-grid"></div>
-      <div class="visitor-picker-footer">
+      <div class="squad-picker-detail" id="visitor-picker-detail" style="display:none;">
+        <div class="spd-top">
+          <div class="spd-info" id="vpd-info"></div>
+          <button class="spd-confirm-btn" id="vpd-confirm-btn">确 认</button>
+        </div>
+        <div class="spd-skins" id="vpd-skins"></div>
+      </div>
+      <div class="visitor-picker-footer" id="visitor-picker-footer">
         <button class="btn-ark" id="visitor-picker-confirm">确 认</button>
       </div>
     </div>
@@ -337,6 +344,115 @@
 
   <div id="toast"></div>
 
+  <script>
+    // Parse GIFs using Node.js APIs (available in Electron with nodeIntegration:true)
+    (function() {
+      const fs = require('fs');
+      const path = require('path');
+      const gifuct = require('gifuct-js');
+      const { parseGIF, decompressFrames } = gifuct;
+
+      // Derive project root from current script's location
+      const projRoot = __dirname;
+
+      window.__gifManifest = {}; // { key: { frames: [{canvas, delay}], width, height } }
+
+      // Register image paths manually (mirror AssetManager.imagePaths)
+      const GIF_PATHS = {
+        normal: 'resources/zombies/普通僵尸走路.gif',
+        normal_attack: 'resources/zombies/普通僵尸啃食.gif',
+        cone: 'resources/zombies/路障僵尸.gif',
+        cone_attack: 'resources/zombies/路障僵尸啃食.gif',
+        shield: 'resources/zombies/铁门僵尸.gif',
+        shield_attack: 'resources/zombies/铁门僵尸啃食.gif',
+        imp: 'resources/zombies/小鬼僵尸.gif',
+        imp_attack: 'resources/zombies/小鬼啃食.gif',
+        zombie_death: 'resources/zombies/僵尸死.gif',
+        zombie_head: 'resources/zombies/头.gif',
+        imp_death: 'resources/zombies/小鬼死亡.gif',
+        sunflower: 'resources/plants/向日葵.gif',
+        peashooter: 'resources/plants/豌豆射手.gif',
+        nut: 'resources/plants/坚果.gif',
+        cherrybomb: 'resources/plants/樱桃炸弹.gif',
+        pea: 'resources/plants/豆.gif',
+        firePea: 'resources/plants/火豆.gif',
+        sun: 'resources/tools/太阳.gif',
+        cherrybomb_explosion: 'resources/plants/爆炸！.gif'
+      };
+
+      function composeFrames(gif, rawFrames) {
+        const width = gif.lsd.width;
+        const height = gif.lsd.height;
+        const frames = [];
+        let previousPixels = new Uint8ClampedArray(width * height * 4);
+
+        for (const raw of rawFrames) {
+          const { patch, dims, delay, disposalType } = raw;
+          const { top, left, width: fw, height: fh } = dims;
+          const currentPixels = new Uint8ClampedArray(previousPixels);
+
+          if (patch) {
+            for (let row = 0; row < fh; row++) {
+              const srcOff = row * fw * 4;
+              const dstOff = ((top + row) * width + left) * 4;
+              for (let col = 0; col < fw; col++) {
+                const si = srcOff + col * 4;
+                const di = dstOff + col * 4;
+                if (patch[si + 3] > 0) {
+                  currentPixels[di] = patch[si];
+                  currentPixels[di + 1] = patch[si + 1];
+                  currentPixels[di + 2] = patch[si + 2];
+                  currentPixels[di + 3] = patch[si + 3];
+                }
+              }
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').putImageData(new ImageData(currentPixels, width, height), 0, 0);
+          frames.push({ canvas, delay: delay });
+
+          if (disposalType === 2) {
+            const cleared = new Uint8ClampedArray(currentPixels);
+            for (let row = 0; row < fh; row++) {
+              const dstOff = ((top + row) * width + left) * 4;
+              for (let col = 0; col < fw; col++) {
+                const di = dstOff + col * 4;
+                cleared[di] = cleared[di + 1] = cleared[di + 2] = cleared[di + 3] = 0;
+              }
+            }
+            previousPixels = cleared;
+          } else if (disposalType !== 3) {
+            previousPixels = currentPixels;
+          }
+        }
+        return frames;
+      }
+
+      let parsed = 0;
+      const entries = Object.entries(GIF_PATHS);
+      for (const [key, relPath] of entries) {
+        try {
+          const fullPath = path.resolve(projRoot, relPath);
+          const buf = fs.readFileSync(fullPath);
+          const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+          const gif = parseGIF(ab);
+          const rawFrames = decompressFrames(gif, true);
+          window.__gifManifest[key] = {
+            frames: composeFrames(gif, rawFrames),
+            width: gif.lsd.width,
+            height: gif.lsd.height
+          };
+          parsed++;
+        } catch (err) {
+          console.warn('GIF parse failed:', relPath, err.message);
+        }
+      }
+      console.log('GIF parsing done: ' + parsed + '/' + entries.length);
+      window.__gifParsed = parsed;
+    })();
+  </script>
   <script type="module" src="game/js/main.js"></script>
 </body>
 </html>

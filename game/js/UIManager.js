@@ -6,7 +6,7 @@ import { drawNormalZombiePortrait, drawConeZombiePortrait, drawShieldZombiePortr
 import { drawSunflowerPortrait, drawPeashooterPortrait, drawNutPortrait, drawCherryBombPortrait, drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
 import { assetManager } from './AssetManager.js';
 import { getVisitorDef, getAllVisitorDefs, getVisitorDisplayName, getVisitorCardOffset } from './VisitorConfig.js';
-import { GAME_CONFIG, SKIN_CONFIG, STAR_CONFIG } from './constants.js';
+import { GAME_CONFIG, STAR_CONFIG } from './constants.js';
 
 export class UIManager {
   constructor() {
@@ -67,6 +67,8 @@ export class UIManager {
     this.$hbVisitorGrid = document.getElementById('hb-visitor-grid');
     this.$visitorPickerOverlay = document.getElementById('modal-visitor-picker');
     this.$visitorPickerGrid = document.getElementById('visitor-picker-grid');
+    this.$visitorPickerDetail = document.getElementById('visitor-picker-detail');
+    this.$visitorPickerFooter = document.getElementById('visitor-picker-footer');
     this.$ehbEnemyGrid = document.getElementById('ehb-enemy-grid');
     this.$ehbEnemyScroll = document.getElementById('ehb-enemy-scroll');
     this.$hbDetailOverlay = document.getElementById('hb-detail-overlay');
@@ -142,6 +144,10 @@ export class UIManager {
     if (visitorPickerConfirm) {
       visitorPickerConfirm.addEventListener('click', () => this._confirmVisitorPick());
     }
+    const vpdConfirmBtn = document.getElementById('vpd-confirm-btn');
+    if (vpdConfirmBtn) {
+      vpdConfirmBtn.addEventListener('click', () => this._confirmVisitorPick());
+    }
     // Specialize overlay close for visitor picker (re-show squad modal)
     if (this.$visitorPickerOverlay) {
       this.$visitorPickerOverlay.addEventListener('click', (e) => {
@@ -202,7 +208,7 @@ export class UIManager {
     const frame = document.getElementById('standee-frame');
     if (!frame) return;
 
-    const displaySkinId = visitorDef ? null : StorageManager.getDisplayPlantSkin();
+    const displaySkinId = visitorDef ? 'default' : StorageManager.getEquippedSkin(displayId);
     let img = visitorDef
       ? assetManager.getImageNoBg('visitor_katana_zero')
       : null;
@@ -248,12 +254,7 @@ export class UIManager {
         canvas.height = Math.round(availH);
         pctx.clearRect(0, 0, canvas.width, canvas.height);
         if (visitorDef) {
-          pctx.fillStyle = '#1a1a2e';
-          pctx.fillRect(0, 0, canvas.width, canvas.height);
-          pctx.fillStyle = '#c040ff';
-          pctx.font = '36px sans-serif';
-          pctx.textAlign = 'center';
-          pctx.fillText('???', canvas.width / 2, canvas.height / 2);
+          this._drawPortrait(pctx, 'visitor', displayId, canvas.width, canvas.height, 'default', true);
         } else {
           this._drawPortrait(pctx, 'plant', displayId, canvas.width, canvas.height, displaySkinId, true);
         }
@@ -572,20 +573,8 @@ export class UIManager {
         const canvas = document.createElement('canvas');
         canvas.width = 56; canvas.height = 70;
         const cctx = canvas.getContext('2d');
-        const img = assetManager.getImageNoBg('visitor_katana_zero');
-        if (img) {
-          const s = Math.min(56 / img.naturalWidth, 70 / img.naturalHeight);
-          const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
-          const off = getVisitorCardOffset(vid, 'squadSlot');
-          cctx.drawImage(img, (56 - dw) / 2 + off.x * s, (70 - dh) / 2 + off.y * s, dw, dh);
-        } else {
-          cctx.fillStyle = '#333';
-          cctx.fillRect(0, 0, 56, 70);
-          cctx.fillStyle = '#c040ff';
-          cctx.font = '14px sans-serif';
-          cctx.textAlign = 'center';
-          cctx.fillText('???', 28, 38);
-        }
+        const skinId = StorageManager.getEquippedSkin(vid);
+        this._drawPortrait(cctx, 'visitor', vid, 56, 70, skinId, true);
         slot.appendChild(canvas);
         if (def) {
           const nameEl = document.createElement('span');
@@ -663,20 +652,7 @@ export class UIManager {
       const canvas = document.createElement('canvas');
       canvas.width = 64; canvas.height = 84;
       const cctx = canvas.getContext('2d');
-      const img = assetManager.getImageNoBg('visitor_katana_zero');
-      if (img) {
-        const s = Math.min(64 / img.naturalWidth, 84 / img.naturalHeight);
-        const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
-        const off = getVisitorCardOffset(v.id, 'pickerCard');
-        cctx.drawImage(img, (64 - dw) / 2 + off.x * s, (84 - dh) / 2 + off.y * s, dw, dh);
-      } else {
-        cctx.fillStyle = '#1a1a2e';
-        cctx.fillRect(0, 0, 64, 84);
-        cctx.fillStyle = '#c040ff';
-        cctx.font = '16px sans-serif';
-        cctx.textAlign = 'center';
-        cctx.fillText('???', 32, 46);
-      }
+      this._drawPortrait(cctx, 'visitor', v.id, 64, 84, 'default', true);
       card.appendChild(canvas);
 
       const nameEl = document.createElement('div');
@@ -689,17 +665,95 @@ export class UIManager {
           if (this._selectedVisitorId === v.id) {
             this._selectedVisitorId = null;
             grid.querySelectorAll('.squad-picker-card').forEach(c => c.classList.remove('selected'));
+            this._updateVisitorPickerDetail();
             return;
           }
 
           grid.querySelectorAll('.squad-picker-card').forEach(c => c.classList.remove('selected'));
           card.classList.add('selected');
           this._selectedVisitorId = v.id;
+          this._updateVisitorPickerDetail();
         });
       }
 
       grid.appendChild(card);
     }
+
+    this._updateVisitorPickerDetail();
+  }
+
+  _updateVisitorPickerDetail() {
+    const detail = this.$visitorPickerDetail;
+    const footer = this.$visitorPickerFooter;
+    const info = document.getElementById('vpd-info');
+    const skinsRow = document.getElementById('vpd-skins');
+    if (!detail || !info || !skinsRow) return;
+
+    if (!this._selectedVisitorId) {
+      detail.style.display = 'none';
+      if (footer) footer.style.display = '';
+      return;
+    }
+
+    detail.style.display = 'flex';
+    if (footer) footer.style.display = 'none';
+
+    const unitId = this._selectedVisitorId;
+    info.innerHTML = `<span class="spd-name">${getVisitorDisplayName(unitId)}</span>`;
+
+    const equippedSkin = StorageManager.getEquippedSkin(unitId);
+    const skins = getSkins(unitId);
+    let skinHTML = '<span class="spd-skins-label">皮肤:</span>';
+
+    for (const skin of skins) {
+      const owned = skin.owned || StorageManager.ownsSkin(unitId, skin.id);
+      if (!owned) continue;
+      skinHTML += `
+        <div class="spd-skin-item${equippedSkin === skin.id ? ' equipped' : ''}" data-skin-id="${skin.id}">
+          <canvas width="48" height="52"></canvas>
+          <span class="spd-skin-name">${skin.name}</span>
+        </div>`;
+    }
+
+    for (const skin of skins) {
+      const owned = skin.owned || StorageManager.ownsSkin(unitId, skin.id);
+      if (owned) continue;
+      skinHTML += `
+        <div class="spd-skin-item locked" data-skin-id="${skin.id}" data-skin-cost="${skin.cost || 0}">
+          <canvas width="48" height="52"></canvas>
+          <span class="spd-skin-cost">💎${skin.cost || 0}</span>
+        </div>`;
+    }
+
+    skinsRow.innerHTML = skinHTML;
+
+    // Draw skin previews
+    skinsRow.querySelectorAll('.spd-skin-item').forEach(item => {
+      const skinId = item.dataset.skinId;
+      const cvs = item.querySelector('canvas');
+      if (cvs) {
+        const ctx = cvs.getContext('2d');
+        this._drawPortrait(ctx, 'visitor', unitId, 48, 52, skinId || 'default', true);
+      }
+    });
+
+    // Wire skin click handlers (owned)
+    skinsRow.querySelectorAll('.spd-skin-item:not(.locked)').forEach(item => {
+      item.addEventListener('click', () => {
+        const skinId = item.dataset.skinId || 'default';
+        StorageManager.equipSkin(unitId, skinId);
+        this._updateVisitorPickerDetail();
+      });
+    });
+
+    // Wire skin click handlers (locked)
+    skinsRow.querySelectorAll('.spd-skin-item.locked').forEach(item => {
+      item.addEventListener('click', () => {
+        const skinId = item.dataset.skinId;
+        const skin = skins.find(s => s.id === skinId);
+        if (skin) this._showSkinPreview(unitId, skin, false);
+      });
+    });
   }
 
   hideVisitorPicker() {
@@ -876,51 +930,50 @@ export class UIManager {
       return;
     }
 
-    const plantId = this._selectedPickerPlant;
-    const def = getPlantDef(plantId);
-    if (!def) { detail.style.display = 'flex'; info.innerHTML = ''; skinsRow.innerHTML = ''; return; }
+    const unitId = this._selectedPickerPlant;
+    const def = getPlantDef(unitId);
+    const vdef = def ? null : getVisitorDef(unitId);
+    if (!def && !vdef) { detail.style.display = 'flex'; info.innerHTML = ''; skinsRow.innerHTML = ''; return; }
 
-    const starLevel = StorageManager.getPlantStar(plantId);
-    const nextCost = starLevel < 3 ? getStarCost(starLevel, starLevel + 1) : Infinity;
-    const stars = '★'.repeat(starLevel) + '☆'.repeat(3 - starLevel);
-    info.innerHTML = `
-      <span class="spd-name">${def.name}</span>
-      <span class="spd-stars">${stars}</span>
-      ${nextCost !== Infinity ? `<button class="spd-upgrade-btn" id="spd-upgrade-btn">升星 💎${nextCost}</button>` : '<span style="font-size:10px;color:var(--gold);">MAX</span>'}
-      <span class="spd-cost">☀${def.combat.cost || 0}</span>
-    `;
-
-    // Wire upgrade button
-    const upBtn = document.getElementById('spd-upgrade-btn');
-    if (upBtn) {
-      upBtn.addEventListener('click', () => {
-        if (!StorageManager.spendCrystals(nextCost)) {
-          this.showToast('晶核不足！');
-          return;
-        }
-        const newStar = StorageManager.upgradePlantStar(plantId);
-        if (newStar) {
-          this.showToast(`${def.name} 升至 ${newStar} 星！`);
-          this.refreshCrystalDisplay();
-          this._updatePickerDetail();
-        }
-      });
+    if (def) {
+      // Plant info
+      const starLevel = StorageManager.getPlantStar(unitId);
+      const nextCost = starLevel < 3 ? getStarCost(starLevel, starLevel + 1) : Infinity;
+      const stars = '★'.repeat(starLevel) + '☆'.repeat(3 - starLevel);
+      info.innerHTML = `
+        <span class="spd-name">${def.name}</span>
+        <span class="spd-stars">${stars}</span>
+        ${nextCost !== Infinity ? `<button class="spd-upgrade-btn" id="spd-upgrade-btn">升星 💎${nextCost}</button>` : '<span style="font-size:10px;color:var(--gold);">MAX</span>'}
+        <span class="spd-cost">☀${def.combat.cost || 0}</span>
+      `;
+      const upBtn = document.getElementById('spd-upgrade-btn');
+      if (upBtn) {
+        upBtn.addEventListener('click', () => {
+          if (!StorageManager.spendCrystals(nextCost)) {
+            this.showToast('晶核不足！');
+            return;
+          }
+          const newStar = StorageManager.upgradePlantStar(unitId);
+          if (newStar) {
+            this.showToast(`${def.name} 升至 ${newStar} 星！`);
+            this.refreshCrystalDisplay();
+            this._updatePickerDetail();
+          }
+        });
+      }
+    } else {
+      // Visitor info — no stars, no cost, no upgrade
+      info.innerHTML = `<span class="spd-name">${getVisitorDisplayName(unitId)}</span>`;
     }
 
-    // Skin row
-    const equippedSkin = StorageManager.getEquippedSkin(plantId);
-    const skins = getSkins(plantId);
+    // Skin row — all skins from SKIN_DEFS (default + derived)
+    const equippedSkin = StorageManager.getEquippedSkin(unitId);
+    const skins = getSkins(unitId);
     let skinHTML = '<span class="spd-skins-label">皮肤:</span>';
 
-    // Default artwork (always available, first, no name)
-    skinHTML += `
-      <div class="spd-skin-item${!equippedSkin ? ' equipped' : ''}" data-skin-id="">
-        <canvas width="40" height="48"></canvas>
-      </div>`;
-
-    // Owned skins
+    // Owned skins (default always owned)
     for (const skin of skins) {
-      const owned = skin.owned || StorageManager.ownsSkin(plantId, skin.id);
+      const owned = skin.owned || StorageManager.ownsSkin(unitId, skin.id);
       if (!owned) continue;
       skinHTML += `
         <div class="spd-skin-item${equippedSkin === skin.id ? ' equipped' : ''}" data-skin-id="${skin.id}">
@@ -931,7 +984,7 @@ export class UIManager {
 
     // Unowned skins (locked, show cost)
     for (const skin of skins) {
-      const owned = skin.owned || StorageManager.ownsSkin(plantId, skin.id);
+      const owned = skin.owned || StorageManager.ownsSkin(unitId, skin.id);
       if (owned) continue;
       skinHTML += `
         <div class="spd-skin-item locked" data-skin-id="${skin.id}" data-skin-cost="${skin.cost || 0}">
@@ -942,6 +995,8 @@ export class UIManager {
 
     skinsRow.innerHTML = skinHTML;
 
+    const category = def ? 'plant' : 'visitor';
+
     // Draw skin previews
     const skinItems = skinsRow.querySelectorAll('.spd-skin-item');
     skinItems.forEach(item => {
@@ -949,19 +1004,15 @@ export class UIManager {
       const cvs = item.querySelector('canvas');
       if (cvs) {
         const ctx = cvs.getContext('2d');
-        if (skinId) {
-          this._drawPortrait(ctx, 'plant', plantId, 40, 48, skinId, true);
-        } else {
-          this._drawPortrait(ctx, 'plant', plantId, 40, 48, undefined, true);
-        }
+        this._drawPortrait(ctx, category, unitId, 48, 52, skinId || 'default', true);
       }
     });
 
     // Wire skin click handlers
     skinsRow.querySelectorAll('.spd-skin-item:not(.locked)').forEach(item => {
       item.addEventListener('click', () => {
-        const skinId = item.dataset.skinId || null;
-        StorageManager.equipSkin(plantId, skinId);
+        const skinId = item.dataset.skinId || 'default';
+        StorageManager.equipSkin(unitId, skinId);
         this._updatePickerDetail();
       });
     });
@@ -970,7 +1021,7 @@ export class UIManager {
       item.addEventListener('click', () => {
         const skinId = item.dataset.skinId;
         const skin = skins.find(s => s.id === skinId);
-        if (skin) this._showSkinPreview(plantId, skin, false);
+        if (skin) this._showSkinPreview(unitId, skin, false);
       });
     });
 
@@ -1265,8 +1316,15 @@ export class UIManager {
     let statsHTML = '';
     statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">生命值</span><span class="hb-stat-value">' + def.combat.health + '</span></div>';
     statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">攻击</span><span class="hb-stat-value">无（纯技能型）</span></div>';
-    statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">主动技能</span><span class="hb-stat-value">时停' + (def.combat.activeSkillDuration / 1000) + 's · ' + def.combat.activeSkillSlashes + '连斩 · 每刀' + def.combat.activeSkillDamage + '+' + (def.combat.activeSkillHpRatio * 100) + '%最大HP · 冷却' + (def.combat.activeSkillCooldown / 1000) + 's</span></div>';
-    statsHTML += '<div class="hb-stat-row"><span class="hb-stat-label">被动技能</span><span class="hb-stat-value">受击时停' + (def.combat.passiveSkillDuration / 1000) + 's · 同行斩 · 每击' + def.combat.passiveSkillDamage + '+' + (def.combat.passiveSkillHpRatio * 100) + '%最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's</span></div>';
+
+    // Active skill — description text only, all details live in description
+    const activeDesc = (def.skillDescription) ? def.skillDescription : '暂无主动技能描述';
+    statsHTML += '<div class="hb-stat-desc" style="color:#ffcc88;font-size:15px;line-height:1.6;">【主动】' + activeDesc + '</div>';
+
+    // Passive skill
+    const passiveDesc = (def.passiveSkillDescription) ? def.passiveSkillDescription : '暂无被动技能描述';
+    statsHTML += '<div class="hb-stat-desc" style="color:#c0b0f0;font-size:15px;line-height:1.6;">【被动】' + passiveDesc + '</div>';
+
     statsHTML += '<div class="hb-stat-desc" style="margin-top:12px;line-height:1.6;">' + def.description.replace(/<br>/g, '<br>') + '</div>';
 
     this.$hbDetailStats.innerHTML = statsHTML;
@@ -1381,9 +1439,9 @@ export class UIManager {
     const star = StorageManager.getPlantStar(plantId);
     const mult = getStarMultiplier(star);
     const skinId = StorageManager.getEquippedSkin(plantId);
-    const skin = skinId ? getSkin(plantId, skinId) : null;
+    const skin = getSkin(plantId, skinId);
 
-    this.$hbDetailName.textContent = def.name;
+    this.$hbDetailName.textContent = (skin && skin.id !== 'default') ? def.name + '-' + skin.name : def.name;
     this.$hbDetailThreat.style.display = 'none';
     // Draw portrait — canvas sized to fill left panel
     const canvas = this.$hbDetailCanvas;
@@ -1448,61 +1506,19 @@ export class UIManager {
       </div>`;
     }
 
-    // Skill info
-    if (def.combat.skillMaxCooldown) {
-      const cd = def.combat.skillMaxCooldown * mult.cooldownMult;
-      statsHTML += `<div class="hb-stat-row">
-        <span class="hb-stat-label">技能冷却</span>
-        <span class="hb-stat-value">${(cd / 1000).toFixed(1)}s</span>
-      </div>`;
-      if (def.combat.skillDamage) {
-        const skDmg = Math.round(def.combat.skillDamage * mult.damageMult);
-        statsHTML += `<div class="hb-stat-row">
-          <span class="hb-stat-label">技能伤害</span>
-          <span class="hb-stat-value" style="color:#ff6644;">${skDmg} (法术)</span>
-        </div>`;
-      }
-      if (def.combat.skillDefenseBonus) {
-        statsHTML += `<div class="hb-stat-row">
-          <span class="hb-stat-label">技能效果</span>
-          <span class="hb-stat-value" style="color:#60a5fa;">防御力 +${def.combat.skillDefenseBonus}</span>
-        </div>`;
-      }
-      if (def.combat.skillDuration) {
-        statsHTML += `<div class="hb-stat-row">
-          <span class="hb-stat-label">技能持续</span>
-          <span class="hb-stat-value">${(def.combat.skillDuration / 1000).toFixed(1)}s</span>
-        </div>`;
-      }
-    }
-
-    // Explosion stats (cherry bomb)
-    if (def.combat.explosionRadius) {
-      statsHTML += `<div class="hb-stat-row">
-        <span class="hb-stat-label">爆炸范围</span>
-        <span class="hb-stat-value">${def.combat.explosionRadius} 格</span>
-      </div>`;
-    }
-    if (def.combat.armingTime) {
-      statsHTML += `<div class="hb-stat-row">
-        <span class="hb-stat-label">准备时间</span>
-        <span class="hb-stat-value">${(def.combat.armingTime / 1000).toFixed(1)}s</span>
-      </div>`;
-    }
-
     // Description (use skin description if available)
     const skinDesc = (skin && skin.description) ? skin.description : def.description;
     statsHTML += `<div class="hb-stat-row"><span class="hb-stat-label">描述</span><span class="hb-stat-value">${skinDesc}</span></div>`;
 
-    // Skill description (use skin skill if available, otherwise plant skill)
+    // Skill description — all details (damage, cooldown, duration, type) live in the text
     const skillDesc = (skin && skin.skillDescription) ? skin.skillDescription : def.skillDescription;
     statsHTML += `<div class="hb-stat-row" style="margin-top:4px;border-bottom-color:rgba(255,170,68,0.12);">
       <span class="hb-stat-label" style="color:#ffaa44;">技能</span>
     </div>
     <div class="hb-stat-desc" style="color:${skillDesc ? '#ffcc88' : 'var(--text-dim)'};font-size:15px;">${skillDesc || '暂时还没有技能，敬请开发'}</div>`;
 
-    // Skin info
-    if (skin) {
+    // Skin info — only show for derived skins
+    if (skin && skin.id !== 'default') {
       statsHTML += `<div class="hb-stat-desc" style="color:var(--cyan);">
         当前皮肤: ${skin.emoji} ${skin.name} — ${skin.description}
       </div>`;
@@ -1667,24 +1683,33 @@ export class UIManager {
   _drawPortrait(ctx, category, id, maxW, maxH, skinId, preferHeadshot = false) {
     // Try skin-specific image: portrait first, or headshot first for small cards
     let portraitKey;
-    if (skinId) {
-      const first = preferHeadshot ? '_headshot' : '_portrait';
-      const second = preferHeadshot ? '_portrait' : '_headshot';
-      portraitKey = id + '_skin_' + skinId + first;
-      let skinImg = assetManager.getImage(portraitKey);
+    // skinId is always set now (default = "default"), never null/undefined
+    const effectiveSkin = skinId || 'default';
+    const first = preferHeadshot ? '_headshot' : '_portrait';
+    const second = preferHeadshot ? '_portrait' : '_headshot';
+    portraitKey = id + '_skin_' + effectiveSkin + first;
+    let skinImg = assetManager.getImage(portraitKey);
+    if (!skinImg) {
+      portraitKey = id + '_skin_' + effectiveSkin + second;
+      skinImg = assetManager.getImage(portraitKey);
+    }
+    // Fallback to default skin portrait if derived skin has no portrait
+    if (!skinImg && effectiveSkin !== 'default') {
+      portraitKey = id + '_skin_default' + first;
+      skinImg = assetManager.getImage(portraitKey);
       if (!skinImg) {
-        portraitKey = id + '_skin_' + skinId + second;
+        portraitKey = id + '_skin_default' + second;
         skinImg = assetManager.getImage(portraitKey);
       }
-      if (skinImg) {
-        const margin = 0.9;
-        const availW = maxW * margin, availH = maxH * margin;
-        const s = Math.min(availW / skinImg.naturalWidth, availH / skinImg.naturalHeight);
-        const gifW = skinImg.naturalWidth * s;
-        const gifH = skinImg.naturalHeight * s;
-        ctx.drawImage(skinImg, (maxW - gifW) / 2, (maxH - gifH) / 2, gifW, gifH);
-        return;
-      }
+    }
+    if (skinImg) {
+      const margin = 0.9;
+      const availW = maxW * margin, availH = maxH * margin;
+      const s = Math.min(availW / skinImg.naturalWidth, availH / skinImg.naturalHeight);
+      const gifW = skinImg.naturalWidth * s;
+      const gifH = skinImg.naturalHeight * s;
+      ctx.drawImage(skinImg, (maxW - gifW) / 2, (maxH - gifH) / 2, gifW, gifH);
+      return;
     }
 
     portraitKey = id + '_portrait';
@@ -1767,19 +1792,11 @@ export class UIManager {
     container.innerHTML = '';
     const skins = getSkins(plantId);
     const equipped = StorageManager.getEquippedSkin(plantId);
-    const isDefaultEquipped = !equipped;
 
-    const allSkins = [
-      { id: null, name: '原版立绘', emoji: '🖼️', description: '默认皮肤', cost: 0, owned: true }
-    ];
     for (const skin of skins) {
-      allSkins.push(skin);
-    }
-
-    for (const skin of allSkins) {
       const item = document.createElement('div');
       item.className = 'hb-detail-skin-item';
-      const skinEquipped = skin.id === null ? isDefaultEquipped : equipped === skin.id;
+      const skinEquipped = equipped === skin.id;
       if (skinEquipped) item.classList.add('equipped');
       const owned = skin.owned || StorageManager.ownsSkin(plantId, skin.id);
 
@@ -1800,19 +1817,10 @@ export class UIManager {
       subEl.textContent = owned ? (skinEquipped ? '使用中' : '已拥有') : `${skin.cost} 晶核`;
       item.appendChild(subEl);
       item.addEventListener('click', () => {
-        if (skin.id === null) {
-          this._equipDefaultSkin(plantId);
-        } else {
-          this._showSkinPreview(plantId, skin, owned);
-        }
+        this._showSkinPreview(plantId, skin, owned);
       });
       container.appendChild(item);
     }
-  }
-
-  _equipDefaultSkin(plantId) {
-    StorageManager.equipSkin(plantId, null);
-    this.showPlantDetail(plantId);
   }
 
   _showSkinPreview(plantId, skin, owned) {
@@ -1822,16 +1830,18 @@ export class UIManager {
     this._wireSkinPreviewClose();
 
     const plant = getPlantDef(plantId);
-    document.getElementById('sp-name').textContent = plant.name + ' - ' + skin.name;
+    const visitor = plant ? null : getVisitorDef(plantId);
+    const unitName = plant ? plant.name : (visitor ? visitor.name : plantId);
+    document.getElementById('sp-name').textContent = unitName + ' - ' + skin.name;
 
     // Large portrait (立绘)
     const portraitCanvas = document.getElementById('sp-portrait-canvas');
     if (portraitCanvas) {
       const pctx = portraitCanvas.getContext('2d');
       pctx.clearRect(0, 0, portraitCanvas.width, portraitCanvas.height);
-      const skinPortraitKey = skin.id ? (plantId + '_skin_' + skin.id + '_portrait') : null;
-      let portraitImg = null;
-      if (skinPortraitKey) portraitImg = assetManager.getImage(skinPortraitKey);
+      const skinId = skin.id || 'default';
+      const skinPortraitKey = plantId + '_skin_' + skinId + '_portrait';
+      let portraitImg = assetManager.getImage(skinPortraitKey);
       if (!portraitImg) portraitImg = assetManager.getImage(plantId + '_portrait') || assetManager.getImage(plantId);
       if (portraitImg) {
         const s = Math.min(portraitCanvas.width / portraitImg.naturalWidth, portraitCanvas.height / portraitImg.naturalHeight);
@@ -1849,11 +1859,8 @@ export class UIManager {
       sctx.clearRect(0, 0, spriteCanvas.width, spriteCanvas.height);
       sctx.fillStyle = 'rgba(0,0,0,0.5)';
       sctx.fillRect(0, 0, spriteCanvas.width, spriteCanvas.height);
-      let battleImg = null;
-      if (skin.id) {
-        const skinCombatKey = plantId + '_skin_' + skin.id + '_combat';
-        battleImg = assetManager.getImageNoBg(skinCombatKey) || assetManager.getImage(skinCombatKey);
-      }
+      const skinCombatKey = plantId + '_skin_' + (skin.id || 'default') + '_combat';
+      let battleImg = assetManager.getImageNoBg(skinCombatKey) || assetManager.getImage(skinCombatKey);
       if (!battleImg) battleImg = assetManager.getImage(plantId);
       if (battleImg) {
         const bs = Math.min(spriteCanvas.width / battleImg.naturalWidth, spriteCanvas.height / battleImg.naturalHeight);
@@ -1871,7 +1878,7 @@ export class UIManager {
         equipBtn.className = 'primary';
         equipBtn.textContent = '装备皮肤';
         equipBtn.addEventListener('click', () => {
-          StorageManager.equipSkin(plantId, skin.id);
+          StorageManager.equipSkin(plantId, skin.id || 'default');
           this.showToast('已装备皮肤: ' + skin.name);
           this._hideSkinPreview();
           if (this._detailType === 'plant' && this._detailId) this.showPlantDetail(this._detailId);
@@ -2077,25 +2084,13 @@ export class UIManager {
     for (const v of unlockedVisitors) {
       const opt = document.createElement('div');
       opt.className = 'ps-option';
-      if (v.id === currentDisplay && !StorageManager.getDisplayPlantSkin()) opt.classList.add('selected');
+      if (v.id === currentDisplay) opt.classList.add('selected');
 
       const canvas = document.createElement('canvas');
       canvas.width = 60;
       canvas.height = 78;
       const pctx = canvas.getContext('2d');
-      const img = assetManager.getImageNoBg('visitor_katana_zero');
-      if (img) {
-        const s = Math.min(60 / img.naturalWidth, 78 / img.naturalHeight);
-        pctx.drawImage(img, (60 - img.naturalWidth * s) / 2, (78 - img.naturalHeight * s) / 2,
-          img.naturalWidth * s, img.naturalHeight * s);
-      } else {
-        pctx.fillStyle = '#1a1a2e';
-        pctx.fillRect(0, 0, 60, 78);
-        pctx.fillStyle = '#c040ff';
-        pctx.font = '16px sans-serif';
-        pctx.textAlign = 'center';
-        pctx.fillText('???', 30, 42);
-      }
+      this._drawPortrait(pctx, 'visitor', v.id, 60, 78, 'default', true);
       opt.appendChild(canvas);
 
       const nameDiv = document.createElement('div');
@@ -2104,10 +2099,7 @@ export class UIManager {
       opt.appendChild(nameDiv);
 
       opt.addEventListener('click', () => {
-        StorageManager.setDisplayPlant(v.id);
-        StorageManager.setDisplayPlantSkin(null);
-        this.refreshDisplayPlant();
-        this.hideModal();
+        this.showDisplaySkinPicker(v.id);
       });
       this.$psGrid.appendChild(opt);
     }
@@ -2117,56 +2109,24 @@ export class UIManager {
     }
   }
 
-  showDisplaySkinPicker(plantId) {
-    const plant = getPlantDef(plantId);
-    if (!plant) return;
+  showDisplaySkinPicker(unitId) {
+    const plant = getPlantDef(unitId);
+    const visitor = plant ? null : getVisitorDef(unitId);
+    if (!plant && !visitor) return;
+    const unitName = plant ? plant.name : getVisitorDisplayName(unitId);
     this.hideModal(); // hide plant select
 
-    this.$dsTitle.textContent = plant.name + ' - 选择皮肤';
+    this.$dsTitle.textContent = unitName + ' - 选择皮肤';
     this.$dsGrid.innerHTML = '';
 
-    const skins = getSkins(plantId);
-    const currentSkin = StorageManager.getDisplayPlant() === plantId ? StorageManager.getDisplayPlantSkin() : null;
+    const skins = getSkins(unitId);
+    const currentSkin = StorageManager.getEquippedSkin(unitId);
 
-    // Default portrait (立绘) — always available, no skin name
-    const defaultOpt = document.createElement('div');
-    defaultOpt.className = 'ds-skin-option';
-    if (!currentSkin) defaultOpt.classList.add('selected');
+    const category = plant ? 'plant' : 'visitor';
 
-    const defaultCanvas = document.createElement('canvas');
-    defaultCanvas.width = 100; defaultCanvas.height = 130;
-    const dctx = defaultCanvas.getContext('2d');
-    const portraitImg = assetManager.getImage(plantId + '_portrait') || assetManager.getImage(plantId);
-    if (portraitImg) {
-      const s = Math.min(100 / portraitImg.naturalWidth, 130 / portraitImg.naturalHeight);
-      dctx.drawImage(portraitImg, (100 - portraitImg.naturalWidth * s) / 2,
-        (130 - portraitImg.naturalHeight * s) / 2, portraitImg.naturalWidth * s, portraitImg.naturalHeight * s);
-    } else {
-      this._drawPortrait(dctx, 'plant', plantId, 100, 130);
-    }
-    defaultOpt.appendChild(defaultCanvas);
-
-    const defaultLabel = document.createElement('div');
-    defaultLabel.className = 'ds-skin-label';
-    defaultLabel.textContent = '立绘';
-    defaultOpt.appendChild(defaultLabel);
-
-    const defaultSub = document.createElement('div');
-    defaultSub.className = 'ds-skin-default';
-    defaultSub.textContent = '默认形象';
-    defaultOpt.appendChild(defaultSub);
-
-    defaultOpt.addEventListener('click', () => {
-      StorageManager.setDisplayPlant(plantId);
-      StorageManager.setDisplayPlantSkin(null);
-      this.refreshDisplayPlant();
-      this.hideModal();
-    });
-    this.$dsGrid.appendChild(defaultOpt);
-
-    // Available skins
+    // All skins (default + derived)
     for (const skin of skins) {
-      const skinOwned = StorageManager.ownsSkin(plantId, skin.id);
+      const skinOwned = skin.owned || StorageManager.ownsSkin(unitId, skin.id);
       const opt = document.createElement('div');
       opt.className = 'ds-skin-option';
       if (skin.id === currentSkin) opt.classList.add('selected');
@@ -2174,14 +2134,7 @@ export class UIManager {
       const canvas = document.createElement('canvas');
       canvas.width = 100; canvas.height = 130;
       const sctx = canvas.getContext('2d');
-      const skinPortrait = assetManager.getImage(plantId + '_skin_' + skin.id + '_portrait') || portraitImg;
-      if (skinPortrait) {
-        const s = Math.min(100 / skinPortrait.naturalWidth, 130 / skinPortrait.naturalHeight);
-        sctx.drawImage(skinPortrait, (100 - skinPortrait.naturalWidth * s) / 2,
-          (130 - skinPortrait.naturalHeight * s) / 2, skinPortrait.naturalWidth * s, skinPortrait.naturalHeight * s);
-      } else {
-        this._drawPortrait(sctx, 'plant', plantId, 100, 130);
-      }
+      this._drawPortrait(sctx, category, unitId, 100, 130, skin.id);
       opt.appendChild(canvas);
 
       const label = document.createElement('div');
@@ -2198,13 +2151,13 @@ export class UIManager {
 
       opt.addEventListener('click', () => {
         if (skinOwned) {
-          StorageManager.setDisplayPlant(plantId);
-          StorageManager.setDisplayPlantSkin(skin.id);
+          StorageManager.setDisplayPlant(unitId);
+          StorageManager.equipSkin(unitId, skin.id || 'default');
           this.refreshDisplayPlant();
           this.hideModal();
         } else {
           this.hideModal();
-          this._showSkinPreview(plantId, skin, false);
+          this._showSkinPreview(unitId, skin, false);
         }
       });
       this.$dsGrid.appendChild(opt);
@@ -2602,14 +2555,24 @@ export class UIManager {
       unitName = def ? def.name : '???';
       atkHTML = '技能型';
       defHTML = '0';
-      activeDesc = '时停' + (def.combat.activeSkillDuration / 1000) + 's，' + def.combat.activeSkillSlashes + '连斩 · 每刀: ' + def.combat.activeSkillDamage + ' + ' + (def.combat.activeSkillHpRatio * 100) + '% 敌人最大HP · 冷却' + (def.combat.activeSkillCooldown / 1000) + 's';
-      passiveDesc = '受击时停' + (def.combat.passiveSkillDuration / 1000) + 's · 同行斩击 · 每击' + def.combat.passiveSkillDamage + '+' + (def.combat.passiveSkillHpRatio * 100) + '%敌人最大HP · 冷却' + (def.combat.passiveSkillCooldown / 1000) + 's';
+      activeDesc = (def && def.skillDescription) ? def.skillDescription : '暂无主动技能描述';
+      passiveDesc = (def && def.passiveSkillDescription) ? def.passiveSkillDescription : '暂无被动技能描述';
       portraitKey = 'visitor_katana_zero';
       hasSkill = true;
     } else {
       const plantType = this._getPlantTypeFromUnit(unit);
       const def = plantType ? getPlantDef(plantType) : null;
-      unitName = def ? def.name : unit.constructor.name;
+      if (def) {
+        const equippedSkinId = (bm.playerData.equippedSkins || {})[plantType] || 'default';
+        if (equippedSkinId !== 'default') {
+          const equippedSkin = getSkin(plantType, equippedSkinId);
+          unitName = (equippedSkin && equippedSkin.name) ? def.name + '-' + equippedSkin.name : def.name;
+        } else {
+          unitName = def.name;
+        }
+      } else {
+        unitName = unit.constructor.name;
+      }
 
       if (def && def.combat.damage !== undefined) {
         let dmg = def.combat.damage;
@@ -2618,11 +2581,11 @@ export class UIManager {
         dmg = Math.floor(dmg * (starCfg.damageMult || 1));
         atkHTML = String(dmg);
         if (plantType === 'peashooter') {
-          const skinId = (bm.playerData.plantSkins || {})['peashooter'];
-          if (skinId === 'wishadel') {
-            const skinCfg = SKIN_CONFIG.peashooter?.wishadel;
-            if (skinCfg && skinCfg.peaAttackBonus) {
-              atkHTML += '<span class="vp-bonus">+' + skinCfg.peaAttackBonus + '</span>';
+          const skinId = (bm.playerData.equippedSkins || {})['peashooter'] || 'default';
+          if (skinId !== 'default') {
+            const skin = getSkin('peashooter', skinId);
+            if (skin && skin.attackBonus) {
+              atkHTML += '<span class="vp-bonus">+' + skin.attackBonus + '</span>';
             }
           }
         }
@@ -2639,8 +2602,12 @@ export class UIManager {
       defHTML = defStr;
 
       if (def) {
-        if (def.skillDescription) {
-          activeDesc = def.skillDescription;
+        // Check skin skill description first (derived skin may override skill)
+        const skinId = (bm.playerData.equippedSkins || {})[plantType] || 'default';
+        const skinCfg = skinId !== 'default' ? getSkin(plantType, skinId) : null;
+        const skillDesc = (skinCfg && skinCfg.skillDescription) ? skinCfg.skillDescription : def.skillDescription;
+        if (skillDesc) {
+          activeDesc = skillDesc;
           hasSkill = true;
         } else {
           activeDesc = '暂时还没有技能，敬请开发';
@@ -2677,7 +2644,7 @@ export class UIManager {
           img = assetManager.getImageNoBg(portraitKey);
         } else {
           // Check for skin portrait first
-          const skinId = (bm.playerData.plantSkins || {})[portraitKey];
+          const skinId = (bm.playerData.equippedSkins || {})[portraitKey];
           if (skinId) {
             img = assetManager.getImage(portraitKey + '_skin_' + skinId + '_portrait') ||
                   assetManager.getImage(portraitKey + '_skin_' + skinId + '_combat');

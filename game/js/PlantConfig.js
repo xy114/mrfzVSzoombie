@@ -12,7 +12,7 @@ export const PLANT_DEFS = [
     name: '豌豆射手',
     emoji: '🫛',
     description: '发射豌豆攻击前方僵尸，造成物理伤害',
-    skillDescription: '发射一颗炽热的火焰豌豆，击中敌人后迸裂为烈焰风暴，灼烧周围3×3格内的所有僵尸，造成法术伤害',
+    skillDescription: '发射一颗炽热的火焰豌豆，击中敌人后迸裂为烈焰风暴，灼烧周围3×3格内的所有僵尸，造成50法术伤害。冷却10s',
     unlockLevel: null,
     combat: { cost: 100, health: 100, shootInterval: 1500, damage: 20, bulletSpeed: 5,
       skillMaxCooldown: 10000 }
@@ -22,7 +22,7 @@ export const PLANT_DEFS = [
     name: '坚果',
     emoji: '🥜',
     description: '坚固的防御植物，拥有极高的生命值',
-    skillDescription: '激发潜能，获得+30护甲持续5秒，使受到的物理伤害显著降低（法术伤害不受影响）',
+    skillDescription: '激发潜能，获得+30护甲持续5秒，使受到的物理伤害显著降低（法术伤害不受影响）。冷却15s',
     unlockLevel: '1-2',
     combat: { cost: 50, health: 400,
       skillMaxCooldown: 15000, skillDefenseBonus: 30, skillDuration: 5000 }
@@ -47,16 +47,56 @@ export const STAR_CONFIG = {
 export const STAR_COST = { '1-2': 100, '2-3': 300 };
 
 export const SKIN_DEFS = {
+  sunflower: [
+    {
+      id: 'default', name: '原皮', emoji: '🌻', category: 'original',
+      description: '生产阳光的基础植物，每7秒产出25阳光',
+      skillDescription: '', cost: 0, owned: true, combat: {}
+    }
+  ],
   peashooter: [
     {
-      id: 'wishadel',
-      name: '维什戴尔',
-      emoji: '💥',
+      id: 'default', name: '原皮', emoji: '🫛', category: 'original',
+      description: '发射豌豆攻击前方僵尸，造成物理伤害',
+      skillDescription: '发射一颗炽热的火焰豌豆，击中敌人后迸裂为烈焰风暴，灼烧周围3×3格内的所有僵尸，造成50法术伤害。冷却10s',
+      cost: 0, owned: true, combat: {}
+    },
+    {
+      id: 'wishadel', name: '维什戴尔', emoji: '💥', category: 'derived',
       description: '异界的轰鸣点燃草坪，碾碎不识好歹的敌人',
-      skillDescription: '锁定同行最近敌人，瞄准后发射追踪爆弹。命中后引发5×5格热压爆炸（四角除外），造成巨额法术伤害并短暂眩晕',
-      attackBonus: 20,
-      cost: 9000,
-      owned: false
+      skillDescription: '锁定同行最近敌人，瞄准后发射追踪爆弹。命中后引发5×5格热压爆炸（四角除外），造成120物理伤害并短暂眩晕。冷却10s',
+      attackBonus: 20, cost: 9000, owned: false,
+      combat: {
+        skillDamage: 120, skillCooldown: 10000,
+        skillDamageType: 'physical',
+        shellSpeed: 22, aimDuration: 600,
+        explosionRadius: 2.5, peaDamage: 25,
+        peaSpeed: 22, peaAttackBonus: 20,
+        bodyType: 'humanoid'
+      }
+    }
+  ],
+  nut: [
+    {
+      id: 'default', name: '原皮', emoji: '🥜', category: 'original',
+      description: '坚固的防御植物，拥有极高的生命值',
+      skillDescription: '激发潜能，获得+30护甲持续5秒，使受到的物理伤害显著降低（法术伤害不受影响）。冷却15s',
+      cost: 0, owned: true, combat: {}
+    }
+  ],
+  cherrybomb: [
+    {
+      id: 'default', name: '原皮', emoji: '🍒', category: 'original',
+      description: '一次性爆炸植物，以自身为代价摧毁成片僵尸',
+      skillDescription: '部署后进入1.5秒备战状态，随后引爆自身，对3×3格范围造成攻击力400%的巨额物理伤害',
+      cost: 0, owned: true, combat: {}
+    }
+  ],
+  katana_zero: [
+    {
+      id: 'default', name: '原皮', emoji: '⚔️', category: 'original',
+      description: '异界来客，以太刀斩裂时空',
+      skillDescription: '', cost: 0, owned: true, combat: {}
     }
   ]
 };
@@ -84,5 +124,6 @@ export function getSkins(plantId) {
 
 export function getSkin(plantId, skinId) {
   const skins = getSkins(plantId);
+  if (!skinId) skinId = 'default';
   return skins.find(s => s.id === skinId) || null;
 }
