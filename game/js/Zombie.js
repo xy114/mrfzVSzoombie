@@ -31,6 +31,8 @@ export class Zombie {
     this._shouldSpawnDeathEffect = false;
     this.deathGifKey = null;
     this._originalType = null;
+    this._flashStartTime = 0;
+    this._deathDeferred = false;
   }
 
   initAnimators() {
@@ -65,6 +67,9 @@ export class Zombie {
       return;
     }
 
+    // Death deferred by skill animation — freeze in place until released
+    if (this._deathDeferred) return;
+
     const blocker =
       game.plants.find(p => {
         if (p.row !== this.row) return false;
@@ -72,7 +77,7 @@ export class Zombie {
         const zcx = this.x + this.width / 2;
         const pcx = p.x + r / 2;
         const halfCell = game.lawn.standardCell.w / 2;
-        return pcx < zcx && Math.abs(zcx - pcx) <= halfCell;
+        return Math.abs(zcx - pcx) <= halfCell * 0.6;
       }) ||
       game.visitors.find(v => {
         if (!v.alive || v.row !== this.row) return false;
@@ -80,7 +85,7 @@ export class Zombie {
         const zcx = this.x + this.width / 2;
         const vcx = v.x + r / 2;
         const halfCell = game.lawn.standardCell.w / 2;
-        return vcx < zcx && Math.abs(zcx - vcx) <= halfCell;
+        return Math.abs(zcx - vcx) <= halfCell * 0.6;
       });
 
     if (blocker) {
@@ -123,9 +128,9 @@ export class Zombie {
       this._originalType = this.type;
     }
 
-    // Equipment break: cone/shield lose gear at <30% health
+    // Equipment break: cone/shield lose gear at ≤30% health
     if (this.health > 0 &&
-        this.health < this.maxHealth * 0.3 &&
+        this.health <= this.maxHealth * 0.3 &&
         (this.type === 'cone' || this.type === 'shield')) {
       this.type = 'normal';
       this.walkAnimator = assetManager.createAnimator('normal');
@@ -135,6 +140,7 @@ export class Zombie {
         this.height = Math.round(this.walkAnimator.naturalHeight * scale);
       }
       this._flashTimer = 1500;
+      this._flashStartTime = performance.now();
       this.deathGifKey = 'zombie_death';
     }
 
@@ -178,17 +184,7 @@ export class Zombie {
       }
     };
 
-    // Equipment break flash
-    if (this._flashTimer > 0) {
-      ctx.save();
-      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(this._flashTimer * 0.02);
-      drawImage(ctx, drawX, drawY, drawW, drawH);
-      ctx.restore();
-      return;
-    }
-
-    // Time stop rendering
-    if (this._timeStopFrozen) {
+    if (this._timeStopFrozen || this._flashTimer > 0) {
       const bcx = this.x + this.width / 2;
       const bcy = this.y + this.height;
       const off = document.createElement('canvas');
@@ -196,15 +192,38 @@ export class Zombie {
       off.height = drawH;
       const octx = off.getContext('2d');
       drawImage(octx, 0, 0, drawW, drawH);
+
+      // Single source-atop fill blending blue tint + white flash
+      let r = 30, g = 80, b = 180, a = 0.45; // time-stop blue base
+      if (!this._timeStopFrozen) {
+        // Flash only (no time-stop): white flash
+        const elapsed = performance.now() - this._flashStartTime;
+        const flash = 0.5 + 0.5 * Math.sin(elapsed * 0.015);
+        r = 255; g = 255; b = 255; a = flash * 0.6;
+      } else if (this._flashTimer > 0) {
+        // Both: blend blue with flashing highlight
+        const elapsed = performance.now() - this._flashStartTime;
+        const flash = 0.5 + 0.5 * Math.sin(elapsed * 0.015);
+        r = Math.round(30 + (180 - 30) * flash * 0.6);
+        g = Math.round(80 + (220 - 80) * flash * 0.6);
+        b = Math.round(180 + (255 - 180) * flash * 0.6);
+        a = 0.45 + flash * 0.2;
+      }
       octx.globalCompositeOperation = 'source-atop';
-      octx.fillStyle = 'rgba(30, 80, 180, 0.45)';
+      octx.fillStyle = `rgba(${r},${g},${b},${a})`;
       octx.fillRect(0, 0, drawW, drawH);
-      ctx.save();
-      ctx.translate(bcx, bcy);
-      ctx.rotate(0.12);
-      ctx.translate(-bcx, -bcy);
-      ctx.drawImage(off, drawX, drawY);
-      ctx.restore();
+
+      // Apply rotation for time-stop
+      if (this._timeStopFrozen) {
+        ctx.save();
+        ctx.translate(bcx, bcy);
+        ctx.rotate(0.12);
+        ctx.translate(-bcx, -bcy);
+        ctx.drawImage(off, drawX, drawY);
+        ctx.restore();
+      } else {
+        ctx.drawImage(off, drawX, drawY);
+      }
       return;
     }
 

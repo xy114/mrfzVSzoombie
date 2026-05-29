@@ -31,6 +31,8 @@ export class PeaShooter extends Plant {
 
     if (!this.skinId || this.skinId === 'default') {
       this._animator = assetManager.createAnimator('peashooter');
+    } else if (this.skinId === 'wishadel') {
+      this._animator = assetManager.createAnimator('peashooter_skin_wishadel_combat');
     } else {
       this._animator = null;
     }
@@ -206,33 +208,23 @@ export class PeaShooter extends Plant {
   }
 
   render(ctx) {
-    const isWishadel = this.skinId === 'wishadel';
     const rw = this.width;
     const rh = this.height;
 
-    // Wishadel skin uses static image (no GIF)
-    if (isWishadel) {
-      const img = assetManager.getSkinCombatImage('peashooter', this.skinId);
-      if (img) {
-        const s = Math.min(rw / img.naturalWidth, rh / img.naturalHeight);
-        const dw = img.naturalWidth * s;
-        const dh = img.naturalHeight * s;
-        ctx.drawImage(img, this.x + (rw - dw) / 2, this.y + (rh - dh) / 2, dw, dh);
-      }
-      if (this._aimTarget && this._aimTarget.alive) {
-        this._renderCrosshair(ctx, this._aimTarget);
-      }
-      return;
-    }
-
-    // GIF animation (default peashooter, no skin)
+    // GIF animation
     if (this._animator) {
       const frame = this._animator.getCurrentCanvas();
-      const scale = this.width / this._animator.naturalWidth;
-      const drawW = this.width;
+      const isWishadel = this.skinId === 'wishadel';
+      const scale = (isWishadel ? this.width * 2 : this.width) / this._animator.naturalWidth;
+      const drawW = isWishadel ? this.width * 2 : this.width;
       const drawH = Math.round(this._animator.naturalHeight * scale);
+      const drawX = isWishadel ? this.x + (this.width - drawW) / 2 : this.x;
       const drawY = this.y + this.height - drawH;
-      ctx.drawImage(frame, this.x, drawY, drawW, drawH);
+      ctx.drawImage(frame, drawX, drawY, drawW, drawH);
+
+      if (isWishadel && this._aimTarget && this._aimTarget.alive) {
+        this._renderCrosshair(ctx, this._aimTarget);
+      }
       return;
     }
 

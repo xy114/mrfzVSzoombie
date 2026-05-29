@@ -77,7 +77,8 @@ export class AssetManager {
       // Wishadel derived skin
       peashooter_skin_wishadel_portrait: 'resources/special/立绘_维什戴尔.png',
       peashooter_skin_wishadel_headshot: 'resources/special/维什戴尔大头像.png',
-      peashooter_skin_wishadel_combat: 'resources/special/维什戴尔战斗形象.png',
+      peashooter_skin_wishadel_combat: 'resources/special/wisdel-screentogif-ps.gif',
+      peashooter_skin_wishadel_pea: 'resources/special/wisdel-bullet.png',
       peashooter_skin_wishadel_shell: 'resources/special/维什戴尔技能释放的炮弹.png',
       // Visitor default skin
       katana_zero_skin_default_combat: 'resources/special/Katana_Zero.png',

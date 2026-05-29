@@ -183,6 +183,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       const x = ev.clientX - rect.left;
       const y = ev.clientY - rect.top;
 
+      // Sun collection — highest priority so suns are always clickable
+      for (const sun of bm.suns) {
+        const dx = x - sun.x;
+        const dy = y - sun.y;
+        if (dx > -20 && dx < 40 && dy > -20 && dy < 40) {
+          const value = sun.collect();
+          bm.collectSun(value);
+          return;
+        }
+      }
+
       // Click visitor — check first by cell, then by bounding box
       const clickCell = bm.lawn.getCellFromPosition(x, y);
       for (const visitor of bm.visitors) {
@@ -196,17 +207,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const vx = visitor.x, vy = visitor.y, vw = visitor.width, vh = visitor.height;
         if (x >= vx && x <= vx + vw && y >= vy && y <= vy + vh) {
           ui.showUnitPanel(visitor);
-          return;
-        }
-      }
-
-      // Sun collection
-      for (const sun of bm.suns) {
-        const dx = x - sun.x;
-        const dy = y - sun.y;
-        if (dx > -20 && dx < 40 && dy > -20 && dy < 40) {
-          const value = sun.collect();
-          bm.collectSun(value);
           return;
         }
       }

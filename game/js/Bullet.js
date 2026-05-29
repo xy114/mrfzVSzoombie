@@ -24,14 +24,14 @@ export class Bullet {
   render(ctx) {
     if (this._animator) {
       const frame = this._animator.getCurrentCanvas();
-      ctx.drawImage(frame, this.x, this.y, this.width, this.height);
+      ctx.drawImage(frame, this.x, this.y + 7, this.width * 2, this.height * 2);
       return;
     }
     const img = assetManager.getImage('pea');
     if (img) {
-      ctx.drawImage(img, this.x, this.y, 20, 20);
+      ctx.drawImage(img, this.x, this.y + 7, this.width * 2, this.height * 2);
     } else {
-      drawPea(ctx, this.x + 10, this.y + 10, 10);
+      drawPea(ctx, this.x + this.width, this.y + 7 + this.height, this.width);
     }
   }
 }
@@ -68,11 +68,13 @@ export class WishadelPea {
   }
 
   render(ctx) {
-    const img = assetManager.getImage('peashooter_skin_wishadel_shell');
+    const img = assetManager.getImage('peashooter_skin_wishadel_pea');
+    const dw = this.width * 4;
+    const dh = this.height * 4;
     if (img) {
-      ctx.drawImage(img, this.x, this.y, this.width, this.height);
+      ctx.drawImage(img, this.x, this.y + 10, dw, dh);
     } else {
-      drawWishadelPea(ctx, this.x, this.y, this.width, this.height);
+      drawWishadelPea(ctx, this.x, this.y + 10, dw, dh);
     }
   }
 }
@@ -110,6 +112,12 @@ export class WishadelShell {
         } else if (this._explosionStage === 3) {
           this._stageTimer = 500; // Afterglow: 500ms
         } else {
+          // Release deferred death effects on zombies killed by explosion
+          if (this._hitZombies) {
+            for (const z of this._hitZombies) {
+              z._deathDeferred = false;
+            }
+          }
           this.active = false;
         }
       }
@@ -140,6 +148,7 @@ export class WishadelShell {
     this.exploded = true;
     this._explosionStage = 1;
     this._stageTimer = 300;
+    this._hitZombies = [];
 
     const sc = game.lawn.standardCell;
     const cellSize = Math.max(sc.w, sc.h);
@@ -162,6 +171,10 @@ export class WishadelShell {
               hitSet.add(z);
               z.takeDamage(this.damage, 'magic');
               z._pauseTimer = 150;
+              if (!z.alive) {
+                z._deathDeferred = true;
+                this._hitZombies.push(z);
+              }
             }
           }
         }
@@ -183,10 +196,12 @@ export class WishadelShell {
     const angle = Math.atan2(this._targetY - cy, this._targetX - cx);
     ctx.translate(cx, cy);
     ctx.rotate(angle);
+    const dw = this.width * 3;
+    const dh = this.height * 3;
     if (img) {
-      ctx.drawImage(img, -this.width / 2, -this.height / 2, this.width, this.height);
+      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
     } else {
-      drawWishadelPea(ctx, -this.width / 2, -this.height / 2, this.width, this.height);
+      drawWishadelPea(ctx, -dw / 2, -dh / 2, dw, dh);
     }
     ctx.restore();
   }
@@ -353,16 +368,16 @@ export class FirePeaBullet {
     }
     if (this._animator) {
       const frame = this._animator.getCurrentCanvas();
-      ctx.drawImage(frame, this.x - 3, this.y - 3, this.width + 6, this.height + 6);
+      ctx.drawImage(frame, this.x - this.width * 0.15, this.y + 7 - this.height * 0.15, this.width * 2 + 6, this.height * 2 + 6);
       return;
     }
     const img = assetManager.getImage('firePea');
     if (img) {
-      const dw = this.width + 6;
-      const dh = this.height + 6;
-      ctx.drawImage(img, this.x - 3, this.y - 3, dw, dh);
+      const dw = this.width * 2 + 6;
+      const dh = this.height * 2 + 6;
+      ctx.drawImage(img, this.x - this.width * 0.15, this.y + 7 - this.height * 0.15, dw, dh);
     } else {
-      drawFirePea(ctx, this.x + this.width / 2, this.y + this.height / 2, 12);
+      drawFirePea(ctx, this.x + this.width, this.y + 7 + this.height, this.width);
     }
   }
 }

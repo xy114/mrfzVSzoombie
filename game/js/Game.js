@@ -154,7 +154,7 @@ export class BattleManager {
     this.checkCollisions();
     this._tickRetreatTimers(deltaTime);
     this.trackDeadZombies();
-    this.zombies = this.zombies.filter(z => z.alive || z._timeStopFrozen);
+    this.zombies = this.zombies.filter(z => z.alive || z._timeStopFrozen || z._deathDeferred);
     this.checkVictory();
     this.checkGameOver();
   }
@@ -196,6 +196,7 @@ export class BattleManager {
           let bodyType = 'plant';
           let renderSize = 80;
           let ghostAspect = 1.0;
+          let ghostScale = 1;
           if (isVisitor) {
             bodyType = 'humanoid';
             ghostAspect = 0.98;
@@ -204,6 +205,7 @@ export class BattleManager {
             if (skinId === 'wishadel') {
               bodyType = 'humanoid';
               ghostAspect = 1.21;
+              ghostScale = 2;
             }
           } else if (plantType === 'cherrybomb') {
             ghostAspect = 0.72;
@@ -212,8 +214,8 @@ export class BattleManager {
           }
 
           const rect = this.lawn.getPlacementRect(bodyType, renderSize, hoverRow, hoverCol, 0, ghostAspect);
-          const actualW = bodyType === 'humanoid' ? 96 * rect.scale : GAME_CONFIG.CELL_WIDTH * rect.scale;
-          const actualH = bodyType === 'humanoid' ? 96 * rect.scale : GAME_CONFIG.CELL_HEIGHT * rect.scale;
+          const actualW = (bodyType === 'humanoid' ? 96 : GAME_CONFIG.CELL_WIDTH) * rect.scale * ghostScale;
+          const actualH = (bodyType === 'humanoid' ? 96 : GAME_CONFIG.CELL_HEIGHT) * rect.scale * ghostScale;
           const cx = rect.x + actualW / 2;
           const cy = rect.y + actualH / 2;
 
@@ -346,8 +348,13 @@ export class BattleManager {
 
       const sc = this.lawn.standardCell;
       const scale = sc.w / this.lawn.cellWidth;
-      const actualW = isVisitor ? 96 * scale : GAME_CONFIG.CELL_WIDTH * scale;
-      const actualH = isVisitor ? 96 * scale : GAME_CONFIG.CELL_HEIGHT * scale;
+      let dragScale = 1;
+      if (!isVisitor && plantType === 'peashooter') {
+        const skinId = (this.playerData.equippedSkins || {})[plantType];
+        if (skinId === 'wishadel') dragScale = 2;
+      }
+      const actualW = (isVisitor ? 96 : GAME_CONFIG.CELL_WIDTH) * scale * dragScale;
+      const actualH = (isVisitor ? 96 : GAME_CONFIG.CELL_HEIGHT) * scale * dragScale;
 
       let img = null;
       if (isVisitor) {
@@ -381,8 +388,8 @@ export class BattleManager {
     // Time-stop visual overlay
     if (this.timeScale <= GAME_CONFIG.TIME_STOP + 0.01) {
       this.ctx.save();
-      this.ctx.globalAlpha = 0.2;
-      this.ctx.fillStyle = '#a000c8';
+      this.ctx.globalAlpha = 0.35;
+      this.ctx.fillStyle = '#3040c8';
       this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       this.ctx.restore();
     }
@@ -420,7 +427,10 @@ export class BattleManager {
   _deadZombiesThisFrame = [];
 
   trackDeadZombies() {
-    const newDead = this.zombies.filter(z => !z.alive && !z._killTracked);
+    // During time-stop, defer death processing until time resumes
+    if (this.timeScale <= GAME_CONFIG.TIME_STOP + 0.01) return;
+
+    const newDead = this.zombies.filter(z => !z.alive && !z._killTracked && !z._deathDeferred);
     for (const zombie of newDead) {
       zombie._killTracked = true;
       this.enemiesKilled[zombie.rewardType] = (this.enemiesKilled[zombie.rewardType] || 0) + 1;
@@ -436,7 +446,7 @@ export class BattleManager {
           this.addDeathEffect(new DeathEffect(deathX, bottomY, w, 'imp_death'));
         } else {
           this.addDeathEffect(new DeathEffect(deathX, bottomY, w, 'zombie_death'));
-          this.addDeathEffect(new DeathEffect(deathX + w * 0.1, bottomY - zombie.height * 0.3, w * 0.5, 'zombie_head'));
+          this.addDeathEffect(new DeathEffect(deathX + w * 0.1, bottomY - zombie.height * 0.3, w * 0.75, 'zombie_head'));
         }
       }
     }
