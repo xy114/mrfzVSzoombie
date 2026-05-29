@@ -24,12 +24,12 @@ export class Bullet {
   render(ctx) {
     if (this._animator) {
       const frame = this._animator.getCurrentCanvas();
-      ctx.drawImage(frame, this.x, this.y + 7, this.width * 2, this.height * 2);
+      ctx.drawImage(frame, this.x, this.y + 7, this.width * 2.6, this.height * 2);
       return;
     }
     const img = assetManager.getImage('pea');
     if (img) {
-      ctx.drawImage(img, this.x, this.y + 7, this.width * 2, this.height * 2);
+      ctx.drawImage(img, this.x, this.y + 7, this.width * 2.6, this.height * 2);
     } else {
       drawPea(ctx, this.x + this.width, this.y + 7 + this.height, this.width);
     }
@@ -368,12 +368,12 @@ export class FirePeaBullet {
     }
     if (this._animator) {
       const frame = this._animator.getCurrentCanvas();
-      ctx.drawImage(frame, this.x - this.width * 0.15, this.y + 7 - this.height * 0.15, this.width * 2 + 6, this.height * 2 + 6);
+      ctx.drawImage(frame, this.x - this.width * 0.15, this.y + 7 - this.height * 0.15, this.width * 2.6 + 6, this.height * 2 + 6);
       return;
     }
     const img = assetManager.getImage('firePea');
     if (img) {
-      const dw = this.width * 2 + 6;
+      const dw = this.width * 2.6 + 6;
       const dh = this.height * 2 + 6;
       ctx.drawImage(img, this.x - this.width * 0.15, this.y + 7 - this.height * 0.15, dw, dh);
     } else {

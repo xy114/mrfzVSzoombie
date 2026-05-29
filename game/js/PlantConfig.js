@@ -35,6 +35,14 @@ export const PLANT_DEFS = [
     skillDescription: '部署后进入1.5秒备战状态，随后引爆自身，对3×3格范围造成攻击力400%的巨额物理伤害',
     unlockLevel: '1-3',
     combat: { cost: 150, health: 100, damage: 50, explosionRadius: 3, armingTime: 1500 }
+  },
+  {
+    id: 'cart',
+    name: '小推车',
+    emoji: '🛒',
+    description: '最后一道防线。当僵尸突破到草坪最左侧时自动启动，碾压整行敌人',
+    unlockLevel: null,
+    combat: { cost: 0, health: 0 }
   }
 ];
 
@@ -97,6 +105,25 @@ export const SKIN_DEFS = {
       id: 'default', name: '原皮', emoji: '⚔️', category: 'original',
       description: '异界来客，以太刀斩裂时空',
       skillDescription: '', cost: 0, owned: true, combat: {}
+    }
+  ],
+  cart: [
+    {
+      id: 'default', name: '原皮', emoji: '🛒', category: 'original',
+      description: '朴实的推车，可靠的清行工具',
+      skillDescription: '压扁面前的所有僵尸',
+      cost: 0, owned: true, combat: {}
+    },
+    {
+      id: 'fireChen', name: '火陈', emoji: '🔥', category: 'derived',
+      description: '龙炎焚天。触发时召唤巨龙横扫全屏，全图僵尸灰飞烟灭',
+      skillDescription: '被僵尸触发时召唤巨龙横扫全屏，对全图敌人造成致死伤害',
+      cost: 15000, owned: false, combat: {
+        bodyType: 'humanoid',
+        dragonSpeed: 5,
+        attackAnimDuration: 1000,
+        dragonSpawnDelay: 500
+      }
     }
   ]
 };

@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       availablePlants = [];
       for (const plantDef of getAllPlantDefs()) {
-        if (plantDef && StorageManager.isPlantUnlocked(plantDef.id)) {
+        if (plantDef && plantDef.id !== 'cart' && StorageManager.isPlantUnlocked(plantDef.id)) {
           availablePlants.push(plantDef.id);
         }
       }

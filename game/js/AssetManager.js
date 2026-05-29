@@ -92,6 +92,14 @@ export class AssetManager {
       shield_skin_default_portrait: 'resources/zombies/铁门僵尸.gif',
       imp_skin_default_combat: 'resources/zombies/小鬼僵尸.gif',
       imp_skin_default_portrait: 'resources/zombies/小鬼僵尸.gif',
+      // Cart default skin
+      cart_skin_default_combat: 'resources/tools/小推车.png',
+      cart_skin_default_portrait: 'resources/tools/小推车.png',
+      cart_skin_default_headshot: 'resources/tools/小推车.png',
+      // FireChen derived skin
+      cart_skin_fireChen_combat: 'resources/special/火陈-screentogif-ps.gif',
+      cart_skin_fireChen_portrait: 'resources/special/火陈立绘.png',
+      cart_skin_fireChen_headshot: 'resources/special/火陈立绘_大头像.png',
       // Retreat buttons
       retreat_plant: 'resources/tools/plant撤退.png',
       retreat_humanoid: 'resources/tools/human撤退.png',

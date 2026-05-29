@@ -789,12 +789,20 @@ export class UIManager {
       this.showToast('晶核不足！');
       return;
     }
-    if (StorageManager.unlockSquadSlot()) {
-      this.showToast(`解锁新编队格子！消耗 ${cost} 晶核`);
-      this.refreshCrystalDisplay();
-      this._wireSquadButtons();
-      this.renderSquadGrid();
-    }
+    // Show confirmation popup before spending crystals
+    this._confirmCallback = () => {
+      if (StorageManager.unlockSquadSlot()) {
+        this.showToast(`解锁新编队格子！消耗 ${cost} 晶核`);
+        this.refreshCrystalDisplay();
+        this._wireSquadButtons();
+        this.renderSquadGrid();
+      }
+    };
+    document.getElementById('confirm-title').textContent = '解锁编队格子';
+    document.getElementById('confirm-msg').textContent = `是否花费 ${cost} 晶核解锁一个新的编队格子？`;
+    const okBtn = document.getElementById('confirm-ok');
+    if (okBtn) okBtn.className = '';
+    this.showModal('confirm');
   }
 
   _wireSquadButtons() {
@@ -833,6 +841,9 @@ export class UIManager {
         this.startCombat(this._pendingLevelId, squad, visitorSquad);
       });
     }
+
+    // Restore visitor squad — cloneNode above wiped its event listeners
+    this.renderVisitorSquad();
   }
 
   // === Squad Plant Picker ===
@@ -852,7 +863,7 @@ export class UIManager {
 
     this._updatePickerDetail();
 
-    const allPlants = getAllPlantDefs();
+    const allPlants = getAllPlantDefs().filter(p => p.id !== 'cart');
     const unlocked = allPlants.filter(p => StorageManager.isPlantUnlocked(p.id));
     const inSquad = new Set(this._squad.filter((p, i) => Boolean(p) && i !== this._squadSlotIndex));
 
@@ -1687,19 +1698,24 @@ export class UIManager {
     const effectiveSkin = skinId || 'default';
     const first = preferHeadshot ? '_headshot' : '_portrait';
     const second = preferHeadshot ? '_portrait' : '_headshot';
+    // Visitors use getImageNoBg to strip black background from sprites
+    const getImg = (key) => category === 'visitor'
+      ? assetManager.getImageNoBg(key)
+      : assetManager.getImage(key);
+
     portraitKey = id + '_skin_' + effectiveSkin + first;
-    let skinImg = assetManager.getImage(portraitKey);
+    let skinImg = getImg(portraitKey);
     if (!skinImg) {
       portraitKey = id + '_skin_' + effectiveSkin + second;
-      skinImg = assetManager.getImage(portraitKey);
+      skinImg = getImg(portraitKey);
     }
     // Fallback to default skin portrait if derived skin has no portrait
     if (!skinImg && effectiveSkin !== 'default') {
       portraitKey = id + '_skin_default' + first;
-      skinImg = assetManager.getImage(portraitKey);
+      skinImg = getImg(portraitKey);
       if (!skinImg) {
         portraitKey = id + '_skin_default' + second;
-        skinImg = assetManager.getImage(portraitKey);
+        skinImg = getImg(portraitKey);
       }
     }
     if (skinImg) {
@@ -1738,6 +1754,16 @@ export class UIManager {
       else if (id === 'cone') drawConeZombiePortrait(ctx, 0, 0, 200, 260);
       else if (id === 'shield') drawShieldZombiePortrait(ctx, 0, 0, 200, 260);
       else if (id === 'imp') drawImpZombiePortrait(ctx, 0, 0, 200, 260);
+    } else if (category === 'visitor') {
+      // Last-resort fallback: try getImageNoBg with visitor_ prefix
+      const vImg = assetManager.getImageNoBg('visitor_' + id);
+      if (vImg) {
+        const margin = 0.9;
+        const availW = maxW * margin, availH = maxH * margin;
+        const s = Math.min(availW / vImg.naturalWidth, availH / vImg.naturalHeight);
+        const dw = vImg.naturalWidth * s, dh = vImg.naturalHeight * s;
+        ctx.drawImage(vImg, (maxW - dw) / 2, (maxH - dh) / 2, dw, dh);
+      }
     }
     ctx.restore();
   }
