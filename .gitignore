@@ -1,6 +1,8 @@
 node_modules/
 dist/
 *.exe
+*.mov
+*.mp4
 .DS_Store
 .vscode/
 .idea/
