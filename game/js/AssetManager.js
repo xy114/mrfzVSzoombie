@@ -80,6 +80,7 @@ export class AssetManager {
       peashooter_skin_wishadel_combat: 'resources/special/wisdel-screentogif-ps.gif',
       peashooter_skin_wishadel_pea: 'resources/special/wisdel-bullet.png',
       peashooter_skin_wishadel_shell: 'resources/special/维什戴尔技能释放的炮弹.png',
+      wisdel_missle_ps: 'resources/special/wisdel-missle-ps.png',
       // Visitor default skin
       katana_zero_skin_default_combat: 'resources/special/Katana_Zero.png',
       katana_zero_skin_default_portrait: 'resources/special/Katana_Zero.png',

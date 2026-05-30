@@ -56,6 +56,7 @@ export class BattleManager {
     this.explosionEffects = [];
     this.carts = [];
     this.dragons = [];
+    this.wishadelExplosions = [];
 
     this.onVictory = null;
     this.onDefeat = null;
@@ -144,6 +145,8 @@ export class BattleManager {
       bullet.update(scaledDelta, this);
       return bullet.active;
     });
+
+    this.wishadelExplosions = this.wishadelExplosions.filter(e => e.active);
 
     this.zombies.forEach(zombie => zombie.update(scaledDelta, this));
 
@@ -367,6 +370,11 @@ export class BattleManager {
 
     // Suns — above all characters, never blocked
     this.suns.forEach(sun => sun.render(this.ctx));
+
+    // Wishadel explosions — same top layer as suns
+    this.wishadelExplosions.forEach(e => {
+      if (e.renderExplosion) e.renderExplosion(this.ctx);
+    });
 
     // Drag ghost — always on top of all characters
     if (this.dragState && this.dragState.mouseX !== undefined) {
