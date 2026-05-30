@@ -31,7 +31,8 @@
       "**/*",
       "!node_modules/**/*",
       "!dist/**/*",
-      "!assets/**/*.md"
+      "!assets/**/*.md",
+      "!rowvideos/**/*"
     ],
     "extraMetadata": {
       "main": "electron/main.js"
