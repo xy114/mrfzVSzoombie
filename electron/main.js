@@ -12,6 +12,12 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '../index.html'));
+
+  // Inject app version from package.json (single source of truth)
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.executeJavaScript(`window.__APP_VERSION__ = "${app.getVersion()}";`);
+  });
+
   mainWindow.webContents.openDevTools();
 }
 

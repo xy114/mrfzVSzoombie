@@ -61,6 +61,8 @@ export class UIManager {
     this.$combatExitBtn = document.getElementById('combat-exit-btn');
     this.$pauseBtn = document.getElementById('combat-pause-btn');
     this.$pauseOverlay = document.getElementById('pause-overlay');
+    this.$speedBtn = document.getElementById('combat-speed-btn');
+    this._speed2x = false;
     // Handbook
     this.$hbPlantGrid = document.getElementById('hb-plant-grid');
     this.$hbPlantScroll = document.getElementById('hb-plant-scroll');
@@ -101,6 +103,9 @@ export class UIManager {
     }
     if (this.$pauseOverlay) {
       this.$pauseOverlay.addEventListener('click', () => this._togglePause());
+    }
+    if (this.$speedBtn) {
+      this.$speedBtn.addEventListener('click', () => this._toggleSpeed());
     }
     on('pure-mode-btn', 'click', () => { this._confirmPureMode(); });
     on('reset-save-btn', 'click', () => { this._confirmResetSave(); });
@@ -1531,7 +1536,7 @@ export class UIManager {
     // Skin info — only show for derived skins
     if (skin && skin.id !== 'default') {
       statsHTML += `<div class="hb-stat-desc" style="color:var(--cyan);">
-        当前皮肤: ${skin.emoji} ${skin.name} — ${skin.description}
+        当前皮肤: ${skin.name} — ${skin.description}
       </div>`;
     }
 
@@ -2231,7 +2236,8 @@ export class UIManager {
   }
 
   _showVersion() {
-    this.showToast('Arknights PvZ — 版本 0.2.0', 2500);
+    const ver = window.__APP_VERSION__ || '0.0.0';
+    this.showToast('Arknights PvZ — 版本 ' + ver, 2500);
   }
 
   // === Settings ===
@@ -2339,10 +2345,39 @@ export class UIManager {
       bm.isRunning = true;
       bm.lastTime = performance.now();
       bm.gameLoop();
+      if (this.$pauseBtn) {
+        this.$pauseBtn.innerHTML = '⏸';
+        this.$pauseBtn.title = '暂停';
+      }
     } else {
       // Pause
       bm.isRunning = false;
       this.$pauseOverlay.classList.add('active');
+      if (this.$pauseBtn) {
+        this.$pauseBtn.innerHTML = '▶';
+        this.$pauseBtn.title = '继续';
+      }
+    }
+  }
+
+  _toggleSpeed() {
+    const bm = this.battleManager;
+    if (!bm || bm.battleEnded) return;
+    this._speed2x = !this._speed2x;
+    if (this._speed2x) {
+      bm.setTimeScale(2.0);
+      if (this.$speedBtn) {
+        this.$speedBtn.innerHTML = '&gt;&gt;';
+        this.$speedBtn.title = '二倍速';
+        this.$speedBtn.classList.add('active');
+      }
+    } else {
+      bm.setTimeScale(1.0);
+      if (this.$speedBtn) {
+        this.$speedBtn.innerHTML = '&gt;';
+        this.$speedBtn.title = '一倍速';
+        this.$speedBtn.classList.remove('active');
+      }
     }
   }
 

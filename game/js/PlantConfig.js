@@ -116,8 +116,8 @@ export const SKIN_DEFS = {
     },
     {
       id: 'fireChen', name: '火陈', emoji: '🔥', category: 'derived',
-      description: '龙炎焚天。触发时召唤巨龙横扫全屏，全图僵尸灰飞烟灭',
-      skillDescription: '被僵尸触发时召唤巨龙横扫全屏，对全图敌人造成致死伤害',
+      description: '书刀一笔，裁剪岁月，天喟之剑，当明则明',
+      skillDescription: '剑气冲霄，化为巨龙荡涤全场，一击致命',
       cost: 15000, owned: false, combat: {
         bodyType: 'humanoid',
         dragonSpeed: 5,
