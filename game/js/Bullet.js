@@ -24,14 +24,14 @@ export class Bullet {
   render(ctx) {
     if (this._animator) {
       const frame = this._animator.getCurrentCanvas();
-      ctx.drawImage(frame, this.x, this.y, this.width, this.height);
+      ctx.drawImage(frame, this.x, this.y + 7, this.width * 2.6, this.height * 2);
       return;
     }
     const img = assetManager.getImage('pea');
     if (img) {
-      ctx.drawImage(img, this.x, this.y, 20, 20);
+      ctx.drawImage(img, this.x, this.y + 7, this.width * 2.6, this.height * 2);
     } else {
-      drawPea(ctx, this.x + 10, this.y + 10, 10);
+      drawPea(ctx, this.x + this.width, this.y + 7 + this.height, this.width);
     }
   }
 }
@@ -68,16 +68,18 @@ export class WishadelPea {
   }
 
   render(ctx) {
-    const img = assetManager.getImage('peashooter_skin_wishadel_shell');
+    const img = assetManager.getImage('peashooter_skin_wishadel_pea');
+    const dw = this.width * 4;
+    const dh = this.height * 4;
     if (img) {
-      ctx.drawImage(img, this.x, this.y, this.width, this.height);
+      ctx.drawImage(img, this.x, this.y + 10, dw, dh);
     } else {
-      drawWishadelPea(ctx, this.x, this.y, this.width, this.height);
+      drawWishadelPea(ctx, this.x, this.y + 10, dw, dh);
     }
   }
 }
 
-// Wishadel skill — homing cannonball, 21-cell thermobaric explosion, 3-stage animation
+// Wishadel skill — homing missile with GIF explosion
 export class WishadelShell {
   constructor(x, y, row, target, damage = 120, speed = 12) {
     this.x = x;
@@ -94,24 +96,25 @@ export class WishadelShell {
     this.target = target;
     this._targetX = target ? target.x + target.width / 2 : x;
     this._targetY = target ? target.y + target.height / 2 : y;
-    this._explosionStage = 0; // 0=flight, 1=flash, 2=shockwave, 3=afterglow
-    this._stageTimer = 0;
+    this._explosionAnimator = null;
+    this._hitZombies = null;
   }
 
   update(deltaTime, game) {
     if (this.exploded) {
-      this._stageTimer -= deltaTime;
-      if (this._stageTimer <= 0) {
-        this._explosionStage++;
-        if (this._explosionStage === 1) {
-          this._stageTimer = 300; // Flash: 300ms
-        } else if (this._explosionStage === 2) {
-          this._stageTimer = 450; // Shockwave: 450ms
-        } else if (this._explosionStage === 3) {
-          this._stageTimer = 500; // Afterglow: 500ms
-        } else {
+      if (this._explosionAnimator) {
+        this._explosionAnimator.update(deltaTime);
+        if (!this._explosionAnimator.isActive) {
+          // Release deferred death effects
+          if (this._hitZombies) {
+            for (const z of this._hitZombies) {
+              z._deathDeferred = false;
+            }
+          }
           this.active = false;
         }
+      } else {
+        this.active = false;
       }
       return;
     }
@@ -127,7 +130,6 @@ export class WishadelShell {
     const dy = this._targetY - (this.y + this.height / 2);
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 20 || this.x > game.canvas.width + 100) {
-      // Reached destination or off-screen — explode
       this.explode(game);
     } else {
       const step = this.speed * (deltaTime / 16);
@@ -138,8 +140,13 @@ export class WishadelShell {
 
   explode(game) {
     this.exploded = true;
-    this._explosionStage = 1;
-    this._stageTimer = 300;
+    this._explosionAnimator = assetManager.createAnimator('explosion');
+    if (this._explosionAnimator) this._explosionAnimator.setLoop(false);
+
+    // Register on top-layer explosion list (rendered at sun level)
+    if (game.wishadelExplosions) game.wishadelExplosions.push(this);
+
+    this._hitZombies = [];
 
     const sc = game.lawn.standardCell;
     const cellSize = Math.max(sc.w, sc.h);
@@ -150,7 +157,6 @@ export class WishadelShell {
     const hitSet = new Set();
     for (let dr = -2; dr <= 2; dr++) {
       for (let dc = -2; dc <= 2; dc++) {
-        // Skip 4 corners
         if ((dr === -2 || dr === 2) && (dc === -2 || dc === 2)) continue;
         const row = this.row + dr;
         const tgtCol = Math.floor(cx / 100) + dc;
@@ -162,6 +168,10 @@ export class WishadelShell {
               hitSet.add(z);
               z.takeDamage(this.damage, 'magic');
               z._pauseTimer = 150;
+              if (!z.alive) {
+                z._deathDeferred = true;
+                this._hitZombies.push(z);
+              }
             }
           }
         }
@@ -170,95 +180,40 @@ export class WishadelShell {
   }
 
   render(ctx) {
-    if (this.exploded) {
-      this._renderExplosion(ctx);
-      return;
-    }
-    // Cannonball image
-    const img = assetManager.getImage('peashooter_skin_wishadel_shell');
+    // Explosion rendered at top layer (sun level) via game.wishadelExplosions
+    if (this.exploded) return;
+
+    // Missile image — wisdel-missle-ps
+    const img = assetManager.getImage('wisdel_missle_ps');
     ctx.save();
     const cx = this.x + this.width / 2;
     const cy = this.y + this.height / 2;
-    // Rotate toward target
-    const angle = Math.atan2(this._targetY - cy, this._targetX - cx);
+    const angle = Math.atan2(this._targetY - cy, this._targetX - cx) - Math.PI / 6; // CCW 30° offset
     ctx.translate(cx, cy);
     ctx.rotate(angle);
+    ctx.scale(-1, 1); // Flip horizontally — missile faces travel direction
+    const dw = this.width * 3;
+    const dh = this.height * 3;
     if (img) {
-      ctx.drawImage(img, -this.width / 2, -this.height / 2, this.width, this.height);
+      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
     } else {
-      drawWishadelPea(ctx, -this.width / 2, -this.height / 2, this.width, this.height);
+      drawWishadelPea(ctx, -dw / 2, -dh / 2, dw, dh);
     }
     ctx.restore();
   }
 
-  _renderExplosion(ctx) {
+  renderExplosion(ctx) {
+    if (!this._explosionAnimator) return;
+    const frame = this._explosionAnimator.getCurrentCanvas();
+    if (!frame) return;
+    const nw = this._explosionAnimator.naturalWidth;
+    const nh = this._explosionAnimator.naturalHeight;
+    const scale = Math.min(560 / nw, 560 / nh);
+    const dw = nw * scale;
+    const dh = nh * scale;
     const cx = this.x + this.width / 2;
     const cy = this.y + this.height / 2;
-    ctx.save();
-    if (this._explosionStage === 1) {
-      // Stage 1: White flash at core
-      const progress = 1 - this._stageTimer / 300;
-      const r = 10 + progress * 40;
-      const alpha = 1 - progress * 0.5;
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
-      grad.addColorStop(0.3, `rgba(255,220,230,${alpha * 0.7})`);
-      grad.addColorStop(0.7, 'rgba(200,0,60,0.3)');
-      grad.addColorStop(1, 'rgba(100,0,30,0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (this._explosionStage === 2) {
-      // Stage 2: Purple-red shockwave expanding outward
-      const progress = this._stageTimer / 450; // 1 → 0
-      const r = 30 + (1 - progress) * 130;
-      const alpha = progress;
-      const grad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r);
-      grad.addColorStop(0, `rgba(255,230,240,${alpha * 0.4})`);
-      grad.addColorStop(0.15, `rgba(240,60,110,${alpha * 0.7})`);
-      grad.addColorStop(0.4, `rgba(180,20,70,${alpha * 0.8})`);
-      grad.addColorStop(0.7, `rgba(120,10,40,${alpha * 0.5})`);
-      grad.addColorStop(1, 'rgba(60,0,20,0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Secondary ring
-      const r2 = r * 0.65;
-      ctx.strokeStyle = `rgba(255,140,180,${alpha * 0.7})`;
-      ctx.lineWidth = 4 * alpha;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r2, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (this._explosionStage === 3) {
-      // Stage 3: Afterglow — fading purple-red haze
-      const progress = this._stageTimer / 500;
-      const r = 120 + (1 - progress) * 50;
-      const grad = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r);
-      grad.addColorStop(0, `rgba(200,40,80,${progress * 0.6})`);
-      grad.addColorStop(0.4, `rgba(150,20,50,${progress * 0.4})`);
-      grad.addColorStop(0.7, `rgba(80,10,25,${progress * 0.2})`);
-      grad.addColorStop(1, 'rgba(30,0,10,0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Flickering embers
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2 + progress * 2;
-        const er = 15 + Math.random() * 20;
-        const ex = cx + Math.cos(a) * (r * 0.3 + Math.random() * r * 0.5);
-        const ey = cy + Math.sin(a) * (r * 0.3 + Math.random() * r * 0.5);
-        ctx.fillStyle = `rgba(255,${60 + Math.random() * 80},${100 + Math.random() * 60},${progress * 0.7})`;
-        ctx.beginPath();
-        ctx.arc(ex, ey, er * progress, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    ctx.restore();
+    ctx.drawImage(frame, cx - dw / 2, cy - dh / 2, dw, dh);
   }
 }
 
@@ -353,16 +308,16 @@ export class FirePeaBullet {
     }
     if (this._animator) {
       const frame = this._animator.getCurrentCanvas();
-      ctx.drawImage(frame, this.x - 3, this.y - 3, this.width + 6, this.height + 6);
+      ctx.drawImage(frame, this.x - this.width * 0.15, this.y + 7 - this.height * 0.15, this.width * 2.6 + 6, this.height * 2 + 6);
       return;
     }
     const img = assetManager.getImage('firePea');
     if (img) {
-      const dw = this.width + 6;
-      const dh = this.height + 6;
-      ctx.drawImage(img, this.x - 3, this.y - 3, dw, dh);
+      const dw = this.width * 2.6 + 6;
+      const dh = this.height * 2 + 6;
+      ctx.drawImage(img, this.x - this.width * 0.15, this.y + 7 - this.height * 0.15, dw, dh);
     } else {
-      drawFirePea(ctx, this.x + this.width / 2, this.y + this.height / 2, 12);
+      drawFirePea(ctx, this.x + this.width, this.y + 7 + this.height, this.width);
     }
   }
 }

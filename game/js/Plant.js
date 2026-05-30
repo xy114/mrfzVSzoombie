@@ -30,7 +30,7 @@ export class Plant {
   }
 
   getBodyType() { return 'plant'; }
-  getRenderSize() { return 80; }
+  getRenderSize() { return 70; }
   getAspectRatio() { return 1.0; }
 
   renderBars(ctx) {

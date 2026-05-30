@@ -77,8 +77,10 @@ export class AssetManager {
       // Wishadel derived skin
       peashooter_skin_wishadel_portrait: 'resources/special/立绘_维什戴尔.png',
       peashooter_skin_wishadel_headshot: 'resources/special/维什戴尔大头像.png',
-      peashooter_skin_wishadel_combat: 'resources/special/维什戴尔战斗形象.png',
+      peashooter_skin_wishadel_combat: 'resources/special/wisdel-screentogif-ps.gif',
+      peashooter_skin_wishadel_pea: 'resources/special/wisdel-bullet.png',
       peashooter_skin_wishadel_shell: 'resources/special/维什戴尔技能释放的炮弹.png',
+      wisdel_missle_ps: 'resources/special/wisdel-missle-ps.png',
       // Visitor default skin
       katana_zero_skin_default_combat: 'resources/special/Katana_Zero.png',
       katana_zero_skin_default_portrait: 'resources/special/Katana_Zero.png',
@@ -91,6 +93,14 @@ export class AssetManager {
       shield_skin_default_portrait: 'resources/zombies/铁门僵尸.gif',
       imp_skin_default_combat: 'resources/zombies/小鬼僵尸.gif',
       imp_skin_default_portrait: 'resources/zombies/小鬼僵尸.gif',
+      // Cart default skin
+      cart_skin_default_combat: 'resources/tools/小推车.png',
+      cart_skin_default_portrait: 'resources/tools/小推车.png',
+      cart_skin_default_headshot: 'resources/tools/小推车.png',
+      // FireChen derived skin
+      cart_skin_fireChen_combat: 'resources/special/火陈-screentogif-ps.gif',
+      cart_skin_fireChen_portrait: 'resources/special/火陈立绘.png',
+      cart_skin_fireChen_headshot: 'resources/special/火陈立绘_大头像.png',
       // Retreat buttons
       retreat_plant: 'resources/tools/plant撤退.png',
       retreat_humanoid: 'resources/tools/human撤退.png',

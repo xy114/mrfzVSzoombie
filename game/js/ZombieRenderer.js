@@ -2,8 +2,9 @@
 export function drawNormalZombie(ctx, x, y, w, h, attacking) {
   const cx = x + w / 2;
   const headR = 12;
+  const headScale = 1.5;
   const headY = y + 10;
-  const bodyTop = headY + headR;
+  const bodyTop = headY + headR * headScale;
   const bodyBottom = y + 64;
 
   ctx.save();
@@ -86,14 +87,17 @@ export function drawNormalZombie(ctx, x, y, w, h, attacking) {
   ctx.closePath();
   ctx.fill();
 
-  // Head — light gray-green skin (PvZ zombie color)
-  const headG = ctx.createRadialGradient(cx - 2, headY - 2, 2, cx, headY, headR);
+  // Head — light gray-green skin (PvZ zombie color), scaled
+  ctx.save();
+  ctx.translate(cx, headY);
+  ctx.scale(headScale, headScale);
+  const headG = ctx.createRadialGradient(-2, -2, 2, 0, 0, headR);
   headG.addColorStop(0, '#b5c8a8');
   headG.addColorStop(0.6, '#a0b898');
   headG.addColorStop(1, '#889880');
   ctx.fillStyle = headG;
   ctx.beginPath();
-  ctx.arc(cx, headY, headR, 0, Math.PI * 2);
+  ctx.arc(0, 0, headR, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = '#708068';
   ctx.lineWidth = 1;
@@ -102,48 +106,49 @@ export function drawNormalZombie(ctx, x, y, w, h, attacking) {
   // Hair — messy dark brown
   ctx.fillStyle = '#2a1a10';
   ctx.beginPath();
-  ctx.arc(cx - 6, headY - 8, 8, Math.PI, 0);
+  ctx.arc(-6, -8, 8, Math.PI, 0);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(cx + 6, headY - 7, 7, Math.PI, 0);
+  ctx.arc(6, -7, 7, Math.PI, 0);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(cx, headY - 10, 7, Math.PI, 0);
+  ctx.arc(0, -10, 7, Math.PI, 0);
   ctx.fill();
 
   // Eye sockets — dark hollow
   ctx.fillStyle = '#1a1815';
   ctx.beginPath();
-  ctx.ellipse(cx - 7, headY - 1, 4, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(-7, -1, 4, 5, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(cx + 7, headY - 1, 4, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(7, -1, 4, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Tiny red pupils (PvZ signature)
   ctx.fillStyle = '#441111';
   ctx.beginPath();
-  ctx.arc(cx - 6, headY, 1.5, 0, Math.PI * 2);
+  ctx.arc(-6, 0, 1.5, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(cx + 8, headY, 1.5, 0, Math.PI * 2);
+  ctx.arc(8, 0, 1.5, 0, Math.PI * 2);
   ctx.fill();
 
   // Mouth — open groan
   ctx.fillStyle = '#1a0a0a';
   ctx.beginPath();
-  ctx.ellipse(cx, headY + 6, 5, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 6, 5, 3, 0, 0, Math.PI * 2);
   ctx.fill();
   // Teeth
   ctx.fillStyle = '#e8e0d0';
-  ctx.fillRect(cx - 3, headY + 5, 2, 2);
-  ctx.fillRect(cx + 1, headY + 5, 2, 2);
+  ctx.fillRect(-3, 5, 2, 2);
+  ctx.fillRect(1, 5, 2, 2);
 
   // Nose
   ctx.fillStyle = '#889878';
   ctx.beginPath();
-  ctx.arc(cx, headY + 3, 2.5, 0, Math.PI * 2);
+  ctx.arc(0, 3, 2.5, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
 
   ctx.restore();
 }
@@ -152,6 +157,7 @@ export function drawNormalZombie(ctx, x, y, w, h, attacking) {
 export function drawNormalZombiePortrait(ctx, x, y, w, h) {
   const cx = x + w / 2;
   const headR = 38;
+  const headScale = 1.5;
   const headY = y + 48;
 
   ctx.save();
@@ -289,15 +295,18 @@ export function drawNormalZombiePortrait(ctx, x, y, w, h) {
   ctx.lineTo(cx - 32, y + 168);
   ctx.stroke();
 
-  // Head — light gray-green skin gradient
-  const hG = ctx.createRadialGradient(cx - 5, headY - 5, 5, cx, headY, headR);
+  // Head — light gray-green skin gradient, scaled
+  ctx.save();
+  ctx.translate(cx, headY);
+  ctx.scale(headScale, headScale);
+  const hG = ctx.createRadialGradient(-5, -5, 5, 0, 0, headR);
   hG.addColorStop(0, '#c5d8b8');
   hG.addColorStop(0.5, '#b0c4a0');
   hG.addColorStop(0.85, '#98a888');
   hG.addColorStop(1, '#7a9070');
   ctx.fillStyle = hG;
   ctx.beginPath();
-  ctx.arc(cx, headY, headR, 0, Math.PI * 2);
+  ctx.arc(0, 0, headR, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = '#6a8060';
   ctx.lineWidth = 2.5;
@@ -305,54 +314,50 @@ export function drawNormalZombiePortrait(ctx, x, y, w, h) {
 
   // Hair — messy dark brown
   ctx.fillStyle = '#2a1810';
-  // Left patch
   ctx.beginPath();
-  ctx.arc(cx - 18, headY - 18, 18, Math.PI + 0.2, 2 * Math.PI - 0.3);
+  ctx.arc(-18, -18, 18, Math.PI + 0.2, 2 * Math.PI - 0.3);
   ctx.fill();
-  // Right patch
   ctx.beginPath();
-  ctx.arc(cx + 16, headY - 16, 16, Math.PI + 0.1, 2 * Math.PI - 0.2);
+  ctx.arc(16, -16, 16, Math.PI + 0.1, 2 * Math.PI - 0.2);
   ctx.fill();
-  // Top
   ctx.beginPath();
-  ctx.arc(cx, headY - 24, 14, Math.PI + 0.2, 2 * Math.PI - 0.2);
+  ctx.arc(0, -24, 14, Math.PI + 0.2, 2 * Math.PI - 0.2);
   ctx.fill();
   // Stray hairs
   ctx.strokeStyle = '#2a1810';
   ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(cx - 30, headY - 20); ctx.lineTo(cx - 34, headY - 28); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx + 28, headY - 18); ctx.lineTo(cx + 32, headY - 26); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-30, -20); ctx.lineTo(-34, -28); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(28, -18); ctx.lineTo(32, -26); ctx.stroke();
 
   // Eye sockets — deep hollow black
   ctx.fillStyle = '#151210';
   ctx.beginPath();
-  ctx.ellipse(cx - 18, headY - 4, 12, 14, -0.05, 0, Math.PI * 2);
+  ctx.ellipse(-18, -4, 12, 14, -0.05, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(cx + 18, headY - 4, 12, 14, 0.05, 0, Math.PI * 2);
+  ctx.ellipse(18, -4, 12, 14, 0.05, 0, Math.PI * 2);
   ctx.fill();
 
   // Red pupils
   ctx.fillStyle = '#551515';
   ctx.beginPath();
-  ctx.arc(cx - 16, headY - 2, 4, 0, Math.PI * 2);
+  ctx.arc(-16, -2, 4, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(cx + 20, headY - 2, 4, 0, Math.PI * 2);
+  ctx.arc(20, -2, 4, 0, Math.PI * 2);
   ctx.fill();
-  // Pupil highlights
   ctx.fillStyle = '#882222';
   ctx.beginPath();
-  ctx.arc(cx - 15, headY - 3, 2, 0, Math.PI * 2);
+  ctx.arc(-15, -3, 2, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(cx + 21, headY - 3, 2, 0, Math.PI * 2);
+  ctx.arc(21, -3, 2, 0, Math.PI * 2);
   ctx.fill();
 
   // Nose
   ctx.fillStyle = '#90a080';
   ctx.beginPath();
-  ctx.arc(cx, headY + 4, 6, 0, Math.PI * 2);
+  ctx.arc(0, 4, 6, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = '#708060';
   ctx.lineWidth = 1;
@@ -361,18 +366,18 @@ export function drawNormalZombiePortrait(ctx, x, y, w, h) {
   // Mouth — open, groaning
   ctx.fillStyle = '#150808';
   ctx.beginPath();
-  ctx.ellipse(cx, headY + 18, 12, 7, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 18, 12, 7, 0, 0, Math.PI * 2);
   ctx.fill();
   // Teeth — uneven, some missing
   ctx.fillStyle = '#e0d8c8';
   ctx.beginPath();
-  ctx.moveTo(cx - 8, headY + 14); ctx.lineTo(cx - 11, headY + 21); ctx.lineTo(cx - 5, headY + 22); ctx.closePath();
+  ctx.moveTo(-8, 14); ctx.lineTo(-11, 21); ctx.lineTo(-5, 22); ctx.closePath();
   ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(cx + 8, headY + 14); ctx.lineTo(cx + 5, headY + 22); ctx.lineTo(cx + 11, headY + 21); ctx.closePath();
+  ctx.moveTo(8, 14); ctx.lineTo(5, 22); ctx.lineTo(11, 21); ctx.closePath();
   ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(cx - 2, headY + 14); ctx.lineTo(cx - 2, headY + 18); ctx.lineTo(cx + 2, headY + 18); ctx.lineTo(cx + 2, headY + 14);
+  ctx.moveTo(-2, 14); ctx.lineTo(-2, 18); ctx.lineTo(2, 18); ctx.lineTo(2, 14);
   ctx.closePath();
   ctx.fill();
 
@@ -380,22 +385,23 @@ export function drawNormalZombiePortrait(ctx, x, y, w, h) {
   ctx.strokeStyle = '#7a9070';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(cx - 14, headY + 10, 8, 0.3, 1.5);
+  ctx.arc(-14, 10, 8, 0.3, 1.5);
   ctx.stroke();
   ctx.beginPath();
-  ctx.arc(cx + 14, headY + 10, 8, 1.6, 2.8);
+  ctx.arc(14, 10, 8, 1.6, 2.8);
   ctx.stroke();
 
   // Forehead wrinkles
   ctx.beginPath();
-  ctx.moveTo(cx - 14, headY - 12); ctx.lineTo(cx - 4, headY - 10);
-  ctx.moveTo(cx + 4, headY - 10); ctx.lineTo(cx + 14, headY - 12);
+  ctx.moveTo(-14, -12); ctx.lineTo(-4, -10);
+  ctx.moveTo(4, -10); ctx.lineTo(14, -12);
   ctx.stroke();
 
   // Cheekbone shadows
   ctx.fillStyle = 'rgba(0,0,0,0.06)';
-  ctx.beginPath(); ctx.arc(cx - 26, headY + 6, 12, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 26, headY + 6, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-26, 6, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(26, 6, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 
   ctx.restore();
 }

@@ -20,6 +20,7 @@ import { DeathEffect } from './DeathEffect.js';
 import { ExplosionEffect } from './ExplosionEffect.js';
 import { drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
 import { assetManager } from './AssetManager.js';
+import { Cart } from './Cart.js';
 
 export class BattleManager {
   constructor(canvas, levelConfig, playerData) {
@@ -53,6 +54,9 @@ export class BattleManager {
     this.slashEffects = [];
     this.deathEffects = [];
     this.explosionEffects = [];
+    this.carts = [];
+    this.dragons = [];
+    this.wishadelExplosions = [];
 
     this.onVictory = null;
     this.onDefeat = null;
@@ -61,9 +65,23 @@ export class BattleManager {
     this.onCooldownUpdate = null;
   }
 
+  initCarts() {
+    const skinId = (this.playerData.equippedSkins || {}).cart || 'default';
+    for (let row = 0; row < this.lawn.rows; row++) {
+      const cart = new Cart(row, skinId);
+      // Position at left edge, small offset so it's visible
+      cart.x = skinId === 'fireChen' ? -25 : 5;
+      // Center vertically on the row (fireChen: up 30px from default)
+      const tileCenter = this.lawn.getTileCenter(row, 0);
+      cart.y = tileCenter.y - cart.height / 2 + (skinId === 'fireChen' ? -20 : 10);
+      this.carts.push(cart);
+    }
+  }
+
   start() {
     this.isRunning = true;
     this.lastTime = performance.now();
+    this.initCarts();
     this.gameLoop();
   }
 
@@ -115,10 +133,20 @@ export class BattleManager {
 
     this.plants.forEach(plant => plant.update(scaledDelta, this));
 
+    // Cart & Dragon update
+    this.carts.forEach(c => c.update(scaledDelta, this));
+    this.dragons = this.dragons.filter(d => {
+      d.update(scaledDelta, this);
+      return d.active;
+    });
+    this.carts = this.carts.filter(c => c.alive);
+
     this.bullets = this.bullets.filter(bullet => {
       bullet.update(scaledDelta, this);
       return bullet.active;
     });
+
+    this.wishadelExplosions = this.wishadelExplosions.filter(e => e.active);
 
     this.zombies.forEach(zombie => zombie.update(scaledDelta, this));
 
@@ -154,7 +182,7 @@ export class BattleManager {
     this.checkCollisions();
     this._tickRetreatTimers(deltaTime);
     this.trackDeadZombies();
-    this.zombies = this.zombies.filter(z => z.alive || z._timeStopFrozen);
+    this.zombies = this.zombies.filter(z => z.alive || z._timeStopFrozen || z._deathDeferred);
     this.checkVictory();
     this.checkGameOver();
   }
@@ -196,14 +224,17 @@ export class BattleManager {
           let bodyType = 'plant';
           let renderSize = 80;
           let ghostAspect = 1.0;
+          let ghostScale = 1;
+          let skinId = null;
           if (isVisitor) {
             bodyType = 'humanoid';
             ghostAspect = 0.98;
           } else if (plantType === 'peashooter') {
-            const skinId = (this.playerData.equippedSkins || {})[plantType];
+            skinId = (this.playerData.equippedSkins || {})[plantType];
             if (skinId === 'wishadel') {
               bodyType = 'humanoid';
               ghostAspect = 1.21;
+              ghostScale = 2;
             }
           } else if (plantType === 'cherrybomb') {
             ghostAspect = 0.72;
@@ -212,14 +243,18 @@ export class BattleManager {
           }
 
           const rect = this.lawn.getPlacementRect(bodyType, renderSize, hoverRow, hoverCol, 0, ghostAspect);
-          const actualW = bodyType === 'humanoid' ? 96 * rect.scale : GAME_CONFIG.CELL_WIDTH * rect.scale;
-          const actualH = bodyType === 'humanoid' ? 96 * rect.scale : GAME_CONFIG.CELL_HEIGHT * rect.scale;
-          const cx = rect.x + actualW / 2;
-          const cy = rect.y + actualH / 2;
+          const wishadelShift = (plantType === 'peashooter' && skinId === 'wishadel');
+          const baseW = GAME_CONFIG.CELL_WIDTH * rect.scale;
+          const baseH = GAME_CONFIG.CELL_HEIGHT * rect.scale;
+          // Ghost mirrors actual render: wishadel uses 2x width, left-shifted x, bottom-anchored y
+          const actualW = baseW * ghostScale;
+          const actualH = baseH * ghostScale;
 
           this.ctx.save();
           this.ctx.globalAlpha = canPlace ? 0.45 : 0.2;
           if (rect.rotation !== 0) {
+            const cx = rect.x + actualW / 2;
+            const cy = rect.y + actualH / 2;
             this.ctx.translate(cx, cy);
             this.ctx.rotate(rect.rotation);
             this.ctx.translate(-cx, -cy);
@@ -228,20 +263,16 @@ export class BattleManager {
           let img = null;
           if (isVisitor) {
             img = assetManager.getImageNoBg('visitor_katana_zero');
-            if (img) {
-              const imgScale = Math.min(actualW / img.naturalWidth, actualH / img.naturalHeight);
-              const dw = img.naturalWidth * imgScale;
-              const dh = img.naturalHeight * imgScale;
-              this.ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
-            }
           } else {
             img = this._getSkinGhostImage(plantType);
-            if (img) {
-              const imgScale = Math.min(actualW / img.naturalWidth, actualH / img.naturalHeight);
-              const dw = img.naturalWidth * imgScale;
-              const dh = img.naturalHeight * imgScale;
-              this.ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
-            }
+          }
+          if (img) {
+            const imgScale = actualW / img.naturalWidth;
+            const dw = actualW;
+            const dh = img.naturalHeight * imgScale;
+            const dx = wishadelShift ? rect.x - GAME_CONFIG.CELL_WIDTH / 2 * rect.scale : rect.x;
+            const dy = wishadelShift ? rect.y + GAME_CONFIG.CELL_HEIGHT * rect.scale - dh : rect.y + actualH - dh;
+            this.ctx.drawImage(img, dx, dy, dw, dh);
           }
           if (!img) {
             const gx = rect.x, gy = rect.y;
@@ -266,6 +297,7 @@ export class BattleManager {
     // Layer 2: Attachments (bullets, suns, effects, bars)
     // ============================================
     this.bullets.forEach(bullet => bullet.render(this.ctx));
+    this.dragons.forEach(dragon => dragon.render(this.ctx));
     this.slashEffects.forEach(se => se.render(this.ctx));
     this.deathEffects.forEach(de => de.render(this.ctx));
     this.explosionEffects.forEach(ee => ee.render(this.ctx));
@@ -280,6 +312,9 @@ export class BattleManager {
     // Layer 1: Characters (sorted by row asc, same-row zombies in front of plants)
     // ============================================
     const chars = [];
+    for (const cart of this.carts) {
+      if (cart.alive) chars.push({ type: 'plant', entity: cart, row: cart.row });
+    }
     for (const plant of this.plants) {
       chars.push({ type: 'plant', entity: plant, row: plant.row });
     }
@@ -336,6 +371,11 @@ export class BattleManager {
     // Suns — above all characters, never blocked
     this.suns.forEach(sun => sun.render(this.ctx));
 
+    // Wishadel explosions — same top layer as suns
+    this.wishadelExplosions.forEach(e => {
+      if (e.renderExplosion) e.renderExplosion(this.ctx);
+    });
+
     // Drag ghost — always on top of all characters
     if (this.dragState && this.dragState.mouseX !== undefined) {
       const { plantType, mouseX, mouseY } = this.dragState;
@@ -346,8 +386,13 @@ export class BattleManager {
 
       const sc = this.lawn.standardCell;
       const scale = sc.w / this.lawn.cellWidth;
-      const actualW = isVisitor ? 96 * scale : GAME_CONFIG.CELL_WIDTH * scale;
-      const actualH = isVisitor ? 96 * scale : GAME_CONFIG.CELL_HEIGHT * scale;
+      let dragScale = 1;
+      if (!isVisitor && plantType === 'peashooter') {
+        const skinId = (this.playerData.equippedSkins || {})[plantType];
+        if (skinId === 'wishadel') dragScale = 2;
+      }
+      const actualW = GAME_CONFIG.CELL_WIDTH * scale * dragScale;
+      const actualH = GAME_CONFIG.CELL_HEIGHT * scale * dragScale;
 
       let img = null;
       if (isVisitor) {
@@ -381,8 +426,8 @@ export class BattleManager {
     // Time-stop visual overlay
     if (this.timeScale <= GAME_CONFIG.TIME_STOP + 0.01) {
       this.ctx.save();
-      this.ctx.globalAlpha = 0.2;
-      this.ctx.fillStyle = '#a000c8';
+      this.ctx.globalAlpha = 0.35;
+      this.ctx.fillStyle = '#3040c8';
       this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       this.ctx.restore();
     }
@@ -420,7 +465,10 @@ export class BattleManager {
   _deadZombiesThisFrame = [];
 
   trackDeadZombies() {
-    const newDead = this.zombies.filter(z => !z.alive && !z._killTracked);
+    // During time-stop, defer death processing until time resumes
+    if (this.timeScale <= GAME_CONFIG.TIME_STOP + 0.01) return;
+
+    const newDead = this.zombies.filter(z => !z.alive && !z._killTracked && !z._deathDeferred);
     for (const zombie of newDead) {
       zombie._killTracked = true;
       this.enemiesKilled[zombie.rewardType] = (this.enemiesKilled[zombie.rewardType] || 0) + 1;
@@ -436,7 +484,7 @@ export class BattleManager {
           this.addDeathEffect(new DeathEffect(deathX, bottomY, w, 'imp_death'));
         } else {
           this.addDeathEffect(new DeathEffect(deathX, bottomY, w, 'zombie_death'));
-          this.addDeathEffect(new DeathEffect(deathX + w * 0.1, bottomY - zombie.height * 0.3, w * 0.5, 'zombie_head'));
+          this.addDeathEffect(new DeathEffect(deathX + w * 0.1, bottomY - zombie.height * 0.3, w * 0.75, 'zombie_head'));
         }
       }
     }
@@ -519,7 +567,12 @@ export class BattleManager {
 
   checkGameOver() {
     if (this.battleEnded) return;
-    const reachedLeft = this.zombies.some(z => z.x < 10);
+    // Only game over if zombie reaches far left AND no active cart (not done) in that row can save it
+    const reachedLeft = this.zombies.some(z => {
+      if (z.x >= 10) return false;
+      const cart = this.carts.find(c => c.row === z.row);
+      return !cart;
+    });
     if (reachedLeft) {
       this.battleEnded = true;
       this.isRunning = false;
