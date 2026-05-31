@@ -8,9 +8,10 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "build:win": "electron-builder --win portable --x64",
+    "build:win": "electron-builder --win --x64",
+    "build:win:portable": "electron-builder --win portable --x64",
     "build:mac": "electron-builder --mac --x64",
-    "build:all": "electron-builder --win portable --mac --x64",
+    "build:all": "electron-builder --win --mac --x64",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
@@ -41,12 +42,17 @@
       "signAndEditExecutable": false,
       "target": [
         {
-          "target": "portable",
+          "target": "nsis",
           "arch": [
             "x64"
           ]
         }
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerLanguages": ["zh_CN", "en_US"]
     },
     "mac": {
       "category": "public.app-category.games",
