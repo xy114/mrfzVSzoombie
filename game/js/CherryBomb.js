@@ -8,7 +8,7 @@ import { ExplosionEffect } from './ExplosionEffect.js';
 export class CherryBomb extends Plant {
   constructor(x, y, starLevel = 1) {
     super(x, y, starLevel);
-    // Explosion is the skill: deals 400% of attack power
+    this.plantType = 'cherrybomb';
     this.maxHealth = 100;
     this.health = 100;
     const m = STAR_CONFIG[starLevel] || STAR_CONFIG[1];
@@ -19,6 +19,7 @@ export class CherryBomb extends Plant {
     this.armed = false;
     this.exploded = false;
     this._animator = assetManager.createAnimator('cherrybomb');
+    if (this._animator) this._animator.setLoop(false);
   }
 
   update(deltaTime, game) {
@@ -67,6 +68,7 @@ export class CherryBomb extends Plant {
       const drawW = this.width;
       const drawH = Math.round(this._animator.naturalHeight * scale);
       const drawY = this.y + this.height - drawH;
+      this._barAnchorY = drawY;
       ctx.drawImage(frame, this.x, drawY, drawW, drawH);
       return;
     }
@@ -88,9 +90,9 @@ export class CherryBomb extends Plant {
     if (!this.armed) {
       const pct = this.armTimer / this.armingTime;
       const barW = this.width * 0.875;
-      const barX = this.x + (this.width - barW) / 2;
+      const barX = this.x + (this.width - barW) / 2 - 5;
       ctx.fillStyle = 'rgba(255,0,0,0.6)';
-      ctx.fillRect(barX, this.y - 8, barW * pct, 5);
+      ctx.fillRect(barX, this.y + this.height + 5, barW * pct, 5);
     }
   }
 }

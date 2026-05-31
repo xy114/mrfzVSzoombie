@@ -342,7 +342,7 @@ body {
 #ls-back:active { transform: scale(0.96); }
 #ls-title {
   flex: 1; text-align: center;
-  font-size: 28px; color: #4a2a10;
+  font-size: 28px; color: #fff;
   letter-spacing: 8px;
   padding-right: 80px; /* balance back button width */
 }
@@ -690,7 +690,7 @@ body {
 .hb-card:hover:not(.locked) {
   border-color: var(--cyan);
 }
-.hb-card.locked { opacity: 0.25; cursor: default; filter: grayscale(1); }
+.hb-card.locked { cursor: pointer; }
 
 /* 3-star maxed: purple border + subtle gold glow */
 .hb-card.star3 {
@@ -1005,6 +1005,7 @@ body {
 }
 
 /* === Confirm Modal === */
+#modal-confirm { z-index: 210; }
 #modal-confirm .btn-row { margin-top: 8px; }
 #confirm-cancel {
   padding: 10px 28px;

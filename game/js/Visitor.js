@@ -3,6 +3,7 @@ import { getVisitorDef } from './VisitorConfig.js';
 import { assetManager } from './AssetManager.js';
 import { DamageNumber } from './DamageNumber.js';
 import { SlashEffect } from './SlashEffect.js';
+import { drawHealthBar, drawSkillBar } from './Plant.js';
 
 // === Visitor Base Class ===
 export class Visitor {
@@ -20,8 +21,8 @@ export class Visitor {
     this.category = 'visitor';
 
     this.getBodyType = () => 'humanoid';
-    this.getRenderSize = () => 80;
-    this.getAspectRatio = () => 0.98;
+    this.getRenderSize = () => 96;
+    this.getAspectRatio = () => 1.0;
     this.scale = 1;
     this.rotation = 0;
     this._timeStopForm = false;
@@ -85,8 +86,10 @@ export class Visitor {
       const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
       const offX = (this.width - dw) / 2;
       const offY = (this.height - dh) / 2;
+      this._barAnchorY = this.y + offY;
       ctx.drawImage(img, this.x + offX, this.y + offY, dw, dh);
     } else {
+      this._barAnchorY = this.y;
       ctx.fillStyle = this._timeStopForm ? '#a040d0' : '#607080';
       ctx.fillRect(this.x, this.y, this.width, this.height);
       ctx.fillStyle = '#fff';
@@ -97,29 +100,10 @@ export class Visitor {
   }
 
   renderBars(ctx) {
-    const sz = this.getRenderSize();
-    const barW = GAME_CONFIG.CELL_WIDTH * 0.7;
-    const barX = this.x + (sz - barW) / 2;
-
-    // Health bar
-    const healthPercent = this.health / this.maxHealth;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(barX, this.y - 8, barW, 5);
-    ctx.fillStyle = '#0dc5d0';
-    ctx.fillRect(barX, this.y - 8, barW * healthPercent, 5);
-
-    // Active skill cooldown bar — always visible
+    drawHealthBar(ctx, this.x, this.y, this.getRenderSize(), this.health / this.maxHealth);
     const activeRemaining = this._activeCooldownRemaining || 0;
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(barX, this.y - 14, barW, 4);
-    if (activeRemaining > 0) {
-      const ratio = this.getCooldownRatio('active');
-      ctx.fillStyle = '#c040ff';
-      ctx.fillRect(barX, this.y - 14, barW * ratio, 4);
-    } else {
-      ctx.fillStyle = '#c040ff';
-      ctx.fillRect(barX, this.y - 14, barW, 4);
-    }
+    const ratio = activeRemaining > 0 ? 1 - this.getCooldownRatio('active') : 0;
+    drawSkillBar(ctx, this.x, this.y, this.getRenderSize(), ratio, '#c040ff');
   }
 }
 
@@ -131,7 +115,9 @@ export class KatanaZero extends Visitor {
 
   _executePassive(game) {
     const def = getVisitorDef('katana_zero');
-    game.setTimeScale(GAME_CONFIG.TIME_STOP);
+    const speedMult = game.timeScale; // record user speed before time-stop
+    game.timeScale *= GAME_CONFIG.TIME_STOP;
+    game._timeStopped = true;
     this._timeStopForm = true;
 
     const targets = game.zombies.filter(z => z.alive && z.row === this.row);
@@ -144,15 +130,16 @@ export class KatanaZero extends Visitor {
       effects.push({ zombie: z, dmg, isPassive: true });
     }
 
-    // Stagger slash effects during time stop
+    // Stagger slash effects during time stop — scaled by speed multiplier
     effects.forEach((ef, i) => {
       setTimeout(() => {
         game.addSlashEffect(new SlashEffect(ef.zombie.x, ef.zombie.y, ef.zombie.width, ef.zombie.height, true));
-      }, i * 100);
+      }, i * 100 / speedMult);
     });
 
     setTimeout(() => {
-      game.setTimeScale(1.0);
+      game.timeScale /= GAME_CONFIG.TIME_STOP;
+      game._timeStopped = false;
       this._timeStopForm = false;
       this._passiveCooldownRemaining = def.combat.passiveSkillCooldown;
       for (const ef of effects) {
@@ -164,14 +151,16 @@ export class KatanaZero extends Visitor {
           ef.zombie.x + ef.zombie.width / 2, ef.zombie.y, ef.dmg, true
         ));
       }
-    }, def.combat.passiveSkillDuration);
+    }, def.combat.passiveSkillDuration / speedMult);
   }
 
   executeActive(game) {
     if (this._activeCooldownRemaining > 0) return false;
     const def = getVisitorDef('katana_zero');
 
-    game.setTimeScale(GAME_CONFIG.TIME_STOP);
+    const speedMult = game.timeScale; // record user speed before time-stop
+    game.timeScale *= GAME_CONFIG.TIME_STOP;
+    game._timeStopped = true;
     this._timeStopForm = true;
 
     const targets = game.zombies.filter(z => z.alive);
@@ -182,7 +171,7 @@ export class KatanaZero extends Visitor {
     }
 
     const slashCount = def.combat.activeSkillSlashes;
-    const slashInterval = def.combat.activeSkillDuration / slashCount;
+    const slashInterval = def.combat.activeSkillDuration / slashCount / speedMult;
 
     for (let i = 0; i < slashCount; i++) {
       setTimeout(() => {
@@ -198,7 +187,8 @@ export class KatanaZero extends Visitor {
     }
 
     setTimeout(() => {
-      game.setTimeScale(1.0);
+      game.timeScale /= GAME_CONFIG.TIME_STOP;
+      game._timeStopped = false;
       this._timeStopForm = false;
       this._activeCooldownRemaining = def.combat.activeSkillCooldown;
       for (const z of targets) {
@@ -212,7 +202,7 @@ export class KatanaZero extends Visitor {
           ));
         }
       }
-    }, def.combat.activeSkillDuration);
+    }, def.combat.activeSkillDuration / speedMult);
 
     return true;
   }

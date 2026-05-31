@@ -15,7 +15,8 @@ const DEFAULT_SAVE = {
   unlockedSquadSlots: 6,
   savedSquads: {},
   visitorSquad: [],
-  unlockedVisitors: ['katana_zero']
+  unlockedVisitors: ['katana_zero'],
+  purchasedPlants: []
 };
 
 let saveData = null;
@@ -64,11 +65,32 @@ export const StorageManager = {
   },
 
   isPlantUnlocked(plantId) {
-    if (saveData.devMode) return true;
     const def = getPlantDef(plantId);
     if (!def) return false;
+    // Crystal-cost plants always require manual purchase, even in dev mode
+    if (def.crystalCost) {
+      return (saveData.purchasedPlants || []).includes(plantId);
+    }
+    if (saveData.devMode) return true;
     if (def.unlockLevel === null) return true;
     return this.isLevelCompleted(def.unlockLevel);
+  },
+
+  isPlantPurchased(plantId) {
+    return (saveData.purchasedPlants || []).includes(plantId);
+  },
+
+  purchasePlant(plantId) {
+    const def = getPlantDef(plantId);
+    if (!def || !def.crystalCost) return false;
+    if (this.isPlantPurchased(plantId)) return false;
+    if (this.spendCrystals(def.crystalCost)) {
+      if (!saveData.purchasedPlants) saveData.purchasedPlants = [];
+      saveData.purchasedPlants.push(plantId);
+      this.save();
+      return true;
+    }
+    return false;
   },
 
   getEquippedSkin(unitId) { return saveData.equippedSkins[unitId] || 'default'; },
@@ -131,11 +153,14 @@ export const StorageManager = {
         plantStars: { ...saveData.plantStars },
         equippedSkins: { ...saveData.equippedSkins },
         ownedSkins: JSON.parse(JSON.stringify(saveData.ownedSkins)),
-        displayPlant: saveData.displayPlant
+        displayPlant: saveData.displayPlant,
+        purchasedPlants: [...(saveData.purchasedPlants || [])]
       };
     }
     saveData.devMode = true;
     saveData.crystals = 9999999;
+    // Auto-unlock all crystal-cost plants for testing convenience
+    if (!saveData.purchasedPlants) saveData.purchasedPlants = [];
     this.save();
   },
 
@@ -161,7 +186,7 @@ export const StorageManager = {
   },
 
   resetSave() {
-    saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, equippedSkins: { ...DEFAULT_SAVE.equippedSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {}, completedHardLevels: {}, encounteredEnemies: [], unlockedSquadSlots: 6, savedSquads: {}, visitorSquad: [] };
+    saveData = { ...DEFAULT_SAVE, plantStars: { ...DEFAULT_SAVE.plantStars }, equippedSkins: { ...DEFAULT_SAVE.equippedSkins }, ownedSkins: { ...DEFAULT_SAVE.ownedSkins }, completedLevels: {}, completedHardLevels: {}, encounteredEnemies: [], unlockedSquadSlots: 6, savedSquads: {}, visitorSquad: [], purchasedPlants: [] };
     this.save();
   },
 

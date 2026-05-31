@@ -50,7 +50,7 @@ export class Cart extends Plant {
   }
 
   getRenderSize() {
-    return 80;
+    return this.getBodyType() === 'humanoid' ? 125 : 100;
   }
 
   takeDamage(damage) {

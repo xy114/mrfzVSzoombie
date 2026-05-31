@@ -33,6 +33,9 @@ export class Zombie {
     this._originalType = null;
     this._flashStartTime = 0;
     this._deathDeferred = false;
+    this._squashed = false;
+    this._isClown = false;
+    this._invulnerable = false;
   }
 
   initAnimators() {
@@ -141,6 +144,23 @@ export class Zombie {
       }
       this._flashTimer = 1500;
       this._flashStartTime = performance.now();
+      this.deathGifKey = 'zombie_death';
+    }
+
+    // Bucket degradation: HP ≤ 30% → normal (helmet shatters, defense drops)
+    if (this.health > 0 &&
+        this.health <= this.maxHealth * 0.3 &&
+        this.type === 'bucket') {
+      this.type = 'normal';
+      this.defense = 0;
+      this.walkAnimator = assetManager.createAnimator('normal');
+      this.attackAnimator = assetManager.createAnimator('normal_attack');
+      if (this.walkAnimator && this.walkAnimator.frameCount > 0) {
+        const scale = this.width / this.walkAnimator.naturalWidth;
+        this.height = Math.round(this.walkAnimator.naturalHeight * scale);
+      }
+      this._showShatterEffect = true;
+      this._shatterTimer = 500;
       this.deathGifKey = 'zombie_death';
     }
 
