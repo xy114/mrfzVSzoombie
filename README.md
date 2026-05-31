@@ -1,62 +1,141 @@
 # 战术指挥终端 — 植物大战僵尸 × 明日方舟
 
 > 一款融合经典 PvZ 塔防玩法与《明日方舟》干员体系的 2D 策略游戏。
-> 采用羊皮纸战术室美学风格，支持植物升星、皮肤装备、异客援护、编队管理等深度系统。
+> 在 5×9 的草坪上部署植物干员，迎击一波波来袭的敌人。收集阳光、解锁图鉴、培养干员、装备皮肤，构建属于你的战术编队。
 
 ---
 
-## 基于什么开发
+## 游戏介绍
 
-- **核心玩法原型**：PopCap《植物大战僵尸》(Plants vs. Zombies) — 5×9 网格塔防
-- **角色体系灵感**：Hypergryph《明日方舟》(Arknights) — 干员技能技力条、皮肤系统、异客援护
+### 这游戏怎么玩
+
+你是一位战术指挥官，在 5 行 × 9 列的草坪上部署**植物干员**抵御**僵尸敌人**。植物需要消耗**阳光**来部署，阳光会随时间自动掉落，也可以由向日葵生产。
+
+每一局战斗分为多个**波次**，每波会有若干敌人从右侧入场向左推进。消灭所有波次的敌人即为胜利；如果有敌人走到草坪最左侧，则游戏失败（每行最左侧备有一辆小推车作为最后防线，会自动碾压整行敌人）。
+
+战斗胜利后会获得**晶核**（游戏内货币），可用于给植物升星、解锁新皮肤、购买特殊植物。
+
+### 当前内容
+
+**5 个序章，共 19 个关卡：**
+
+| 序章 | 关卡数 | 特色 |
+|------|--------|------|
+| 序曲 I — 初醒 | 3 | 基础教学，解锁坚果、樱桃炸弹 |
+| 序曲 II — 暗潮 | 3 | 高速小鬼僵尸登场 |
+| 序曲 III — 破晓 | 3 | 全敌人混编，高强度波次 |
+| 序曲 IV — 重甲 | 5 | 铁桶僵尸登场（高血量、高护甲） |
+| 序曲 V — 爆裂 | 5 | 小丑僵尸登场（被阻挡后自爆，伤害不分敌我） |
+
+**9 种植物：**
+
+| 植物 | 费用 | 说明 |
+|------|------|------|
+| 向日葵 | 50 | 每 7 秒产出 25 阳光，队伍的发动机 |
+| 豌豆射手 | 100 | 发射豌豆攻击同行僵尸，基础输出单位 |
+| 坚果 | 50 | 高血量护盾，阻挡敌人前进，可使用护甲强化技能 |
+| 樱桃炸弹 | 150 | 部署 1.5 秒后引爆，造成 3×3 格范围物理伤害 |
+| 窝瓜 | 50 | 前方有敌人时跳起砸下，造成 300% 攻击力的物理伤害；技能自晕 10 秒换取永久攻击力提升 |
+| 火爆辣椒 | 100 | 部署 1.5 秒后焚烧整行，造成法术伤害 |
+| 双重射手 | 200 | 每次射出 2 颗豌豆；技能发射 2 颗穿透火豆贯穿整行 |
+| 双胞向日葵 | 150 | 每次产出 2 个阳光；技能释放太阳光束照射整行 |
+| 机枪射手 | 300 | 每次射出 4 颗豌豆；技能召唤全屏火豆弹幕 |
+
+**8 种敌人：**
+
+| 敌人 | 生命 | 特性 |
+|------|------|------|
+| 普通僵尸 | 100 | 基础敌人 |
+| 路障僵尸 | 200 | 路障破损后退化为普通形态 |
+| 持盾僵尸 | 180 | 物理防御 15，护盾破损后退化 |
+| 小鬼僵尸 | 60 | 血量低但移动速度翻倍 |
+| 旗帜僵尸 | 100 | 每波第一个出场，引领尸潮 |
+| 铁桶僵尸 | 300 | 物理防御 40，铁桶破损后退化 |
+| 小丑僵尸 | 150 | 不攻击植物，被阻挡后自爆，3×3 格范围不分敌我伤害 |
+
+### 植物养成
+
+- **升星**：每株植物可升至 3 星，提升生命值、攻击力、缩短冷却，消耗晶核
+- **皮肤**：部分植物拥有衍生皮肤（如豌豆射手的「维什戴尔」），改变外观和技能效果，消耗晶核解锁
+- **解锁**：大部分植物通过通关特定关卡解锁；双胞向日葵和机枪射手需要花费 4000 晶核购买
+
+### 异客援护
+
+异客是独立于植物的特殊单位，每场战斗只能部署一次，不消耗阳光。当前可用的异客：**武士零**（时停斩 + 同行斩）。
 
 ---
 
-## 开发环境
+## 游戏基础设定
 
-| 项目 | 说明 |
-|------|------|
-| **操作系统** | Windows 10/11（开发主力）| macOS（实验性支持）|
-| **运行时** | Node.js v20+ |
-| **桌面容器** | Electron 42.x（Chromium + Node.js）|
-| **包管理器** | npm |
-| **构建工具** | electron-builder 24.x |
-| **测试工具** | Playwright 1.60（E2E）|
-| **图像处理** | sharp 0.34（资源预处理）|
+> 完整规则详见 [游戏基础设定.md](./游戏基础设定.md)，以下是核心内容摘要。
+
+### 植物信息
+
+每个植物的信息展示必须包含**生命值**、**攻击力**、**部署费用**，在图鉴、战斗卡片等所有展示界面中均需体现。描述文本禁止包含 emoji，所有数值由配置数据动态生成，修改 combat 数值后全界面自动同步，无需手动更新文本。
+
+### 植物尺寸系统
+
+- 每个植物的虚影和实际渲染尺寸由 Plant 基类的 `getPlacementParams()` 统一提供（bodyType、renderSize、aspectRatio）
+- **网格虚影**、**拖拽虚影**、**实际放置**三级渲染必须通过同一入口 `Lawn.getPlacementRect()` 获取位置和尺寸，禁止在任何渲染路径中硬编码尺寸参数
+- 实际形象和网格虚影的大小和位置必须相同；拖拽虚影和网格虚影的大小必须相同
+- 新增植物时，只需在 PlantConfig 的 combat 中声明 bodyType，其余自动继承基类默认值（renderSize=80, aspectRatio=1.0）
+
+### 时间流速操作
+
+所有时间流速操作（时停、加速、减速）必须使用乘/除模式——开始时 `timeScale *= 因子`，结束时 `timeScale /= 因子`。禁止硬编码 `setTimeScale(1.0)` 恢复时间。2 倍速按钮使用 toggle 乘除（`*= 2` / `/= 2`），确保多个时间操作叠加时互不覆盖。时停技能的实际延迟必须除以当前速度倍率。
+
+### 血条/技力条/子弹位置
+
+所有 UI 元素必须与实际形象位置绑定，使用 `this.getRenderSize()` 和 `this.x + this.width` 计算，不得硬编码偏移量。
+
+### 图鉴卡面组成
+
+图鉴中每张植物/敌人卡面由三层叠加组成，按绘制顺序：
+
+1. **立绘层**（最底层）—— GIF/肖像，缩放适配卡面透明窗口
+2. **卡面基底**（中层）—— 固定 PNG 素材，含相框与文本区，透明窗口露出底层立绘
+3. **信息层**（最顶层）—— Canvas 绘制名称、星级、晶核价格等
+
+未解锁/未遭遇状态：立绘层应用 `grayscale(0.7)` 去饱和滤镜；卡面基底完全一致；整卡叠加 `rgba(0,0,0,0.5)` 黑色半透明膜均匀压暗；文字使用冷调深灰 `#3b414a`，与解锁态暖棕 `rgb(89,32,8)` 区分。新增卡面类型必须严格遵循此三层结构。
 
 ---
 
 ## 技术栈
 
-### 语言
-- **JavaScript ES Modules**（全栈单一语言，浏览器端 + Node.js 端统一）
+### 运行时与语言
 
-### 图形框架
-- **HTML5 Canvas 2D API** — 纯手绘渲染管线，不使用任何第三方游戏引擎
-  - 植物/僵尸/异客/子弹：Canvas 绘制 + GIF 帧动画
-  - UI 界面：DOM + CSS（`index.html` + `game/css/ui.css`）
-  - 羊皮纸战术室暖色调主题（CSS 变量体系，`--bg-parchment`, `--text-primary` 等）
-
-### 技术框架
-- **Electron** — 跨平台桌面容器，主进程管理窗口生命周期 + 预加载脚本桥接
-- **gifuct-js** — GIF 解析库，将 GIF 文件解码为帧数据，战斗中以 `requestAnimationFrame` 循环播放
-- **electron-builder** — 打包为 Windows 便携版 (.exe) / macOS DMG
-
-### 核心技术
-
-| 技术 | 说明 |
+| 项目 | 说明 |
 |------|------|
-| **Canvas 2D 渲染管线** | 不使用任何游戏引擎，纯手绘 2D 渲染。所有角色、子弹、爆炸特效均通过 `CanvasRenderingContext2D` 绘制。GIF 动画由 `GifAnimator` 按帧解码播放，支持匿名/空闲/攻击多状态切换 |
-| **模块化角色系统** | 植物/僵尸/异客三级继承体系（`Plant → Peashooter/Sunflower/Nut/CherryBomb`，`Zombie → NormalZombie/ConeZombie/ShieldZombie/ImpZombie`），统一 `render()`/`update()`/`takeDamage()` 接口 |
-| **统一皮肤系统** | 原皮显式化设计（`id: "default"`），植物 + 异客均可装备皮肤。资源键命名规范 `{unitId}_skin_{skinId}_{resourceType}`，存储合并至 `equippedSkins`，所有立绘/头像/战斗形象经 `_drawPortrait` 统一入口渲染 |
-| **技能技力条** | 借鉴 Arknights 自动回复技力机制，每个植物/异客有独立 `skillCooldown` / `skillMaxCooldown`，冷却完毕触发技能 |
-| **草坪网格系统** | `Lawn.js` 管理 5×9 网格，每个格子独立追踪占用状态，支持调试模式可视化顶点与导出网格坐标 |
-| **波次管理** | `WaveManager.js` 控制敌人生成节奏，精英敌人不对第一波出现，Boss 仅最后一波出现 |
-| **localStorage 持久化** | 存档自动保存/加载，Dev Mode 快照备份，迁移逻辑兼容旧版数据结构 |
+| 语言 | JavaScript ES Modules（全栈单一语言） |
+| 桌面容器 | Electron 42.x（Chromium + Node.js） |
+| 运行时 | Node.js v20+ |
+| 包管理器 | npm |
+| 构建打包 | electron-builder（Windows 便携版 .exe / macOS DMG） |
+| 测试 | Playwright 1.60（E2E） |
+
+### 图形渲染
+
+- **HTML5 Canvas 2D API** — 纯手绘渲染管线，不使用任何第三方游戏引擎
+  - 植物、僵尸、异客、子弹、爆炸特效均通过 `CanvasRenderingContext2D` 绘制
+  - GIF 帧动画由 `GifAnimator` 按帧解码播放，支持多状态切换（行走/攻击/闲置）
+  - UI 界面采用 DOM + CSS（羊皮纸战术室暖色调主题，CSS 变量体系）
+- **gifuct-js** — GIF 解码库，将 GIF 解析为帧数据供 `requestAnimationFrame` 循环播放
+
+### 架构特点
+
+| 特性 | 说明 |
+|------|------|
+| 纯 Canvas 渲染 | 不依赖任何游戏引擎，所有角色、子弹、特效均手绘 2D 渲染 |
+| 模块化角色继承 | 植物/僵尸/异客三级继承体系，统一 `render()`/`update()`/`takeDamage()` 接口 |
+| 统一皮肤系统 | 原皮显式化（`id: "default"`），植物和异客均可装备皮肤，资源键命名 `{unitId}_skin_{skinId}_{resourceType}` |
+| 技能技力条 | 借鉴 Arknights 自动回复技力机制，每个植物有独立冷却和技能触发 |
+| 草坪网格系统 | `Lawn.js` 管理 5×9 网格，每个格子独立追踪占用状态，支持调试模式可视化顶点 |
+| 波次管理 | 精英敌人不对第一波出现，每波首位强制刷新旗帜僵尸，波次僵尸数递增 |
+| localStorage 持久化 | 存档自动保存/加载，Developer Mode 快照备份，旧版数据自动迁移 |
 
 ---
 
-## 核心代码说明
+## 代码结构
 
 ```
 mrfzVSzoombie/
@@ -65,145 +144,89 @@ mrfzVSzoombie/
 │   └── preload.js              # 预加载脚本（contextBridge）
 ├── game/
 │   ├── js/                     # 游戏逻辑 (ES Modules)
-│   │   ├── main.js             # DOMContentLoaded 入口，bootstrap 流程
-│   │   │                       #   → AssetManager 加载图片
-│   │   │                       #   → UIManager 初始化 UI
-│   │   │                       #   → startCombat 事件绑定（拖拽放置、右键取消、键盘暂停）
-│   │   │
+│   │   ├── main.js             # DOMContentLoaded 入口，初始化并绑定事件
 │   │   ├── Game.js             # BattleManager — 战斗主循环
 │   │   │                       #   管理 plants[] / zombies[] / visitors[] / bullets[] / suns[]
-│   │   │                       #   主循环：update(deltaTime) → checkCollisions() → render()
-│   │   │                       #   时停系统：battleTimeScale（异客主动技能暂停所有敌人）
-│   │   │
-│   │   ├── Lawn.js             # 草坪网格（5 行 × 9 列）
-│   │   │                       #   plant(row, col) / remove(row, col) / getCellFromPosition()
-│   │   │                       #   debugGrid 模式：可视化网格顶点，拖拽编辑坐标
-│   │   │
-│   │   ├── UIManager.js        # 全局 UI 管理器（~2900 行）
-│   │   │                       #   页面管理：主页 / 关卡选择 / 编队 / 图鉴 / 战斗
-│   │   │                       #   皮肤系统：_drawPortrait 统一入口，皮肤预览/装备
-│   │   │                       #   详情面板：showPlantDetail / showUnitPanel
-│   │   │                       #   编队系统：renderSquadPicker + renderVisitorSquad
-│   │   │
+│   │   │                       #   update(deltaTime) → checkCollisions() → render()
+│   │   ├── Lawn.js             # 草坪网格（5行×9列）
+│   │   │                       #   getPlacementRect() 统一放置位置计算
+│   │   │                       #   debugGrid 模式可视化网格顶点
+│   │   ├── UIManager.js        # 全局 UI 管理器
+│   │   │                       #   页面管理、图鉴渲染、皮肤预览、编队系统
+│   │   │                       #   _drawPortrait 统一立绘入口
 │   │   ├── StorageManager.js   # localStorage 持久化
-│   │   │                       #   equippedSkins / ownedSkins / plantStars / crystals
-│   │   │                       #   关卡进度 / 编队快照 / Dev Mode 快照
+│   │   │                       #   关卡进度、植物星星、皮肤装备、晶核余额
+│   │   │                       #   晶体植物购买、Developer Mode 快照
+│   │   ├── AssetManager.js     # 资源预加载与皮肤资源键查找
+│   │   ├── GifAnimator.js      # GIF 帧动画解析与播放
 │   │   │
-│   │   ├── Plant.js            # 植物基类 (Plant)
-│   │   │   ├── PeaShooter.js   #   豌豆射手 — 皮肤切换 WishadelPea / FirePeaBullet
-│   │   │   ├── Sunflower.js    #   向日葵 — 定时产阳光
-│   │   │   ├── Nut.js          #   坚果 — 高血量 + 防御技能
-│   │   │   └── CherryBomb.js   #   樱桃炸弹 — 一次性范围爆炸
+│   │   ├── Plant.js            # 植物基类
+│   │   │   ├── PeaShooter.js   #   豌豆射手（支持维什戴尔皮肤）
+│   │   │   ├── Sunflower.js    #   向日葵 → 定时产阳光
+│   │   │   ├── Nut.js          #   坚果 → 高血量护盾
+│   │   │   ├── CherryBomb.js   #   樱桃炸弹 → 范围爆炸
+│   │   │   ├── Squash.js       #   窝瓜 → 跳跃砸击
+│   │   │   ├── Jalapeno.js     #   火爆辣椒 → 整行焚烧
+│   │   │   ├── Repeater.js     #   双重射手 → 双发豌豆+穿透火豆
+│   │   │   ├── TwinSunflower.js#   双胞向日葵 → 双倍阳光+太阳光束
+│   │   │   └── GatlingPea.js   #   机枪射手 → 四发豌豆+全屏弹幕
 │   │   │
-│   │   ├── Zombie.js           # 僵尸基类 (Zombie)
-│   │   │                       #   移动 / 啃食 / 死亡 / 装备破损（路障/持盾 → 普通）
-│   │   │                       #   bodyType: 'humanoid', width: 125（小鬼 60）
+│   │   ├── Zombie.js           # 僵尸基类（装备破损退化逻辑）
+│   │   │   ├── NormalZombie.js / ConeZombie.js / ShieldZombie.js / ImpZombie.js
+│   │   │   ├── FlagZombie.js   #   旗帜僵尸 → 每波先锋
+│   │   │   ├── BucketZombie.js #   铁桶僵尸 → 高护甲高生命
+│   │   │   └── ClownZombie.js  #   小丑僵尸 → 阻挡自爆
 │   │   │
-│   │   ├── Visitor.js          # 异客系统 (Visitor)
-│   │   │   └── KatanaZero      #   武士零 — 时停斩（主动）+ 同行斩（被动）
+│   │   ├── Visitor.js          # 异客系统（武士零—时停斩）
+│   │   ├── Cart.js             # 小推车系统（皮肤支持）
+│   │   ├── Bullet.js           # 子弹系统（物理/法术/穿透/追踪/爆炸）
 │   │   │
-│   │   ├── Bullet.js           # 子弹系统
-│   │   │   ├── Bullet          #   普通豌豆（物理）
-│   │   │   ├── WishadelPea     #   维什戴尔平A（物理，70% 尺寸）
-│   │   │   ├── WishadelShell   #   维什戴尔技能爆弹（物理，追踪 + 3 阶段爆炸动画）
-│   │   │   └── FirePeaBullet   #   火焰豌豆（法术，3×3 AoE）
-│   │   │
-│   │   ├── DeathEffect.js      # 死亡效果 — GIF 帧序列播放
-│   │   ├── GifAnimator.js      # GIF 帧动画器 — 解析帧数据，循环/单次播放
-│   │   ├── AssetManager.js     # 资源管理器 — 图片预加载 + 皮肤资源键查找
-│   │   ├── WaveManager.js      # 波次管理器 — 敌人生成规则
-│   │   │
-│   │   ├── PlantConfig.js      # 植物/皮肤定义 + 星级倍率
+│   │   ├── PlantConfig.js      # 植物与皮肤定义 + 星级倍率
 │   │   ├── ZombieConfig.js     # 僵尸定义 + 威胁等级
-│   │   ├── VisitorConfig.js    # 异客定义 + 技能数值
-│   │   ├── LevelConfig.js      # 关卡配置（序章 + 章节）
-│   │   ├── constants.js        # 游戏常量（GAME_CONFIG, STAR_CONFIG 等）
+│   │   ├── VisitorConfig.js    # 异客定义
+│   │   ├── LevelConfig.js      # 关卡/章节配置（5 个序章 19 关）
+│   │   ├── WaveManager.js      # 波次管理器（精英过滤、旗帜首位）
+│   │   ├── constants.js        # 游戏常量
 │   │   │
-│   │   ├── PlantRenderer.js    # 植物程序化绘制回退（无图片时使用）
-│   │   ├── ZombieRenderer.js   # 僵尸程序化绘制回退
-│   │   ├── ProjectileRenderer.js # 子弹程序化绘制回退
-│   │   └── VisitorRenderer.js  # 异客程序化绘制回退
+│   │   ├── PlantRenderer.js    # 植物程序化绘制（无图片时回退）
+│   │   ├── ZombieRenderer.js   # 僵尸程序化绘制
+│   │   └── DamageNumber.js / DeathEffect.js / ExplosionEffect.js  # 视觉特效
 │   │
 │   ├── css/
-│   │   └── ui.css              # 全局 UI 样式（羊皮纸主题，CSS 变量）
-│   │
-│   └── resources/              # 游戏资源
-│       ├── plants/             # 植物 GIF/PNG 资源
-│       ├── zombies/            # 僵尸 GIF 资源
-│       ├── special/            # 异客资源
-│       └── projectiles/        # 子弹资源
+│   │   └── ui.css              # 全局 UI 样式（CSS 变量主题）
+│   └── resources/              # 游戏资源（植物/僵尸/异客 GIF 素材）
 │
-├── assets/                     # 构建资源（图标等）
-├── tools/                      # 开发工具
-│   ├── calibrator.html         # 网格坐标校准器
-│   ├── position-tuner.html     # 渲染位置微调工具
-│   └── generate-assets.html    # 程序化资源生成器
-│
-├── dist/                       # 构建产物输出
-├── index.html                  # 主页面（所有 UI DOM 结构）
-├── 游戏基础设定.md              # 完整设计文档（角色树、皮肤系统、命名规范、渲染标准）
-└── package.json                # 项目配置 + electron-builder 打包配置
+├── tools/                      # 开发工具（校准器、位置微调器）
+├── index.html                  # 主页面 DOM 结构
+├── 游戏基础设定.md              # 完整设计规范文档
+└── package.json
 ```
-
----
-
-## 游戏系统
-
-详细设定见 [游戏基础设定.md](./游戏基础设定.md)
-
-### 角色系统
-| 类型 | 单位 | 生命 | 攻击 | 技能 |
-|------|------|------|------|------|
-| 植物 | 向日葵 | 100 | — | 产阳光（7s/25）|
-| 植物 | 豌豆射手 | 100 | 20 物理 | 火焰豌豆（50 法术，3×3 AoE，冷却 10s）|
-| 植物 | 豌豆射手·维什戴尔 | 100 | 20+20 物理 | 追踪爆弹（120 物理，5×5 爆炸，冷却 10s）|
-| 植物 | 坚果 | 400 | — | 护甲强化（+30 防御，持续 5s，冷却 15s）|
-| 植物 | 樱桃炸弹 | 100 | 50×400% 物理 | 备战引爆（3×3 范围，准备 1.5s）|
-| 异客 | 武士零 | 300 | 技能型 | 时停斩 + 同行斩 |
-| 敌人 | 普通僵尸 | 100 | 15 | — |
-| 敌人 | 路障僵尸 | 200 | 15 | 装备破损降级 |
-| 敌人 | 持盾僵尸 | 350 | 15 | 装备破损降级，物理防御 |
-| 敌人 | 小鬼僵尸 | 60 | 20 | 高速 |
-
-### 皮肤系统
-- **原皮**（`id: "default"`）：每个单位默认外观，始终拥有
-- **衍生皮**（`id: "wishadel"`）：付费解锁，可替换技能/属性/外观
-- 资源键命名：`{unitId}_skin_{skinId}_{resourceType}`（`_portrait` / `_combat` / `_headshot`）
-- 存储：`equippedSkins[unitId] = skinId`
-
-### 升星系统
-| 星级 | 生命倍率 | 攻击倍率 | 冷却倍率 | 消耗 |
-|------|---------|---------|---------|------|
-| 1★ | 1.0× | 1.0× | 1.0× | — |
-| 2★ | 1.25× | 1.2× | 0.9× | 100 晶核 |
-| 3★ | 1.6× | 1.5× | 0.75× | 300 晶核 |
-
-### 操作说明
-
-| 按键 | 功能 |
-|------|------|
-| 鼠标拖拽 | 从卡片拖拽植物到草坪放置 |
-| 点击阳光 | 收集阳光 |
-| 点击单位 | 查看详情面板 |
-| **P / F** | 暂停 / 继续 |
-| **ESC** | 取消选中 / 取消拖拽 |
-| **D** | 切换调试网格模式 |
-| **E** | 导出网格数据（调试模式）|
 
 ---
 
 ## 安装与运行
 
 ```bash
-# 开发环境
-npm install
+npm install        # 安装依赖
 npm start          # 启动 Electron 桌面应用
-
-# 构建
-npm run build:win  # Windows 便携版 (.exe)
-npm run build:mac  # macOS DMG
+npm run build:win  # 构建 Windows 便携版
 ```
+
+### 操作说明
+
+| 操作 | 功能 |
+|------|------|
+| 鼠标拖拽 | 从底部卡片拖拽植物到草坪部署 |
+| 点击阳光 | 收集阳光 |
+| 点击单位 / 图鉴卡片 | 查看详情面板 |
+| F | 暂停 / 继续（点击切换） |
+| ESC | 取消选中或拖拽 |
+| 右侧面板 | 调整游戏速度（1× / 2×） |
+
+### Developer Mode
+
+在主界面左上角点击开发者验证按钮，输入暗号 `114514` 即可开启。Dev 模式下所有关卡和植物自动解锁、晶核无限，方便测试。退出时可通过纯净模式恢复到进入前的存档状态。
 
 ---
 
-*战术指挥终端 v1.3.1 — 愿你的草坪坚不可摧*
+战术指挥终端 v2.1.0

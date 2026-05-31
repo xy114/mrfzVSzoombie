@@ -9,6 +9,7 @@ import { GifAnimator } from './GifAnimator.js';
 export class PeaShooter extends Plant {
   constructor(x, y, starLevel = 1, skinId = null) {
     super(x, y, starLevel);
+    this.plantType = 'peashooter';
     this.baseShootInterval = 1500;
     this.baseDamage = 20;
     this.baseBulletSpeed = 5;
@@ -20,6 +21,9 @@ export class PeaShooter extends Plant {
     this.skillTimer = 0;
     this.shooting = false;
     this.skinId = skinId;
+    // Re-apply placement size now that skinId is known (getRenderSize may depend on it)
+    this.width = this.getRenderSize();
+    this.height = Math.round(this.width * this.getAspectRatio());
     this.skillDamage = 50;
     this._applyPeaStarScaling();
     this.applySkin();
@@ -69,7 +73,7 @@ export class PeaShooter extends Plant {
           // Fire at target's last position even though it died
           const cfg = this._getSkinCfg();
           const shell = new WishadelShell(
-            this.x + 30, this.y, this.row,
+            this.x + this.width - 10, this.y + 4, this.row,
             this._aimTarget,
             cfg ? cfg.skillDamage : 120,
             cfg ? cfg.shellSpeed : 22
@@ -82,7 +86,7 @@ export class PeaShooter extends Plant {
           // Fire!
           const cfg = this._getSkinCfg();
           const shell = new WishadelShell(
-            this.x + 30, this.y, this.row,
+            this.x + this.width - 10, this.y + 4, this.row,
             this._aimTarget,
             cfg ? cfg.skillDamage : 120,
             cfg ? cfg.shellSpeed : 22
@@ -105,7 +109,7 @@ export class PeaShooter extends Plant {
           const m = STAR_CONFIG[this.starLevel] || STAR_CONFIG[1];
           const cfg = this._getSkinCfg();
           const dmg = Math.floor((cfg ? cfg.peaDamage : 25) * m.damageMult + (cfg ? cfg.peaAttackBonus || 0 : 0));
-          const shell = new WishadelPea(this.x + 30, this.y + 4, this.row, dmg, cfg ? cfg.peaSpeed : 22);
+          const shell = new WishadelPea(this.x + this.width - 10, this.y + 4, this.row, dmg, cfg ? cfg.peaSpeed : 22);
           game.addBullet(shell);
           setTimeout(() => { this.shooting = false; }, 200);
         }
@@ -123,7 +127,7 @@ export class PeaShooter extends Plant {
           this.shooting = true;
           const m = STAR_CONFIG[this.starLevel] || STAR_CONFIG[1];
           const dmg = Math.floor(this.baseDamage * m.damageMult);
-          const bullet = new Bullet(this.x + 30, this.y, this.row, dmg);
+          const bullet = new Bullet(this.x + this.width - 10, this.y + 4, this.row, dmg);
           game.addBullet(bullet);
           setTimeout(() => { this.shooting = false; }, 200);
         }
@@ -164,7 +168,7 @@ export class PeaShooter extends Plant {
 
     // Default skill: fire a flame pea that explodes on hit
     const firePea = new FirePeaBullet(
-      this.x + 30, this.y + 4, this.row,
+      this.x + this.width - 10, this.y + 4, this.row,
       this.skillDamage
     );
     game.addBullet(firePea);
@@ -183,43 +187,33 @@ export class PeaShooter extends Plant {
   }
 
   getRenderSize() {
-    return 80;
+    return this.skinId === 'wishadel' ? 160 : 80;
   }
 
   getAspectRatio() {
-    return this.skinId === 'wishadel' ? 1.21 : 1.0;
+    return this.skinId === 'wishadel' ? 0.5 : 1.0;
   }
 
   renderBars(ctx) {
     super.renderBars(ctx);
-    const sz = this.getRenderSize();
-    const barW = GAME_CONFIG.CELL_WIDTH * 0.7;
-    const barX = this.x + (sz - barW) / 2;
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(barX, this.y - 14, barW, 5);
-    if (this.skillCooldown > 0) {
-      const cdPct = this.skillCooldown / this.skillMaxCooldown;
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(barX, this.y - 14, barW * cdPct, 5);
-    } else {
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(barX, this.y - 14, barW, 5);
-    }
   }
 
   render(ctx) {
     const rw = this.width;
     const rh = this.height;
 
-    // GIF animation
+    // GIF animation — fit-to-box, bottom-anchored
     if (this._animator) {
       const frame = this._animator.getCurrentCanvas();
       const isWishadel = this.skinId === 'wishadel';
-      const scale = (isWishadel ? this.width * 2 : this.width) / this._animator.naturalWidth;
-      const drawW = isWishadel ? this.width * 2 : this.width;
-      const drawH = Math.round(this._animator.naturalHeight * scale);
-      const drawX = isWishadel ? this.x + (this.width - drawW) / 2 : this.x;
-      const drawY = this.y + this.height - drawH;
+      const nw = this._animator.naturalWidth;
+      const nh = this._animator.naturalHeight;
+      const s = Math.min(rw / nw, rh / nh);
+      const drawW = Math.round(nw * s);
+      const drawH = Math.round(nh * s);
+      const drawX = this.x + (rw - drawW) / 2;
+      const drawY = this.y + rh - drawH;
+      this._barAnchorY = drawY;
       ctx.drawImage(frame, drawX, drawY, drawW, drawH);
 
       if (isWishadel && this._aimTarget && this._aimTarget.alive) {

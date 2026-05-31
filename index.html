@@ -50,6 +50,7 @@
   <div id="page-combat" class="page">
     <button id="combat-exit-btn" title="退出作战">&lt;</button>
     <button id="combat-pause-btn" title="暂停">⏸</button>
+    <button id="combat-speed-btn" title="一倍速">&gt;</button>
     <button id="debug-export-btn" title="导出网格" style="display:none;position:absolute;top:0;right:100px;z-index:100;padding:4px 12px;background:#ff0;color:#000;border:1px solid #880;cursor:pointer;font-size:12px;">导出网格</button>
     <div id="combat-header">
       <span class="sun-display">☀️ <span id="combat-sun">150</span></span>
@@ -382,7 +383,23 @@
         fireChen_attack: 'resources/special/火陈-attack-screentogif.gif',
         dragon: 'resources/special/dragon-screentogif-ps.gif',
         cherrybomb_explosion: 'resources/plants/爆炸！.gif',
-        explosion: 'resources/special/explosion-ps.gif'
+        explosion: 'resources/special/explosion-ps.gif',
+        // New plants
+        squash_idle: 'resources/plants/窝瓜.gif',
+        squash_jump: 'resources/plants/窝瓜跳跃.gif',
+        jalapeno: 'resources/plants/火爆辣椒·.gif',
+        jalapeno_fire: 'resources/plants/火.gif',
+        repeater: 'resources/plants/双重射手.gif',
+        twinsunflower: 'resources/plants/双胞向日葵.gif',
+        gatlingpea: 'resources/plants/机枪射手.gif',
+        // New zombies
+        flag: 'resources/zombies/旗帜僵尸.gif',
+        flag_attack: 'resources/zombies/旗帜僵尸啃食.gif',
+        bucket: 'resources/zombies/铁桶僵尸.gif',
+        bucket_attack: 'resources/zombies/铁桶僵尸啃食.gif',
+        clown: 'resources/zombies/小丑僵尸.gif',
+        clown_prep: 'resources/zombies/准备爆炸.gif',
+        clown_explosion: 'resources/zombies/爆炸！（小丑僵尸）.gif'
       };
 
       function composeFrames(gif, rawFrames) {

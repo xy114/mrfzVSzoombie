@@ -71,6 +71,8 @@ export class Lawn {
       const rect = this.getPlacementRect(bodyType, renderSize, row, col, 0, aspectRatio);
       plant.x = rect.x;
       plant.y = rect.y;
+      plant._barAnchorY = rect.y;
+      plant._barBaseY = this.getRowY(row) + this.standardCell.h / 2; // row-level, column-independent
       plant.scale = rect.scale;
       plant.rotation = rect.rotation;
 
@@ -168,7 +170,7 @@ export class Lawn {
 
     // Plant roots and humanoid feet both anchor at tile center
     const x = cx - rw / 2;
-    const y = cy - rh - footOffset * scale;
+    const y = cy - rh - footOffset * scale + 10;
 
     return {
       x, y,

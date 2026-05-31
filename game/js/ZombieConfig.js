@@ -32,12 +32,33 @@ export const ZOMBIE_DEFS = [
   {
     id: 'imp',
     name: '小僵尸',
-    emoji: '👾',
+    emoji: '',
     description: '体型小巧的感染者，移动速度极快但生命值低，容易成群出现。',
     health: 60, defense: 0, magicResist: 0,
     speed: 0.6, damage: 15, attackInterval: 800,
     threatLevel: 1, category: 'normal',
     firstEncounterLevel: '2-1'
+  },
+  {
+    id: 'flag', name: '旗帜僵尸', emoji: '', category: 'normal',
+    description: '每波先锋，引领尸潮',
+    health: 100, defense: 0, magicResist: 0,
+    speed: 0.3, damage: 20, attackInterval: 1000,
+    threatLevel: 1, firstEncounterLevel: '6-1'
+  },
+  {
+    id: 'bucket', name: '铁桶僵尸', emoji: '', category: 'elite',
+    description: '重甲铁桶，坚不可摧',
+    health: 300, defense: 40, magicResist: 0,
+    speed: 0.3, damage: 20, attackInterval: 1000,
+    threatLevel: 3, firstEncounterLevel: '6-1'
+  },
+  {
+    id: 'clown', name: '小丑僵尸', emoji: '', category: 'elite',
+    description: '行走的炸弹，不分敌我',
+    health: 150, defense: 0, magicResist: 0,
+    speed: 0.4, damage: 0, attackInterval: 1000,
+    threatLevel: 2, firstEncounterLevel: '6-1'
   }
 ];
 

@@ -217,6 +217,58 @@ export class WishadelShell {
   }
 }
 
+// Piercing fire pea — passes through all zombies in the row, dealing magic damage to each
+export class PiercingFirePea {
+  constructor(x, y, row, damage = 30, speed = 10) {
+    this.x = x;
+    this.y = y;
+    this.row = row;
+    this.speed = speed;
+    this.damage = damage;
+    this.damageType = 'magic';
+    this.width = 22;
+    this.height = 22;
+    this.active = true;
+    this.skipCollisionCheck = true;
+    this._hitSet = new Set();
+    this._animator = assetManager.createAnimator('firePea');
+  }
+
+  update(deltaTime, game) {
+    if (this._animator) this._animator.update(deltaTime);
+    this.x += this.speed * (deltaTime / 16);
+    if (this.x > game.canvas.width + 30) {
+      this.active = false;
+      return;
+    }
+    for (const z of game.zombies) {
+      if (z.alive && z.row === this.row && !this._hitSet.has(z)) {
+        const dist = Math.abs(z.x + z.width / 2 - (this.x + this.width / 2));
+        if (dist < 35) {
+          this._hitSet.add(z);
+          z.takeDamage(this.damage, 'magic');
+        }
+      }
+    }
+  }
+
+  render(ctx) {
+    if (this._animator) {
+      const frame = this._animator.getCurrentCanvas();
+      ctx.drawImage(frame, this.x - this.width * 0.15, this.y + 7 - this.height * 0.15, this.width * 2.6 + 6, this.height * 2 + 6);
+      return;
+    }
+    const img = assetManager.getImage('firePea');
+    if (img) {
+      const dw = this.width * 2.6 + 6;
+      const dh = this.height * 2 + 6;
+      ctx.drawImage(img, this.x - this.width * 0.15, this.y + 7 - this.height * 0.15, dw, dh);
+    } else {
+      drawFirePea(ctx, this.x + this.width, this.y + 7 + this.height, this.width);
+    }
+  }
+}
+
 // Fire Pea skill bullet — explodes on hit, AoE 3×3 cells
 export class FirePeaBullet {
   constructor(x, y, row, damage = 50, speed = 4.5) {

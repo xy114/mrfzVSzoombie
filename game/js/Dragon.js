@@ -8,7 +8,7 @@ export class Dragon {
     this.active = true;
 
     // Stationary — centered horizontally and vertically on screen
-    this.x = (GAME_CONFIG.CANVAS_WIDTH - this.width) / 2 - 100;
+    this.x = (GAME_CONFIG.CANVAS_WIDTH - this.width) / 2;
     this.y = (GAME_CONFIG.CANVAS_HEIGHT - this.height) / 2;
 
     this._animator = assetManager.createAnimator('dragon');

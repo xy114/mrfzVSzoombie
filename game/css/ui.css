@@ -342,7 +342,7 @@ body {
 #ls-back:active { transform: scale(0.96); }
 #ls-title {
   flex: 1; text-align: center;
-  font-size: 28px; color: #4a2a10;
+  font-size: 28px; color: #fff;
   letter-spacing: 8px;
   padding-right: 80px; /* balance back button width */
 }
@@ -410,34 +410,46 @@ body {
   flex-direction: column; align-items: center;
   background: var(--bg-deep); padding-top: 52px;
 }
-#combat-exit-btn {
-  position: fixed; top: 60px; left: 20px; z-index: 55;
+/* Combat side buttons — vertical stack, anchored near canvas left edge */
+#combat-exit-btn,
+#combat-pause-btn,
+#combat-speed-btn {
+  position: fixed;
+  left: calc(50% - 525px);
+  z-index: 55;
   background: var(--btn-bg); border: var(--btn-border);
   box-shadow: var(--btn-shadow);
   color: var(--btn-text); font-family: var(--font-main);
-  font-size: 18px; font-weight: bold;
-  width: 36px; height: 36px; cursor: pointer;
+  font-size: 20px; font-weight: bold;
+  width: 48px; height: 48px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   padding: 0; letter-spacing: 0;
   transition: all 0.18s ease;
+  border-radius: 8px;
 }
-#combat-exit-btn:hover { background: var(--btn-hover-bg); box-shadow: var(--btn-hover-shadow); transform: translateY(-1px); }
-#combat-exit-btn:active { transform: scale(0.92); background: var(--btn-active-bg); box-shadow: var(--btn-active-shadow); }
 
-/* Pause button — tactical terminal style */
-#combat-pause-btn {
-  position: fixed; top: 60px; left: 64px; z-index: 55;
-  background: var(--btn-bg); border: var(--btn-border);
-  box-shadow: var(--btn-shadow);
-  color: var(--btn-text); font-family: var(--font-main);
-  font-size: 15px; font-weight: bold;
-  width: 36px; height: 36px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0; letter-spacing: 0;
-  transition: all 0.18s ease;
+#combat-exit-btn  { top: 53px; }
+#combat-pause-btn { top: 109px; }
+#combat-speed-btn { top: 165px; }
+
+#combat-exit-btn:hover,
+#combat-pause-btn:hover,
+#combat-speed-btn:hover {
+  background: var(--btn-hover-bg); box-shadow: var(--btn-hover-shadow); transform: translateY(-1px);
 }
-#combat-pause-btn:hover { background: var(--btn-hover-bg); box-shadow: var(--btn-hover-shadow); transform: translateY(-1px); }
-#combat-pause-btn:active { transform: scale(0.92); background: var(--btn-active-bg); box-shadow: var(--btn-active-shadow); }
+#combat-exit-btn:active,
+#combat-pause-btn:active,
+#combat-speed-btn:active {
+  transform: scale(0.92); background: var(--btn-active-bg); box-shadow: var(--btn-active-shadow);
+}
+
+/* Speed button — 2x active state (darker accent) */
+#combat-speed-btn.active {
+  background: #f0e0c8;
+  border-color: #c8a060;
+  box-shadow: 0 2px 0 #d4b878, 0 1px 8px rgba(180, 140, 60, 0.3);
+  color: #7a5020;
+}
 
 /* Pause overlay — tactical freeze frame */
 #pause-overlay {
@@ -678,7 +690,7 @@ body {
 .hb-card:hover:not(.locked) {
   border-color: var(--cyan);
 }
-.hb-card.locked { opacity: 0.25; cursor: default; filter: grayscale(1); }
+.hb-card.locked { cursor: pointer; }
 
 /* 3-star maxed: purple border + subtle gold glow */
 .hb-card.star3 {
@@ -993,6 +1005,7 @@ body {
 }
 
 /* === Confirm Modal === */
+#modal-confirm { z-index: 210; }
 #modal-confirm .btn-row { margin-top: 8px; }
 #confirm-cancel {
   padding: 10px 28px;

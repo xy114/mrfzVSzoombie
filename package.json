@@ -1,7 +1,7 @@
 {
   "author": "xy <3411135364@qq.com>",
   "name": "mrfz-vs-zombie",
-  "version": "1.4.1",
+  "version": "2.1.0",
   "description": "Plant vs Zombie style tower defense game",
   "license": "MIT",
   "main": "electron/main.js",

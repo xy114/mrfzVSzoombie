@@ -1,6 +1,6 @@
 import { StorageManager } from './StorageManager.js';
 import { PRELUDES, getLevel, getPreludes } from './LevelConfig.js';
-import { getPlantDef, getAllPlantDefs, getStarMultiplier, getStarCost, getSkins, getSkin } from './PlantConfig.js';
+import { getPlantDef, getAllPlantDefs, getStarMultiplier, getStarCost, getSkins, getSkin, getFormattedDescription, getFormattedSkillDescription } from './PlantConfig.js';
 import { getZombieDef, getAllZombieDefs, getThreatLabel } from './ZombieConfig.js';
 import { drawNormalZombiePortrait, drawConeZombiePortrait, drawShieldZombiePortrait, drawImpZombiePortrait } from './ZombieRenderer.js';
 import { drawSunflowerPortrait, drawPeashooterPortrait, drawNutPortrait, drawCherryBombPortrait, drawSunflower, drawPeashooter, drawNut, drawCherryBomb } from './PlantRenderer.js';
@@ -61,6 +61,8 @@ export class UIManager {
     this.$combatExitBtn = document.getElementById('combat-exit-btn');
     this.$pauseBtn = document.getElementById('combat-pause-btn');
     this.$pauseOverlay = document.getElementById('pause-overlay');
+    this.$speedBtn = document.getElementById('combat-speed-btn');
+    this._speed2x = false;
     // Handbook
     this.$hbPlantGrid = document.getElementById('hb-plant-grid');
     this.$hbPlantScroll = document.getElementById('hb-plant-scroll');
@@ -101,6 +103,9 @@ export class UIManager {
     }
     if (this.$pauseOverlay) {
       this.$pauseOverlay.addEventListener('click', () => this._togglePause());
+    }
+    if (this.$speedBtn) {
+      this.$speedBtn.addEventListener('click', () => this._toggleSpeed());
     }
     on('pure-mode-btn', 'click', () => { this._confirmPureMode(); });
     on('reset-save-btn', 'click', () => { this._confirmResetSave(); });
@@ -1118,71 +1123,93 @@ export class UIManager {
       const skin = skinId ? getSkin(plant.id, skinId) : null;
       const ctx = card.getContext('2d');
 
-      if (isUnlocked) {
-        // 1. Plant GIF — fit inside transparent window with margin
-        let spriteImg = null;
-        if (skinId) {
-          spriteImg = assetManager.getImage(plant.id + '_skin_' + skinId + '_headshot')
-            || assetManager.getImage(plant.id + '_skin_' + skinId + '_portrait');
-        }
-        if (!spriteImg) spriteImg = assetManager.getImage(plant.id) || assetManager.getImage(plant.id + '_portrait');
-        if (spriteImg) {
-          const availW = winW - 2 * margin, availH = winH - 2 * margin;
-          const gifScale = Math.min(availW / spriteImg.naturalWidth, availH / spriteImg.naturalHeight);
-          const gifW = spriteImg.naturalWidth * gifScale;
-          const gifH = spriteImg.naturalHeight * gifScale;
-          const gifX = winX + (winW - gifW) / 2;
-          const gifY = winY + (winH - gifH) / 2;
+      const isCrystalPlant = !isUnlocked && plant.crystalCost;
+
+      // 1. Plant portrait — draw normally, grayscale filter for locked
+      let spriteImg = null;
+      if (skinId) {
+        spriteImg = assetManager.getImage(plant.id + '_skin_' + skinId + '_headshot')
+          || assetManager.getImage(plant.id + '_skin_' + skinId + '_portrait');
+      }
+      if (!spriteImg) spriteImg = assetManager.getImage(plant.id) || assetManager.getImage(plant.id + '_portrait');
+      if (spriteImg) {
+        const availW = winW - 2 * margin, availH = winH - 2 * margin;
+        const gifScale = Math.min(availW / spriteImg.naturalWidth, availH / spriteImg.naturalHeight);
+        const gifW = spriteImg.naturalWidth * gifScale;
+        const gifH = spriteImg.naturalHeight * gifScale;
+        const gifX = winX + (winW - gifW) / 2;
+        const gifY = winY + (winH - gifH) / 2;
+        if (!isUnlocked) {
+          ctx.save();
+          ctx.filter = 'grayscale(0.7)';
           ctx.drawImage(spriteImg, gifX, gifY, gifW, gifH);
+          ctx.restore();
         } else {
-          const pCanvas = document.createElement('canvas');
-          pCanvas.width = winW - 2 * margin; pCanvas.height = winH - 2 * margin;
-          const pctx = pCanvas.getContext('2d');
-          this._drawPortrait(pctx, 'plant', plant.id, pCanvas.width, pCanvas.height, skinId, true);
+          ctx.drawImage(spriteImg, gifX, gifY, gifW, gifH);
+        }
+      } else {
+        const pCanvas = document.createElement('canvas');
+        pCanvas.width = winW - 2 * margin; pCanvas.height = winH - 2 * margin;
+        const pctx = pCanvas.getContext('2d');
+        this._drawPortrait(pctx, 'plant', plant.id, pCanvas.width, pCanvas.height, skinId, true);
+        if (!isUnlocked) {
+          ctx.save();
+          ctx.filter = 'grayscale(0.7)';
+          ctx.drawImage(pCanvas, winX + margin, winY + margin);
+          ctx.restore();
+        } else {
           ctx.drawImage(pCanvas, winX + margin, winY + margin);
         }
       }
 
-      // 2. Card background overlay (transparent window shows GIF through)
+      // 2. Card background overlay (same for all cards)
       const cardBg = assetManager.getImage('plant_card_bg');
       if (cardBg) {
         ctx.drawImage(cardBg, 0, 0, cardW, cardH);
       } else {
-        ctx.fillStyle = '#1c1c28'; // bg-card
+        ctx.fillStyle = '#1c1c28';
         ctx.fillRect(0, 0, cardW, cardH);
       }
 
-      // 3-star maxed: gold tint base + purple border class
+      // Locked cards: dark overlay covering entire card uniformly
+      if (!isUnlocked) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0, 0, cardW, cardH);
+      }
+
+      // 3-star maxed: gold tint
       if (isUnlocked && star >= 3) {
         ctx.fillStyle = 'rgba(200, 180, 100, 0.12)';
         ctx.fillRect(0, 0, cardW, cardH);
         card.classList.add('star3');
       }
 
-      if (!isUnlocked) {
-        // Locked: dark overlay
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0, 0, cardW, cardH);
-      }
-
       // 3. Text in light-yellow text box
       ctx.textAlign = 'center';
-      const nameY = tbY + 26 * scale; // ~138
-      const starY = nameY + 24 * scale; // ~151
-      const descY = starY + 22 * scale; // ~163
-      const skinY = descY + 22 * scale; // ~175
+      const nameY = tbY + 26 * scale;
+      const starY = nameY + 24 * scale;
+      const descY = starY + 22 * scale;
+      const skinY = descY + 22 * scale;
 
-      // Name
-      ctx.fillStyle = isUnlocked ? textColor : '#484440'; // text-dim
+      // Name — always show real name, dimmed if locked
+      ctx.fillStyle = isUnlocked ? textColor : '#3b414a';
       ctx.font = `bold ${Math.round(28 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
-      ctx.fillText(isUnlocked ? plant.name : '???', cardW / 2, nameY);
+      ctx.fillText(plant.name, cardW / 2, nameY);
+      // Show crystal cost below name for purchasable plants
+      if (isCrystalPlant) {
+        ctx.fillStyle = '#3b414a';
+        ctx.font = `${Math.round(18 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+        ctx.fillText(plant.crystalCost + ' 晶核', cardW / 2, nameY + 20 * scale);
+      }
 
-      // Stars — muted gold, brighter for maxed 3-star
-      ctx.fillStyle = isUnlocked ? (star >= 3 ? '#c0b878' : '#a09868') : '#484440';
-      ctx.font = `${Math.round(24 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
-      ctx.fillText(isUnlocked ? '★'.repeat(star) + '☆'.repeat(3 - star) : '☆☆☆', cardW / 2, starY);
+      // Stars — only for unlocked plants
+      if (isUnlocked) {
+        ctx.fillStyle = star >= 3 ? '#c0b878' : '#a09868';
+        ctx.font = `${Math.round(24 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
+        ctx.fillText('★'.repeat(star) + '☆'.repeat(3 - star), cardW / 2, starY);
+      }
 
-      // Skin info — muted cyan
+      // Skin info
       if (isUnlocked && skin) {
         ctx.fillStyle = '#5a8a9a';
         ctx.font = `${Math.round(18 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
@@ -1192,8 +1219,14 @@ export class UIManager {
       if (isUnlocked) {
         card.style.cursor = 'pointer';
         card.addEventListener('click', () => this.showPlantDetail(plant.id));
+      } else if (isCrystalPlant) {
+        card.style.cursor = 'pointer';
+        card.classList.add('buyable');
+        card.addEventListener('click', () => this.showPlantDetail(plant.id));
       } else {
+        card.style.cursor = 'pointer';
         card.classList.add('locked');
+        card.addEventListener('click', () => this._showUnlockInfo(plant));
       }
       this.$hbPlantGrid.appendChild(card);
     }
@@ -1375,54 +1408,66 @@ export class UIManager {
       const threat = getThreatLabel(enemy);
       const ctx = card.getContext('2d');
 
-      if (isEncountered) {
-        // 1. Enemy GIF — fit inside transparent window with margin
-        const spriteImg = assetManager.getImage(enemy.id) || assetManager.getImage(enemy.id + '_portrait');
-        if (spriteImg) {
-          const availW = winW - 2 * margin, availH = winH - 2 * margin;
-          const gifScale = Math.min(availW / spriteImg.naturalWidth, availH / spriteImg.naturalHeight);
-          const gifW = spriteImg.naturalWidth * gifScale;
-          const gifH = spriteImg.naturalHeight * gifScale;
-          const gifX = winX + (winW - gifW) / 2;
-          const gifY = winY + (winH - gifH) / 2;
+      // 1. Enemy portrait — always draw, grayscale if not encountered
+      const spriteImg = assetManager.getImage(enemy.id) || assetManager.getImage(enemy.id + '_portrait');
+      if (spriteImg) {
+        const availW = winW - 2 * margin, availH = winH - 2 * margin;
+        const gifScale = Math.min(availW / spriteImg.naturalWidth, availH / spriteImg.naturalHeight);
+        const gifW = spriteImg.naturalWidth * gifScale;
+        const gifH = spriteImg.naturalHeight * gifScale;
+        const gifX = winX + (winW - gifW) / 2;
+        const gifY = winY + (winH - gifH) / 2;
+        if (!isEncountered) {
+          ctx.save();
+          ctx.filter = 'grayscale(0.7)';
           ctx.drawImage(spriteImg, gifX, gifY, gifW, gifH);
+          ctx.restore();
         } else {
-          const pCanvas = document.createElement('canvas');
-          pCanvas.width = winW - 2 * margin; pCanvas.height = winH - 2 * margin;
-          const pctx = pCanvas.getContext('2d');
-          this._drawPortrait(pctx, 'enemy', enemy.id, pCanvas.width, pCanvas.height, undefined, true);
+          ctx.drawImage(spriteImg, gifX, gifY, gifW, gifH);
+        }
+      } else {
+        const pCanvas = document.createElement('canvas');
+        pCanvas.width = winW - 2 * margin; pCanvas.height = winH - 2 * margin;
+        const pctx = pCanvas.getContext('2d');
+        this._drawPortrait(pctx, 'enemy', enemy.id, pCanvas.width, pCanvas.height, undefined, true);
+        if (!isEncountered) {
+          ctx.save();
+          ctx.filter = 'grayscale(0.7)';
+          ctx.drawImage(pCanvas, winX + margin, winY + margin);
+          ctx.restore();
+        } else {
           ctx.drawImage(pCanvas, winX + margin, winY + margin);
         }
       }
 
-      // 2. Card background overlay (transparent window shows GIF through)
+      // 2. Card background overlay (same for all cards)
       const cardBg = assetManager.getImage('zombie_card_bg');
       if (cardBg) {
         ctx.drawImage(cardBg, 0, 0, cardW, cardH);
       } else {
-        ctx.fillStyle = '#1c1c28'; // bg-card
+        ctx.fillStyle = '#1c1c28';
         ctx.fillRect(0, 0, cardW, cardH);
       }
 
+      // Unencountered: dark overlay covering entire card uniformly
       if (!isEncountered) {
-        // Locked: dark overlay
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(0, 0, cardW, cardH);
       }
 
       // 3. Text in light-purple text box
       ctx.textAlign = 'center';
-      const nameY = tbY + 26 * scale; // ~170
-      const threatY = nameY + 24 * scale; // ~183
-      // Name
-      ctx.fillStyle = isEncountered ? textColor : '#484440'; // text-dim
+      const nameY = tbY + 26 * scale;
+      const threatY = nameY + 24 * scale;
+      // Name — "???" for unencountered enemies
+      ctx.fillStyle = isEncountered ? textColor : '#3b414a';
       ctx.font = `bold ${Math.round(28 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       ctx.fillText(isEncountered ? enemy.name : '???', cardW / 2, nameY);
 
       // Threat badge
       ctx.fillStyle = isEncountered ?
         (threat.class === 'threat-extreme' ? '#c04040' : threat.class === 'threat-elite' ? '#d09030' : '#3aaf5a') :
-        '#484440';
+        '#3b414a';
       ctx.font = `${Math.round(24 * scale)}px "Microsoft YaHei", "Segoe UI", sans-serif`;
       ctx.fillText(isEncountered ? threat.text : '???', cardW / 2, threatY);
 
@@ -1430,7 +1475,9 @@ export class UIManager {
         card.style.cursor = 'pointer';
         card.addEventListener('click', () => this.showEnemyDetail(enemy.id));
       } else {
+        card.style.cursor = 'pointer';
         card.classList.add('locked');
+        card.addEventListener('click', () => this._showEnemyUnlockInfo(enemy));
       }
       this.$ehbEnemyGrid.appendChild(card);
     }
@@ -1518,11 +1565,13 @@ export class UIManager {
     }
 
     // Description (use skin description if available)
-    const skinDesc = (skin && skin.description) ? skin.description : def.description;
+    const skinDesc = (skin && skin.id !== 'default' && skin.description)
+      ? skin.description : getFormattedDescription(def);
     statsHTML += `<div class="hb-stat-row"><span class="hb-stat-label">描述</span><span class="hb-stat-value">${skinDesc}</span></div>`;
 
-    // Skill description — all details (damage, cooldown, duration, type) live in the text
-    const skillDesc = (skin && skin.skillDescription) ? skin.skillDescription : def.skillDescription;
+    // Skill description — auto-generated from combat data
+    const skillDesc = (skin && skin.id !== 'default' && skin.skillDescription)
+      ? skin.skillDescription : getFormattedSkillDescription(def);
     statsHTML += `<div class="hb-stat-row" style="margin-top:4px;border-bottom-color:rgba(255,170,68,0.12);">
       <span class="hb-stat-label" style="color:#ffaa44;">技能</span>
     </div>
@@ -1531,34 +1580,52 @@ export class UIManager {
     // Skin info — only show for derived skins
     if (skin && skin.id !== 'default') {
       statsHTML += `<div class="hb-stat-desc" style="color:var(--cyan);">
-        当前皮肤: ${skin.emoji} ${skin.name} — ${skin.description}
+        当前皮肤: ${skin.name} — ${skin.description}
       </div>`;
     }
 
-    // Star-up section
-    statsHTML += `<div class="hb-detail-action-section">
-      <div class="hb-detail-action-title">升 星</div>`;
-    if (star < 3) {
-      const cost = getStarCost(star, star + 1);
+    // Purchase section — for locked crystal-cost plants
+    const isOwned = StorageManager.isPlantUnlocked(plantId);
+    if (!isOwned && def.crystalCost) {
       const crystals = StorageManager.getCrystals();
-      statsHTML += `<p style="color:var(--text-secondary);font-size:13px;margin-bottom:4px;">
-        ${'★'.repeat(star)}${'☆'.repeat(3 - star)} → ${'★'.repeat(star + 1)}${'☆'.repeat(2 - star)}
-        &nbsp;|&nbsp; 消耗: <span style="color:var(--gold);">${cost} 晶核</span>
-        &nbsp;|&nbsp; 持有: <span style="color:var(--cyan);">${crystals}</span>
-      </p>
-      <div class="btn-row">
-        <button class="primary" id="hb-detail-starup-btn">确认升星</button>
+      statsHTML += `<div class="hb-detail-action-section" style="border-color:rgba(255,200,60,0.25);">
+        <div class="hb-detail-action-title" style="color:#ffc830;">购 买</div>
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:4px;">
+          消耗: <span style="color:var(--gold);">${def.crystalCost} 晶核</span>
+          &nbsp;|&nbsp; 持有: <span style="color:var(--cyan);">${crystals}</span>
+        </p>
+        <div class="btn-row">
+          <button class="primary" id="hb-detail-buy-btn">确认购买</button>
+        </div>
       </div>`;
-    } else {
-      statsHTML += `<p style="color:var(--gold);font-size:13px;">已满星 ★★★</p>`;
     }
-    statsHTML += `</div>`;
 
-    // Skin section
-    statsHTML += `<div class="hb-detail-action-section">
-      <div class="hb-detail-action-title">皮 肤</div>
-      <div class="hb-detail-skin-list" id="hb-detail-skin-list"></div>
-    </div>`;
+    // Star-up section (only for owned plants)
+    if (isOwned) {
+      statsHTML += `<div class="hb-detail-action-section">
+        <div class="hb-detail-action-title">升 星</div>`;
+      if (star < 3) {
+        const cost = getStarCost(star, star + 1);
+        const crystals = StorageManager.getCrystals();
+        statsHTML += `<p style="color:var(--text-secondary);font-size:13px;margin-bottom:4px;">
+          ${'★'.repeat(star)}${'☆'.repeat(3 - star)} → ${'★'.repeat(star + 1)}${'☆'.repeat(2 - star)}
+          &nbsp;|&nbsp; 消耗: <span style="color:var(--gold);">${cost} 晶核</span>
+          &nbsp;|&nbsp; 持有: <span style="color:var(--cyan);">${crystals}</span>
+        </p>
+        <div class="btn-row">
+          <button class="primary" id="hb-detail-starup-btn">确认升星</button>
+        </div>`;
+      } else {
+        statsHTML += `<p style="color:var(--gold);font-size:13px;">已满星 ★★★</p>`;
+      }
+      statsHTML += `</div>`;
+
+      // Skin section
+      statsHTML += `<div class="hb-detail-action-section">
+        <div class="hb-detail-action-title">皮 肤</div>
+        <div class="hb-detail-skin-list" id="hb-detail-skin-list"></div>
+      </div>`;
+    }
 
     this.$hbDetailStats.innerHTML = statsHTML;
     this.$hbDetailOverlay.classList.add('active');
@@ -1569,8 +1636,16 @@ export class UIManager {
       starUpBtn.addEventListener('click', () => this.doStarUp());
     }
 
-    // Render skin list
-    this._renderDetailSkinList(plantId);
+    // Wire buy button for crystal plants
+    const buyBtn = document.getElementById('hb-detail-buy-btn');
+    if (buyBtn) {
+      buyBtn.addEventListener('click', () => this._buyPlant(def));
+    }
+
+    // Render skin list (only for owned plants)
+    if (isOwned) {
+      this._renderDetailSkinList(plantId);
+    }
   }
 
   showEnemyDetail(enemyId) {
@@ -1754,6 +1829,15 @@ export class UIManager {
       else if (id === 'cone') drawConeZombiePortrait(ctx, 0, 0, 200, 260);
       else if (id === 'shield') drawShieldZombiePortrait(ctx, 0, 0, 200, 260);
       else if (id === 'imp') drawImpZombiePortrait(ctx, 0, 0, 200, 260);
+      else {
+        // Generic fallback for new zombie types — use their GIF image if available
+        const fallbackImg = assetManager.getImage(id);
+        if (fallbackImg) {
+          const s = Math.min(180 / fallbackImg.naturalWidth, 234 / fallbackImg.naturalHeight);
+          const dw = fallbackImg.naturalWidth * s, dh = fallbackImg.naturalHeight * s;
+          ctx.drawImage(fallbackImg, (200 - dw) / 2, (260 - dh) / 2, dw, dh);
+        }
+      }
     } else if (category === 'visitor') {
       // Last-resort fallback: try getImageNoBg with visitor_ prefix
       const vImg = assetManager.getImageNoBg('visitor_' + id);
@@ -1932,6 +2016,38 @@ export class UIManager {
     if (el) el.classList.remove('active');
   }
 
+  // Show unlock condition for a locked plant
+  _showUnlockInfo(plant) {
+    if (plant.unlockLevel) {
+      const level = getLevel(plant.unlockLevel);
+      if (level) {
+        const prelude = getPreludes().find(p => p.levels.some(l => l.id === plant.unlockLevel));
+        const chapterName = prelude ? prelude.name : '';
+        this.showToast(`通关 ${chapterName} ${level.name} 解锁`, 2000);
+      } else {
+        this.showToast(`通关 ${plant.unlockLevel} 解锁`, 2000);
+      }
+    } else {
+      this.showToast('暂不可解锁', 1500);
+    }
+  }
+
+  // Show unlock condition for an unencountered enemy
+  _showEnemyUnlockInfo(enemy) {
+    if (enemy.firstEncounter) {
+      const level = getLevel(enemy.firstEncounter);
+      if (level) {
+        const prelude = getPreludes().find(p => p.levels.some(l => l.id === enemy.firstEncounter));
+        const chapterName = prelude ? prelude.name : '';
+        this.showToast(`初次遭遇: ${chapterName} ${level.name}`, 2000);
+      } else {
+        this.showToast(`初次遭遇: ${enemy.firstEncounter}`, 2000);
+      }
+    } else {
+      this.showToast('暂未登场', 1500);
+    }
+  }
+
   _wireSkinPreviewClose() {
     const overlay = document.getElementById('modal-skin-preview');
     if (!overlay) return;
@@ -1964,6 +2080,26 @@ export class UIManager {
     }
   }
 
+  _buyPlant(plant) {
+    const cost = plant.crystalCost;
+    this._confirmCallback = () => {
+      if (StorageManager.purchasePlant(plant.id)) {
+        this.showToast(`解锁植物: ${plant.name}`);
+        this.refreshCrystalDisplay();
+        this.renderHandbook();
+        // Refresh detail panel to show star-up/skin sections
+        this.showPlantDetail(plant.id);
+      } else {
+        this.showToast('晶核不足！');
+      }
+    };
+    document.getElementById('confirm-title').textContent = '购买植物';
+    document.getElementById('confirm-msg').textContent = `是否花费 ${cost} 晶核解锁「${plant.name}」？`;
+    const okBtn = document.getElementById('confirm-ok');
+    if (okBtn) okBtn.className = '';
+    this.showModal('confirm');
+  }
+
   doStarUp() {
     if (!this._starUpPlantId) return;
     const plantId = this._starUpPlantId;
@@ -1987,6 +2123,13 @@ export class UIManager {
   // === Combat ===
   startCombat(levelId, squad, visitorSquad = []) {
     this.currentLevelId = levelId;
+    // Reset speed state for new battle
+    this._speed2x = false;
+    if (this.$speedBtn) {
+      this.$speedBtn.innerHTML = '&gt;';
+      this.$speedBtn.title = '一倍速';
+      this.$speedBtn.classList.remove('active');
+    }
     this.showPage('combat');
     this._startCombatRequested = levelId;
     this._pendingSquad = squad || null;
@@ -2231,7 +2374,8 @@ export class UIManager {
   }
 
   _showVersion() {
-    this.showToast('Arknights PvZ — 版本 0.2.0', 2500);
+    const ver = window.__APP_VERSION__ || '0.0.0';
+    this.showToast('Arknights PvZ — 版本 ' + ver, 2500);
   }
 
   // === Settings ===
@@ -2314,6 +2458,8 @@ export class UIManager {
       this._confirmCallback();
       this._confirmCallback = null;
     }
+    const mc = document.getElementById('modal-confirm');
+    if (mc) mc.classList.remove('active');
   }
 
   _confirmExitCombat() {
@@ -2339,10 +2485,39 @@ export class UIManager {
       bm.isRunning = true;
       bm.lastTime = performance.now();
       bm.gameLoop();
+      if (this.$pauseBtn) {
+        this.$pauseBtn.innerHTML = '⏸';
+        this.$pauseBtn.title = '暂停';
+      }
     } else {
       // Pause
       bm.isRunning = false;
       this.$pauseOverlay.classList.add('active');
+      if (this.$pauseBtn) {
+        this.$pauseBtn.innerHTML = '▶';
+        this.$pauseBtn.title = '继续';
+      }
+    }
+  }
+
+  _toggleSpeed() {
+    const bm = this.battleManager;
+    if (!bm || bm.battleEnded) return;
+    this._speed2x = !this._speed2x;
+    if (this._speed2x) {
+      bm.timeScale *= 2;
+      if (this.$speedBtn) {
+        this.$speedBtn.innerHTML = '&gt;&gt;';
+        this.$speedBtn.title = '二倍速';
+        this.$speedBtn.classList.add('active');
+      }
+    } else {
+      bm.timeScale /= 2;
+      if (this.$speedBtn) {
+        this.$speedBtn.innerHTML = '&gt;';
+        this.$speedBtn.title = '一倍速';
+        this.$speedBtn.classList.remove('active');
+      }
     }
   }
 
@@ -2456,6 +2631,11 @@ export class UIManager {
         else if (plantId === 'peashooter') drawPeashooter(cctx, 0, 0, 48, 48, false);
         else if (plantId === 'nut') drawNut(cctx, 0, 0, 48, 48, false);
         else if (plantId === 'cherrybomb') drawCherryBomb(cctx, 0, 0, 48, 48, false);
+        else {
+          // Generic fallback: green rect for plants without specific renderer
+          cctx.fillStyle = '#6a9e4a';
+          cctx.fillRect(4, 4, 40, 40);
+        }
       }
       card.appendChild(canvas);
 
@@ -2552,18 +2732,12 @@ export class UIManager {
 
   // === Visitor Battle Panel ===
   _getPlantTypeFromUnit(unit) {
-    const map = {
-      'Sunflower': 'sunflower',
-      'PeaShooter': 'peashooter',
-      'Nut': 'nut',
-      'CherryBomb': 'cherrybomb'
-    };
-    return map[unit.constructor.name] || null;
+    return unit.plantType || null;
   }
 
   showUnitPanel(unit) {
     if (!this.battleManager) return;
-    this.battleManager.setTimeScale(GAME_CONFIG.TIME_PANEL);
+    this.battleManager.timeScale *= GAME_CONFIG.TIME_PANEL;
 
     const panel = document.getElementById('visitor-panel');
     if (!panel) return;
@@ -2631,7 +2805,8 @@ export class UIManager {
         // Check skin skill description first (derived skin may override skill)
         const skinId = (bm.playerData.equippedSkins || {})[plantType] || 'default';
         const skinCfg = skinId !== 'default' ? getSkin(plantType, skinId) : null;
-        const skillDesc = (skinCfg && skinCfg.skillDescription) ? skinCfg.skillDescription : def.skillDescription;
+        const skillDesc = (skinCfg && skinCfg.skillDescription)
+          ? skinCfg.skillDescription : getFormattedSkillDescription(def);
         if (skillDesc) {
           activeDesc = skillDesc;
           hasSkill = true;
@@ -2858,7 +3033,7 @@ export class UIManager {
     const panel = document.getElementById('visitor-panel');
     if (panel) panel.style.display = 'none';
     if (this.battleManager) {
-      this.battleManager.setTimeScale(1.0);
+      this.battleManager.timeScale /= GAME_CONFIG.TIME_PANEL;
     }
   }
 }

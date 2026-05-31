@@ -1,5 +1,6 @@
 import { Plant } from './Plant.js';
-import { STAR_CONFIG } from './constants.js';
+import { GAME_CONFIG, STAR_CONFIG } from './constants.js';
+import { drawSkillBar } from './Plant.js';
 import { assetManager } from './AssetManager.js';
 import { drawNut } from './PlantRenderer.js';
 import { GifAnimator } from './GifAnimator.js';
@@ -7,6 +8,7 @@ import { GifAnimator } from './GifAnimator.js';
 export class Nut extends Plant {
   constructor(x, y, starLevel = 1) {
     super(x, y, starLevel);
+    this.plantType = 'nut';
     this.baseMaxHealth = 400;
     this._doHealthScaling();
     this.defense = 0;
@@ -59,6 +61,7 @@ export class Nut extends Plant {
       const drawW = this.width;
       const drawH = Math.round(this._animator.naturalHeight * scale);
       const drawY = this.y + this.height - drawH;
+      this._barAnchorY = drawY;
       ctx.drawImage(frame, this.x, drawY, drawW, drawH);
       if (this.isSkillActive) {
         ctx.save();
@@ -77,24 +80,14 @@ export class Nut extends Plant {
     }
   }
 
+  renderSkillBar(ctx) {
+    const ratio = this.isSkillActive ? this.skillTimer / this.skillDuration
+      : this.skillCooldown > 0 ? this.skillCooldown / this.skillMaxCooldown : 0;
+    const color = this.isSkillActive ? 'rgba(100,180,255,0.4)' : '#60a5fa';
+    drawSkillBar(ctx, this.x, this.y, this.getRenderSize(), ratio, color);
+  }
+
   renderBars(ctx) {
     super.renderBars(ctx);
-    const sz = this.getRenderSize();
-    const barW = 70;
-    const barX = this.x + (sz - barW) / 2;
-    if (this.isSkillActive) {
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(barX, this.y - 14, barW, 3);
-      ctx.fillStyle = 'rgba(100,180,255,0.4)';
-      ctx.fillRect(barX, this.y - 14, barW * (this.skillTimer / this.skillDuration), 3);
-    } else if (this.skillCooldown > 0) {
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(barX, this.y - 14, barW, 3);
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(barX, this.y - 14, barW * (this.skillCooldown / this.skillMaxCooldown), 3);
-    } else {
-      ctx.fillStyle = '#60a5fa';
-      ctx.fillRect(barX, this.y - 14, barW, 3);
-    }
   }
 }

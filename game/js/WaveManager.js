@@ -25,6 +25,10 @@ export class WaveManager {
   }
 
   _pickZombieType() {
+    // First zombie of each wave is always a flag zombie
+    if (this.zombiesToSpawn === this.zombiesInWave) {
+      return 'flag';
+    }
     const types = this._getAllowedTypes();
     if (types.length === 0) return this.zombieTypes[0];
     if (types.length === 1) return types[0];
