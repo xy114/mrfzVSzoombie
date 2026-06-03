@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D 可行性调研原型 - PvZ Tactics</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Microsoft YaHei', sans-serif;
+      color: #ccc;
+    }
+    h1 { margin: 16px 0 8px; font-size: 20px; color: #fff; }
+    #info { font-size: 13px; margin-bottom: 12px; color: #888; }
+    #game-canvas { border-radius: 4px; box-shadow: 0 0 24px rgba(0,0,0,0.5); }
+    #fps { margin-top: 8px; font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>3D 可行性调研原型 — 2.5D 俯视卡通渲染</h1>
+  <div id="info">固定正交摄像机 | MeshToonMaterial + 反 hull 描边 | Three.js 0.160</div>
+  <div id="game-canvas"></div>
+  <div id="fps">FPS: --</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
