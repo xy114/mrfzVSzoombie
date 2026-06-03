@@ -18,7 +18,17 @@ function createWindow() {
     mainWindow.webContents.executeJavaScript(`window.__APP_VERSION__ = "${app.getVersion()}";`);
   });
 
-  mainWindow.webContents.openDevTools();
+  // 按 L 键切换开发者工具
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'l' && !input.control && !input.alt && !input.meta && !input.shift) {
+      if (mainWindow.webContents.isDevToolsOpened()) {
+        mainWindow.webContents.closeDevTools();
+      } else {
+        mainWindow.webContents.openDevTools();
+      }
+      event.preventDefault();
+    }
+  });
 }
 
 app.whenReady().then(() => {
