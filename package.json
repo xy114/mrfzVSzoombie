@@ -8,9 +8,9 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "build:win": "electron-builder --win portable --x64",
-    "build:mac": "electron-builder --mac --x64",
-    "build:all": "electron-builder --win portable --mac --x64",
+    "build:win": "node scripts/build-timestamp.js --win portable --x64",
+    "build:mac": "node scripts/build-timestamp.js --mac --x64",
+    "build:all": "node scripts/build-timestamp.js --win portable --mac --x64",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
@@ -23,13 +23,12 @@
   "build": {
     "appId": "com.mrfz.vszombie",
     "productName": "PvZ Tactics",
-    "artifactName": "植物大战僵尸-${version}-${os}.${ext}",
+    "artifactName": "植物大战僵尸-${version}-${env.BUILD_TIME}-${os}.${ext}",
     "directories": {
       "output": "dist"
     },
     "files": [
       "**/*",
-      "!node_modules/**/*",
       "!dist/**/*",
       "!assets/**/*.md",
       "!rowvideos/**/*"
