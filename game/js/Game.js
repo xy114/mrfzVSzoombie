@@ -91,17 +91,40 @@ export class BattleManager {
     this.isRunning = true;
     this.lastTime = performance.now();
     this.initCarts();
+
+    // Auto-pause when tab is backgrounded, resume when visible
+    this._visibilityHandler = () => {
+      if (document.hidden) {
+        this._backgroundPaused = true;
+        this.isRunning = false;
+      } else {
+        this.isRunning = true;
+        this.lastTime = performance.now();
+        this._backgroundPaused = false;
+        this.gameLoop();
+      }
+    };
+    document.addEventListener('visibilitychange', this._visibilityHandler);
+
     this.gameLoop();
   }
 
   stop() {
     this.isRunning = false;
+    if (this._visibilityHandler) {
+      document.removeEventListener('visibilitychange', this._visibilityHandler);
+      this._visibilityHandler = null;
+    }
   }
 
   gameLoop() {
     if (!this.isRunning) return;
     const currentTime = performance.now();
-    const deltaTime = currentTime - this.lastTime;
+    // Clamp deltaTime to prevent physics explosion when tab is backgrounded.
+    // Without this, a multi-minute delta causes zombies to teleport across
+    // the screen, bypassing plants and triggering carts incorrectly.
+    const rawDelta = currentTime - this.lastTime;
+    const deltaTime = Math.min(rawDelta, 200); // max ~12 frames at 60fps
     this.lastTime = currentTime;
     try {
       this.update(deltaTime);

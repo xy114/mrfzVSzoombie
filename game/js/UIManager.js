@@ -2737,10 +2737,18 @@ export class UIManager {
 
   showUnitPanel(unit) {
     if (!this.battleManager) return;
-    this.battleManager.timeScale *= GAME_CONFIG.TIME_PANEL;
 
     const panel = document.getElementById('visitor-panel');
     if (!panel) return;
+
+    // If switching from another unit, close the current panel first
+    // so timeScale multiply/divide stays balanced
+    if (panel.style.display === 'flex') {
+      this.hideVisitorPanel();
+    }
+
+    this.battleManager.timeScale *= GAME_CONFIG.TIME_PANEL;
+
     panel.style.display = 'flex';
 
     const isVisitor = unit.category === 'visitor';
